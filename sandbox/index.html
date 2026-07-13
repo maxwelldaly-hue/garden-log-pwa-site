@@ -1522,7 +1522,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.41</span>
+        <span class="header-version">v6.42</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1792,7 +1792,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.41 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.42 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3385,14 +3385,24 @@ if (typeof module !== 'undefined' && module.exports) {
       // that Apps Script cannot answer. Auth stays token/PIN-in-BODY for the same reason.
       // API base: build-injected GARDEN_API_BASE constant; a one-off ?api=<exec-url> query
       // override persists to localStorage so one static bundle can point at any friend copy.
+      // Only a script.google.com URL may ever be the backend target. Without this, a crafted
+      // ?api=https://evil/x link repointed the installed bundle at an attacker origin (sticky in
+      // localStorage), so the next login POSTed the PIN there and every getState POSTed the 30-day
+      // token there (audit Finding 2). Every friend copy lives on script.google.com, so the
+      // allowlist keeps the friend-copy feature while closing the exfiltration channel.
+      function isAllowedApiBase(url) {
+        try { return new URL(url).origin === 'https://script.google.com'; } catch (e) { return false; }
+      }
       (function () {
         if (typeof google !== 'undefined' && google.script && google.script.run) return;
         let apiBase = '';
         try {
           const q = new URLSearchParams(location.search).get('api');
-          if (q) { localStorage.setItem('garden_api_base', q); apiBase = q; }
-          else apiBase = localStorage.getItem('garden_api_base')
-            || (typeof GARDEN_API_BASE !== 'undefined' ? GARDEN_API_BASE : '');
+          const stored = localStorage.getItem('garden_api_base');
+          const fallback = (typeof GARDEN_API_BASE !== 'undefined' ? GARDEN_API_BASE : '');
+          if (q && isAllowedApiBase(q)) { localStorage.setItem('garden_api_base', q); apiBase = q; }
+          else if (stored && isAllowedApiBase(stored)) apiBase = stored; // trust a stored value only if it still passes — purges a previously-poisoned one
+          else apiBase = fallback;
         } catch (e) {}
         function makeRunner(onOk, onFail) {
           return {
@@ -3499,7 +3509,13 @@ if (typeof module !== 'undefined' && module.exports) {
         if (!db) { if (callback) callback(); return; } // degraded -> nothing to delete
         const tx = db.transaction('logs', 'readwrite');
         tx.objectStore('logs').delete(id);
-        tx.oncomplete = () => { if(callback) callback(); };
+        // Fire the callback on abort/error too, not just oncomplete — the caller (syncQueue's
+        // success handler) resets isSyncing here, so a swallowed delete failure would otherwise
+        // wedge isSyncing=true forever and silently freeze all background sync (audit Finding 5).
+        // The log stays queued but is harmless: the server dedups the re-send on its logId.
+        tx.oncomplete = () => { if (callback) callback(); };
+        tx.onerror = () => { if (callback) callback(); };
+        tx.onabort = () => { if (callback) callback(); };
       }
 
       // Cache the garden state. `data` is the server payload { currentState, stateModel }; a bare prose
