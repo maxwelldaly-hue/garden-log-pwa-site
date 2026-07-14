@@ -1522,7 +1522,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.58</span>
+        <span class="header-version">v6.59</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1792,7 +1792,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v6.58 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v6.59 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2738,6 +2738,10 @@
          the app working if the scriptlet ever renders empty. -->
     <script>
       window.GARDEN_TZ = "Australia/Adelaide" || "Australia/Adelaide";
+      // Open-access flag: 'true' only on an instance whose backend is open (the beta sandbox — SANDBOX_OPEN /
+      // per-target authOpen). When set, boot auto-unlocks past the PIN screen; the SERVER stays authoritative
+      // (a secured server refuses the auto-auth and the gate returns). Prod: 'false' -> normal PIN gate.
+      window.AUTH_OPEN = ("false" === "true");
     </script>
 
     <script>
@@ -8490,7 +8494,7 @@ if (typeof module !== 'undefined' && module.exports) {
       // open-access era (or an expired/changed one) would otherwise suppress the gate AND fail every
       // write. So re-validate the stored PIN against the server: success -> fresh token + boot; rejected
       // (stale 'guest' PIN, changed PIN, or lockout) -> raise the gate; offline -> boot from cache.
-      function authenticateAndBoot(pin) {
+      function authenticateAndBoot(pin, openProbe) {
         google.script.run
           .withSuccessHandler((resStr) => {
             let res; try { res = JSON.parse(resStr); } catch (e) { res = null; }
@@ -8504,7 +8508,7 @@ if (typeof module !== 'undefined' && module.exports) {
             }
           })
           .withFailureHandler(() => bootAfterAuth()) // offline / server hiccup: paint from cache, don't block
-          .processClientRequest(JSON.stringify({ action: 'authenticate', pin: pin }));
+          .processClientRequest(JSON.stringify({ action: 'authenticate', pin: pin, openProbe: !!openProbe }));
       }
 
       // --- Crop-icon sprite: lazy-loaded + localStorage-cached ("held elsewhere, taken as needed") ----------
@@ -8669,7 +8673,12 @@ if (typeof module !== 'undefined' && module.exports) {
         // server (authenticateAndBoot) — we don't trust a stale token, so a leftover open-access-era token
         // can't suppress the gate while writes fail. Rejected PIN -> gate; offline -> boot from cache.
         const storedPin = localStorage.getItem('garden_log_pin');
-        if (!storedPin) {
+        if (window.AUTH_OPEN && !storedPin) {
+          // Open instance (the beta sandbox): auto-unlock past the PIN screen so an agent (or a friend) can use
+          // it gate-free. openProbe=true, so if this instance's SERVER is actually secured the auth is refused
+          // WITHOUT a lockout hit and authenticateAndBoot falls back to showLogin — the server stays authoritative.
+          authenticateAndBoot('open', true);
+        } else if (!storedPin) {
           // First unlock needs the server to validate the PIN — offline it can't, and the gate blocks
           // everything. Say so plainly instead of letting it read as broken.
           showLogin(navigator.onLine ? '' : "You're offline — connect to the internet once to unlock this device the first time.");
