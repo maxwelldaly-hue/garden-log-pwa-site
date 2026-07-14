@@ -1654,7 +1654,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.66</span>
+        <span class="header-version">v6.67</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1924,7 +1924,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.66 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.67 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2009,6 +2009,15 @@
             <button class="settings-save-btn" onclick="runPassportSeed(this)">Seed test plants</button>
             <button class="settings-save-btn" onclick="runPassportClear(this)" style="margin-top:8px;">Clear test plants</button>
             <div id="devPassportSeed" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;"></div>
+          </div>
+
+          <!-- Plant-passport kill switch (owner, 15/07): if the passports misbehave, turn them off HERE —
+               plant rows go back to being inert and the background story prefetch stops. Per-device
+               (localStorage), instant, no deploy needed. Full removal steps: docs/SCOPE-PLANT-HISTORY.md. -->
+          <div class="dev-section">
+            <h4 class="dev-h">Plant passports</h4>
+            <p class="dev-note">Tap a plant row on the Garden tab to open its passport. If the cards misbehave, untick this — rows stop being tappable and the background story fetch stops, on this device only. Tick again any time.</p>
+            <label class="dev-toggle"><input type="checkbox" id="devPassportToggle" checked onchange="togglePassports(this)"> Show plant passports</label>
           </div>
 
           <!-- Master switch for the quiet in-UI hints. Off by default on prod so the owner's daily surface
@@ -5558,7 +5567,8 @@ if (typeof module !== 'undefined' && module.exports) {
             // model `p` rides the closure, so the card's top half opens with ZERO lookup or network.
             // Unspecified/to-confirm rows keep their own resolve flow (rule 24) — no passport there. The
             // camera link below already stopPropagation()s, so it can't be shadowed by this.
-            if (!isUnspecified && typeof openPassport === 'function') {
+            if (!isUnspecified && typeof openPassport === 'function'
+                && (typeof ppEnabled !== 'function' || ppEnabled())) {
               row.dataset.pp = '1';
               row.onclick = function () { openPassport(p, bedName); };
             }
@@ -8917,6 +8927,20 @@ if (typeof module !== 'undefined' && module.exports) {
       let ppCurrentKey = '';
       let _ppLast = null;    // {p, bed} of the open passport, so a prefetch arrival can re-render it
 
+      // Kill switch (owner, 15/07): the Dev drawer's "Show plant passports" toggle. Off -> plant rows go
+      // back to being inert and the prefetch stops — per device, instant, no deploy. The one stored flag
+      // is the OFF state, so a fresh device defaults ON.
+      function ppEnabled() {
+        try { return localStorage.getItem('garden_pp_off') !== '1'; } catch (e) { return true; }
+      }
+      function togglePassports(cb) {
+        try {
+          if (cb.checked) localStorage.removeItem('garden_pp_off');
+          else localStorage.setItem('garden_pp_off', '1');
+        } catch (e) {}
+        if (typeof refreshStateView === 'function') refreshStateView(true); // re-render rows with/without the tap
+      }
+
       // Story cache — PERSISTENT (localStorage) + prefetched in bulk. A GAS request costs ~5-7s of pure
       // invocation overhead whatever it returns (measured 15/07), so per-plant on-demand fetches feel slow.
       // Instead ONE background getAllPlantPassports request (same single bounded Log read serves every
@@ -8935,6 +8959,7 @@ if (typeof module !== 'undefined' && module.exports) {
       }
       let _ppPrefetchInFlight = false;
       function ppPrefetchAll(force) {
+        if (!ppEnabled()) return;
         if (_ppPrefetchInFlight) return;
         if (!force && (Date.now() - _ppCacheAt) < PP_CACHE_TTL_MS) return;   // still fresh
         if (typeof isOnline !== 'undefined' && !isOnline) return;
@@ -8960,8 +8985,14 @@ if (typeof module !== 'undefined' && module.exports) {
           .processClientRequest(JSON.stringify({ action: 'getAllPlantPassports', token: token, pin: pin }));
       }
       // Warm the cache shortly after boot (the boot getState has settled by then); TTL-guarded, so a
-      // fresh cache from the last session skips the request entirely.
-      setTimeout(function () { try { ppPrefetchAll(); } catch (e) {} }, 5000);
+      // fresh cache from the last session skips the request entirely. Also sync the Dev-drawer toggle.
+      setTimeout(function () {
+        try {
+          const t = document.getElementById('devPassportToggle');
+          if (t) t.checked = ppEnabled();
+          ppPrefetchAll();
+        } catch (e) {}
+      }, 5000);
 
       // The descriptive display tier, in LABEL_FACT_SPEC order. Everything captured stays stored; the card
       // shows only the facts that DESCRIBE the variety. One-line change if the owner moves the line.
