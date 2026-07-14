@@ -1522,7 +1522,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.47</span>
+        <span class="header-version">v6.48</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1792,7 +1792,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.47 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.48 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -1824,6 +1824,17 @@
             <p class="dev-note">Runs a set of representative notes through the <em>live</em> scribe and checks each against its known-correct answer — the only way to catch a classification regression, since the scribe's understanding step can't be unit-tested. Tap this <strong>before and after</strong> any change to the scribe rules to compare. Uses the AI (~15 quick text reads, no photos, so it's light on quota) and writes nothing. Needs your PIN and a connection.</p>
             <button class="settings-save-btn" onclick="runScribeCheck(this)">Run scribe check</button>
             <div id="devScribeCheck" class="dev-kv" style="margin-top:8px;"></div>
+          </div>
+
+          <!-- Formula-escape self-test (audit Finding 11): a cell written starting with =/+/-/@ would run as a
+               live formula when the raw Sheet is opened. The guard prefixes a ' to neutralise it. This can't be
+               unit-tested (no USER_ENTERED offline) or logged (the scribe rewrites the input first), so this
+               drives the real write→read cycle on a throwaway tab. Owner-run, read-only w.r.t. real data. -->
+          <div class="dev-section">
+            <h4 class="dev-h">Formula-escape check</h4>
+            <p class="dev-note">A note or crop that starts with <code>=</code>, <code>+</code>, <code>-</code> or <code>@</code> could otherwise run as a live spreadsheet formula when you open the raw Sheet. This writes each of those to a scratch tab (raw <em>and</em> guarded), reads them back, and confirms the guarded ones stay harmless text and come back exactly as typed. Uses no AI; writes only to a throwaway tab it deletes. Needs your PIN and a connection.</p>
+            <button class="settings-save-btn" onclick="runFormulaEscapeCheck(this)">Run formula-escape check</button>
+            <div id="devFormulaEscape" class="dev-kv" style="margin-top:8px;"></div>
           </div>
 
           <!-- Log speed (latency track, Option 0 — "measure"): the wait the owner watches is the parsed row
@@ -4751,6 +4762,57 @@ if (typeof module !== 'undefined' && module.exports) {
             pr.textContent = 'why: ' + c.problems.join(' ; ');
             box.appendChild(pr);
           }
+        });
+      }
+
+      // Formula-escape self-test (audit Finding 11): tap → the backend writes each trigger raw + guarded to a
+      // scratch tab and reads them back; we render the per-trigger verdict. Mirrors runScribeCheck.
+      function runFormulaEscapeCheck(btn) {
+        const box = document.getElementById('devFormulaEscape');
+        if (!box) return;
+        const pin = localStorage.getItem('garden_log_pin');
+        const token = localStorage.getItem('garden_log_token');
+        if (!isOnline || !(pin || token)) { box.textContent = 'Connect + enter your PIN to run this.'; return; }
+        const label0 = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Running…';
+        box.textContent = 'Writing + reading back on a scratch tab…';
+        google.script.run
+          .withSuccessHandler(function (resStr) {
+            btn.disabled = false; btn.textContent = label0;
+            let res = null; try { res = JSON.parse(resStr); } catch (e) {}
+            const r = res && res.data && res.data.formulaEscape;
+            if (!r) { box.textContent = 'Could not run the check.'; return; }
+            renderFormulaEscape(r);
+          })
+          .withFailureHandler(function (e) {
+            btn.disabled = false; btn.textContent = label0;
+            box.textContent = 'Could not run — ' + (e && e.message ? e.message : 'try again.');
+          })
+          .processClientRequest(JSON.stringify({ action: 'verifyFormulaEscaping', token: token, pin: pin }));
+      }
+      // Render the self-test result. textContent only — readBack echoes cell content, so never innerHTML.
+      function renderFormulaEscape(r) {
+        const box = document.getElementById('devFormulaEscape');
+        box.innerHTML = '';
+        const head = document.createElement('div');
+        const strong = document.createElement('span'); strong.className = 'k'; strong.textContent = 'Result: ';
+        head.appendChild(strong);
+        head.appendChild(document.createTextNode(r.pass ? 'PASS — every trigger neutralised + round-trip clean' : 'FAIL — see below'));
+        if (!r.pass) head.style.color = 'var(--red-300)';
+        box.appendChild(head);
+        (r.cases || []).forEach(function (c) {
+          const line = document.createElement('div'); line.style.marginTop = '7px';
+          const mark = document.createElement('span'); mark.className = 'k';
+          mark.textContent = c.pass ? 'pass · ' : 'FAIL · ';
+          if (!c.pass) mark.style.color = 'var(--red-300)';
+          line.appendChild(mark);
+          line.appendChild(document.createTextNode(c.input));
+          box.appendChild(line);
+          const note = document.createElement('div'); note.className = 'dev-note'; note.style.margin = '1px 0 0';
+          note.textContent = 'raw → ' + (c.rawBecameFormula ? 'live formula (dangerous)' : 'plain text')
+            + '  ·  guarded → ' + (c.escapedStayedText ? 'inert text' : 'STILL A FORMULA')
+            + '  ·  reads back: "' + c.readBack + '"';
+          box.appendChild(note);
         });
       }
 
