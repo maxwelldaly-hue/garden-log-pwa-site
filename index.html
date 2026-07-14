@@ -1522,7 +1522,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.48</span>
+        <span class="header-version">v6.49</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1792,7 +1792,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v6.48 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v6.49 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2732,6 +2732,13 @@
     <!-- aria-live so async acks/errors (Saved, Sync error, Couldn't read that) reach screen readers, not
          just sighted users. Polite on the container; each alert toast sets role="alert" itself (below). -->
     <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="false"></div>
+
+    <!-- Instance config injected server-side so a friend's copy runs in THEIR timezone. Backend is already
+         per-instance (Settings.js getGardenTz); this is the client leg the audit flagged (F9). Fallback keeps
+         the app working if the scriptlet ever renders empty. -->
+    <script>
+      window.GARDEN_TZ = "Australia/Adelaide" || "Australia/Adelaide";
+    </script>
 
     <script>
 // ============================================================================
@@ -7810,12 +7817,16 @@ if (typeof module !== 'undefined' && module.exports) {
       // Per-key accessor: sheet value if present, else the built-in default.
       const T = (k) => (ALERT_WATCHLIST && ALERT_WATCHLIST[k] != null ? Number(ALERT_WATCHLIST[k]) : ALERT_THRESHOLDS_DEFAULTS[k]);
 
-      // Today's date in Adelaide (yyyy-MM-dd) — used for the daily "watered" marker.
+      // The instance timezone (injected server-side from getGardenTz in Index.html) so a friend's copy uses
+      // THEIR "today", not Adelaide's. Falls back to Adelaide if the config ever fails to render.
+      const GARDEN_TZ = (typeof window !== 'undefined' && window.GARDEN_TZ) || 'Australia/Adelaide';
+
+      // Today's date in the instance timezone (yyyy-MM-dd) — used for the daily "watered" marker.
       function todayAdelaide() {
         const d = new Date();
-        const y = d.toLocaleString('en-US', { timeZone: 'Australia/Adelaide', year: 'numeric' });
-        const m = d.toLocaleString('en-US', { timeZone: 'Australia/Adelaide', month: '2-digit' });
-        const day = d.toLocaleString('en-US', { timeZone: 'Australia/Adelaide', day: '2-digit' });
+        const y = d.toLocaleString('en-US', { timeZone: GARDEN_TZ, year: 'numeric' });
+        const m = d.toLocaleString('en-US', { timeZone: GARDEN_TZ, month: '2-digit' });
+        const day = d.toLocaleString('en-US', { timeZone: GARDEN_TZ, day: '2-digit' });
         return `${y}-${m}-${day}`;
       }
 
@@ -8228,11 +8239,11 @@ if (typeof module !== 'undefined' && module.exports) {
           }
         }
 
-        // Helper to format Date as yyyy-MM-dd in Adelaide timezone
+        // Helper to format Date as yyyy-MM-dd in the instance timezone (GARDEN_TZ, injected server-side).
         function Utilities_formatDateAdelaide(date) {
-          const year = date.toLocaleString("en-US", {timeZone: "Australia/Adelaide", year: "numeric"});
-          const month = date.toLocaleString("en-US", {timeZone: "Australia/Adelaide", month: "2-digit"});
-          const day = date.toLocaleString("en-US", {timeZone: "Australia/Adelaide", day: "2-digit"});
+          const year = date.toLocaleString("en-US", {timeZone: GARDEN_TZ, year: "numeric"});
+          const month = date.toLocaleString("en-US", {timeZone: GARDEN_TZ, month: "2-digit"});
+          const day = date.toLocaleString("en-US", {timeZone: GARDEN_TZ, day: "2-digit"});
           return `${year}-${month}-${day}`;
         }
         
