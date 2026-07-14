@@ -1644,7 +1644,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.64</span>
+        <span class="header-version">v6.65</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1914,7 +1914,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.64 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.65 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9242,7 +9242,9 @@ if (typeof module !== 'undefined' && module.exports) {
           const dot = document.createElement('span'); dot.className = 'pp-ph-dot'; ph.appendChild(dot);
           const n = document.createElement('span'); n.className = 'pp-ph-n'; n.textContent = s.n; ph.appendChild(n);
           const dt = document.createElement('span'); dt.className = 'pp-ph-dt';
-          dt.textContent = stamped ? (ppShortDate(String(s.d).trim()) || '') : (reached ? '—' : '');
+          // The dash means "PASSED without evidence" (a pulled-before-emergence sowing's Sprouted stop).
+          // The CURRENT stop never dashes — it's in progress, not missing (owner nit, 15/07).
+          dt.textContent = stamped ? (ppShortDate(String(s.d).trim()) || '') : (reached && i !== cur ? '—' : '');
           ph.appendChild(dt);
           rb.appendChild(ph);
         });
