@@ -972,11 +972,15 @@
       /* Lifecycle ribbon: 4 mono stops. Stamped = filled muted dot + date; current = bright; future = hollow.
          A passport stamp, not a progress bar — no colour, no motion. */
       .pp-ribbon { padding: 4px 2px 0; }
-      .pp-rb { display: grid; grid-template-columns: repeat(4, 1fr); position: relative; }
-      .pp-rb.pp-rb-3 { grid-template-columns: repeat(3, 1fr); }  /* bought seedling: Planted · Growing · finale */
+      /* Two-line ribbon (owner, 15/07): line 1 = the origin-story DATE stamps (no dots — they're facts,
+         all past); line 2 = the life phases with dots, measured in live-counting DAYS. */
+      .pp-rb { display: grid; grid-template-columns: repeat(2, 1fr); position: relative; }
+      .pp-rb-dates { margin-bottom: 14px; }
+      .pp-rb-dates::before { display: none; }   /* no connector line — stamps, not a journey */
+      .pp-ph-date { font-size: var(--fs-xs); opacity: 0.9; }
       .pp-rb::before {
-        content: ""; position: absolute; top: 5px; left: 12%; right: 12%; height: 1px;
-        background: var(--surface-inset-05);
+        content: ""; position: absolute; top: 5px; left: 25%; right: 25%; height: 1px;
+        background: var(--surface-inset-05);   /* spans the two phase dots (at 25% / 75%) */
       }
       .pp-ph { display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; }
       .pp-ph-dot {
@@ -1014,6 +1018,12 @@
       .pp-fact-k { color: var(--text-muted); }
       .pp-fact-v { color: var(--text-main); overflow-wrap: anywhere; }
       .pp-fact.pp-fact-prose .pp-fact-v { color: var(--text-muted); }
+      /* Botanical name under the plant name — quiet italic (captured LabelLatin, or species reference). */
+      .pp-latin { color: var(--text-muted); font-size: var(--fs-xs); font-style: italic; margin-top: 2px; opacity: 0.85; }
+      /* "Typical" reference box — species knowledge, NOT this garden's measurements. The dashed border +
+         muted italic values keep reference visually apart from captured label facts (provenance rule). */
+      .pp-facts-ref { border-style: dashed; background: var(--surface-inset-01); }
+      .pp-fact-ref .pp-fact-v { color: var(--text-muted); font-style: italic; }
       /* Story milestones + photo rows: the Recent-row register (mark · text · short date). */
       .pp-ms-row {
         display: flex; gap: 10px; padding: 7px 2px; align-items: baseline;
@@ -1644,7 +1654,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.65</span>
+        <span class="header-version">v6.66</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1914,7 +1924,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.65 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.66 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9097,6 +9107,8 @@ if (typeof module !== 'undefined' && module.exports) {
 
         const facts = ppFactsEl(p);
         if (facts) body.appendChild(facts);
+        const ref = ppReferenceEl(p);
+        if (ref) body.appendChild(ref);
 
         const storyEl = ppStoryEl(p, story, pending);
         if (storyEl) body.appendChild(storyEl);
@@ -9132,6 +9144,16 @@ if (typeof module !== 'undefined' && module.exports) {
         bits.push(bedDisplayName ? bedDisplayName(bedName) : bedName);
         sub.textContent = bits.join(' · ');
         txt.appendChild(sub);
+        // Botanical name (owner, 15/07): the packet's captured LabelLatin wins; the species reference
+        // fills in otherwise. Quiet italic — a passport detail, not a headline.
+        const latin = (p.labelFacts && String(p.labelFacts.latin || '').trim())
+          || (p.reference && p.reference.latin) || '';
+        if (latin) {
+          const li = document.createElement('div');
+          li.className = 'pp-latin';
+          li.textContent = latin;
+          txt.appendChild(li);
+        }
         wrap.appendChild(txt);
         return wrap;
       }
@@ -9184,19 +9206,18 @@ if (typeof module !== 'undefined' && module.exports) {
         return s;
       }
 
-      // The lifecycle ribbon — SHAPE-AWARE (owner, 15/07). A seed-raised plant's journey is
-      // Sown · Sprouted · Growing · finale; a bought seedling's recorded life starts at PLANTED, so it gets
-      // Planted · Growing · finale — a Sown/Sprouted pair it never had would read as missing data. The
-      // finale is Producing, or Flowering for an ornamental (buildPlantModel().flowering). A stop is
-      // STAMPED (filled + date) only on real evidence.
+      // The lifecycle ribbon — TWO LINES (owner, 15/07). A plant's interesting DATES cluster at the start
+      // of its life (sown, sprouted, planted); after that what matters is elapsed time — how long it grew,
+      // how long it's been producing. So: line 1 = the origin-story date stamps (only the events that
+      // actually happened — a bought seedling just shows Planted); line 2 = the life phases with the dots,
+      // measured in DAYS and live-counting (Growing = planted→first pick or →today; Producing/Flowering =
+      // since the first pick/bloom). No dashes anywhere — nothing here can be "missing".
       function ppRibbonEl(p, story) {
         const wrap = document.createElement('div');
         wrap.className = 'pp-ribbon';
-        const rb = document.createElement('div');
-        rb.className = 'pp-rb';
         const seedOrigin = !!p.estSprout;
         const finaleName = p.flowering ? 'Flowering' : 'Producing';
-        // Final-stop evidence: Producing = the first pick (story.firstYield, async); Flowering = the state
+        // Finale evidence: Producing = the first pick (story.firstYield, async); Flowering = the state
         // row's stage having reached Flowering (sync) — its date arrives with the story's stage milestone.
         const stageL = String(p.stage || '');
         const flowered = p.flowering && ['Flowering', 'Fruiting', 'Harvesting'].indexOf(stageL) >= 0;
@@ -9206,50 +9227,72 @@ if (typeof module !== 'undefined' && module.exports) {
             if (story.milestones[i].stage === 'Flowering') { floweringDate = story.milestones[i].date; break; }
           }
         }
-        const finaleStamp = p.flowering ? (flowered ? (floweringDate || ' ') : '')
-                                        : (p.yield ? ((story && story.firstYield) || ' ') : '');
+        const finaleDate = p.flowering ? floweringDate : ((story && story.firstYield) || '');
         const finaleReached = p.flowering ? flowered : (p.phase === 'Producing' || !!p.yield);
-        // A Spent plant's ribbon is pure history: every stop reads as reached, evidence stamps show, and
-        // no stop is "now" — the plant is done (cur 99 marks nothing as current).
-        let stops, cur;
+
+        // Line 1 — the dates. Only real stamps join; chronological by construction.
+        const dates = [];
         if (seedOrigin) {
-          cur = p.isTombstone ? 99 : (finaleReached ? 3 : ppPhaseIdx(p.phase));
-          // Growing stamp: the plant-out date; for a direct-sow, emergence + the tender week — the SAME
-          // rule computePhase uses to age a direct-sow into Growing, so the stamp is derived, never invented.
-          const growingStamp = p.transplanted || (cur >= 2 && p.sprouted ? ppAddDays(p.sprouted, 7) : '');
-          stops = [
-            { n: 'Sown', d: p.planted },
-            { n: 'Sprouted', d: p.sprouted || '' },
-            { n: 'Growing', d: growingStamp },
-            { n: finaleName, d: finaleStamp }
-          ];
-        } else {
-          cur = p.isTombstone ? 99 : (finaleReached ? 2 : 1);
-          // Growing carries no date of its own here — it would just repeat the Planted stamp; the bright
-          // dot alone says where the plant is. (A rare bought-then-moved plant still shows its move date.)
-          stops = [
-            { n: 'Planted', d: p.planted },
-            { n: 'Growing', d: p.transplanted || '' },
-            { n: finaleName, d: finaleStamp }
-          ];
-          rb.classList.add('pp-rb-3');
+          dates.push({ n: 'Sown', d: p.planted });
+          if (p.sprouted) dates.push({ n: 'Sprouted', d: p.sprouted });
+          if (p.transplanted) dates.push({ n: 'Planted', d: p.transplanted });
+        } else if (p.planted) {
+          dates.push({ n: 'Planted', d: p.planted });
         }
-        stops.forEach(function (s, i) {
+        if (dates.length) {
+          const row = document.createElement('div');
+          row.className = 'pp-rb pp-rb-dates';
+          row.style.gridTemplateColumns = 'repeat(' + dates.length + ', 1fr)';
+          dates.forEach(function (s) {
+            const ph = document.createElement('div');
+            ph.className = 'pp-ph';
+            const n = document.createElement('span'); n.className = 'pp-ph-n'; n.textContent = s.n; ph.appendChild(n);
+            const dt = document.createElement('span'); dt.className = 'pp-ph-dt pp-ph-date';
+            dt.textContent = ppShortDate(String(s.d).trim()) || '';
+            ph.appendChild(dt);
+            row.appendChild(ph);
+          });
+          wrap.appendChild(row);
+        }
+
+        // Line 2 — the life, in days. growStart = when it began growing in its final home.
+        const growStart = seedOrigin ? (p.transplanted || p.planted) : p.planted;
+        const growingStarted = p.isTombstone || finaleReached || ppPhaseIdx(p.phase) >= 2;
+        const growingDays = (growingStarted && growStart)
+          ? ppDaysBetween(growStart, finaleReached && finaleDate ? finaleDate : '') : null;
+        const finaleDays = (finaleReached && finaleDate) ? ppDaysBetween(finaleDate, '') : null;
+        const phases = [
+          { n: 'Growing', txt: ppFmtDays(growingDays),
+            state: p.isTombstone ? (growingStarted ? 'past' : '') : (finaleReached ? 'past' : (growingStarted ? 'now' : '')) },
+          { n: finaleName, txt: finaleReached ? ppFmtDays(finaleDays) : '',
+            state: finaleReached ? (p.isTombstone ? 'past' : 'now') : '' }
+        ];
+        const row2 = document.createElement('div');
+        row2.className = 'pp-rb pp-rb-phases';
+        phases.forEach(function (s) {
           const ph = document.createElement('div');
-          const reached = i <= cur;
-          const stamped = reached && !!s.d;
-          ph.className = 'pp-ph' + (i === cur ? ' now' : (stamped ? ' past' : ''));
+          ph.className = 'pp-ph' + (s.state ? ' ' + s.state : '');
           const dot = document.createElement('span'); dot.className = 'pp-ph-dot'; ph.appendChild(dot);
           const n = document.createElement('span'); n.className = 'pp-ph-n'; n.textContent = s.n; ph.appendChild(n);
-          const dt = document.createElement('span'); dt.className = 'pp-ph-dt';
-          // The dash means "PASSED without evidence" (a pulled-before-emergence sowing's Sprouted stop).
-          // The CURRENT stop never dashes — it's in progress, not missing (owner nit, 15/07).
-          dt.textContent = stamped ? (ppShortDate(String(s.d).trim()) || '') : (reached && i !== cur ? '—' : '');
+          const dt = document.createElement('span'); dt.className = 'pp-ph-dt'; dt.textContent = s.txt;
           ph.appendChild(dt);
-          rb.appendChild(ph);
+          row2.appendChild(ph);
         });
-        wrap.appendChild(rb);
+        wrap.appendChild(row2);
         return wrap;
+      }
+      // Whole days from a DD/MM/YYYY to another (or to today when b is '') — the ribbon's duration math.
+      function ppDaysBetween(aDmy, bDmy) {
+        const a = parseDMY(aDmy);
+        const b = bDmy ? parseDMY(bDmy) : new Date();
+        if (!a || !b) return null;
+        a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0);
+        return Math.round((b - a) / 86400000);
+      }
+      function ppFmtDays(n) {
+        if (n == null || !isFinite(n) || n < 0) return '';
+        if (n === 0) return 'today';
+        return n + (n === 1 ? ' day' : ' days');
       }
       function ppPhaseIdx(phase) {
         return phase === 'Sown' ? 0 : phase === 'Sprouted' ? 1 : phase === 'Producing' ? 3 : 2;
@@ -9279,6 +9322,37 @@ if (typeof module !== 'undefined' && module.exports) {
           row.className = 'pp-fact' + (spec[2] ? ' pp-fact-prose' : '');
           const k = document.createElement('div'); k.className = 'pp-fact-k'; k.textContent = spec[1];
           const v = document.createElement('div'); v.className = 'pp-fact-v'; v.textContent = String(f[spec[0]]).trim();
+          row.appendChild(k); row.appendChild(v);
+          box.appendChild(row);
+        });
+        sec.appendChild(box);
+        return sec;
+      }
+
+      // "Typical" — species-level reference values (CROP_REFERENCE) for the facts NO label ever captured,
+      // so a gifted cutting isn't a bare card. Deliberately a SEPARATE, visually distinct box (dashed
+      // border, muted italic values): this is what the species is like, NOT a measurement of this garden —
+      // provenance stays structural, a reference row can never pass as a capture (owner, 15/07). A
+      // captured label fact always wins; its key simply doesn't appear here.
+      const PP_REF_DISPLAY = [['sun', 'Sun'], ['spacing', 'Spacing'], ['height', 'Height'], ['harvest', 'Harvest']];
+      function ppReferenceEl(p) {
+        const ref = p.reference;
+        if (!ref) return null;
+        const f = p.labelFacts || {};
+        const rows = PP_REF_DISPLAY.filter(function (spec) {
+          return ref[spec[0]] && !String(f[spec[0]] || '').trim();   // reference fills only the gaps
+        });
+        if (!rows.length) return null;
+        const sec = document.createElement('div');
+        const h = document.createElement('div'); h.className = 'pp-sec-h';
+        h.textContent = 'Typical ' + ppSplitName(p.name)[0].toLowerCase();
+        sec.appendChild(h);
+        const box = document.createElement('div'); box.className = 'pp-facts pp-facts-ref';
+        rows.forEach(function (spec) {
+          const row = document.createElement('div');
+          row.className = 'pp-fact pp-fact-ref';
+          const k = document.createElement('div'); k.className = 'pp-fact-k'; k.textContent = spec[1];
+          const v = document.createElement('div'); v.className = 'pp-fact-v'; v.textContent = ref[spec[0]];
           row.appendChild(k); row.appendChild(v);
           box.appendChild(row);
         });
