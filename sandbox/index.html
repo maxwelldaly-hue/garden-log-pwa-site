@@ -973,6 +973,7 @@
          A passport stamp, not a progress bar — no colour, no motion. */
       .pp-ribbon { padding: 4px 2px 0; }
       .pp-rb { display: grid; grid-template-columns: repeat(4, 1fr); position: relative; }
+      .pp-rb.pp-rb-3 { grid-template-columns: repeat(3, 1fr); }  /* bought seedling: Planted · Growing · finale */
       .pp-rb::before {
         content: ""; position: absolute; top: 5px; left: 12%; right: 12%; height: 1px;
         background: var(--surface-inset-05);
@@ -1643,7 +1644,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.63</span>
+        <span class="header-version">v6.64</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1913,7 +1914,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.63 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.64 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -8904,7 +8905,53 @@ if (typeof module !== 'undefined' && module.exports) {
 
       let ppOpen = false;
       let ppCurrentKey = '';
-      const _ppCache = {};   // p.key -> {milestones, photos, firstYield} (session-only, SWR)
+      let _ppLast = null;    // {p, bed} of the open passport, so a prefetch arrival can re-render it
+
+      // Story cache — PERSISTENT (localStorage) + prefetched in bulk. A GAS request costs ~5-7s of pure
+      // invocation overhead whatever it returns (measured 15/07), so per-plant on-demand fetches feel slow.
+      // Instead ONE background getAllPlantPassports request (same single bounded Log read serves every
+      // plant) fills this cache shortly after boot; passports then open instantly, and the cache refreshes
+      // stale-while-revalidate like every other tab.
+      const PP_CACHE_LS = 'garden_pp_cache';
+      const PP_CACHE_TTL_MS = 10 * 60 * 1000;   // refresh the bulk cache when older than this
+      let _ppCache = {};     // p.key -> {milestones, photos, firstYield}
+      let _ppCacheAt = 0;
+      try {
+        const c = JSON.parse(localStorage.getItem(PP_CACHE_LS) || 'null');
+        if (c && c.passports) { _ppCache = c.passports; _ppCacheAt = c.at || 0; }
+      } catch (e) {}
+      function ppCacheSave() {
+        try { localStorage.setItem(PP_CACHE_LS, JSON.stringify({ at: _ppCacheAt, passports: _ppCache })); } catch (e) {}
+      }
+      let _ppPrefetchInFlight = false;
+      function ppPrefetchAll(force) {
+        if (_ppPrefetchInFlight) return;
+        if (!force && (Date.now() - _ppCacheAt) < PP_CACHE_TTL_MS) return;   // still fresh
+        if (typeof isOnline !== 'undefined' && !isOnline) return;
+        const pin = localStorage.getItem('garden_log_pin');
+        const token = localStorage.getItem('garden_log_token');
+        if (!pin && !token) return;
+        _ppPrefetchInFlight = true;
+        google.script.run
+          .withSuccessHandler(function (resStr) {
+            _ppPrefetchInFlight = false;
+            try {
+              const res = JSON.parse(resStr);
+              if (res.status === 'success' && res.data && res.data.passports) {
+                _ppCache = res.data.passports;
+                _ppCacheAt = Date.now();
+                ppCacheSave();
+                // A passport open right now gets the fresh story painted in.
+                if (ppOpen && _ppLast && _ppCache[ppCurrentKey]) ppRender(_ppLast.p, _ppLast.bed, _ppCache[ppCurrentKey], false);
+              }
+            } catch (e) {}
+          })
+          .withFailureHandler(function () { _ppPrefetchInFlight = false; })
+          .processClientRequest(JSON.stringify({ action: 'getAllPlantPassports', token: token, pin: pin }));
+      }
+      // Warm the cache shortly after boot (the boot getState has settled by then); TTL-guarded, so a
+      // fresh cache from the last session skips the request entirely.
+      setTimeout(function () { try { ppPrefetchAll(); } catch (e) {} }, 5000);
 
       // The descriptive display tier, in LABEL_FACT_SPEC order. Everything captured stays stored; the card
       // shows only the facts that DESCRIBE the variety. One-line change if the owner moves the line.
@@ -8936,6 +8983,22 @@ if (typeof module !== 'undefined' && module.exports) {
         const y = parseInt(m[3], 10);
         return (y === new Date().getFullYear()) ? base : base + ' ' + m[3];
       }
+      // The passport's planting-date voice (owner, 15/07): "1 July 2025 (12mo ago)" — the absolute date
+      // in full, with the app's relative-age register in parens.
+      const PP_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      function ppLongDate(s) {
+        const m = String(s || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (!m) return '';
+        const mo = parseInt(m[2], 10);
+        if (mo < 1 || mo > 12) return '';
+        return parseInt(m[1], 10) + ' ' + PP_MONTHS[mo - 1] + ' ' + m[3];
+      }
+      function ppWhen(dmy) {
+        const abs = ppLongDate(dmy);
+        if (!abs) return String(dmy || '');
+        const rel = relativePast(dmy);
+        return rel ? abs + ' (' + rel + ')' : abs;
+      }
 
       // Split a display name back into base + variety ("Tomato (Tommy Toe)" → ["Tomato", "Tommy Toe"]).
       // Mirrors the server's stripCropVariety — only a TRAILING (…) is a variety.
@@ -8950,10 +9013,13 @@ if (typeof module !== 'undefined' && module.exports) {
         if (!overlay) return;
         ppOpen = true;
         ppCurrentKey = String(p.key || (p.name + '@' + bedName));
+        _ppLast = { p: p, bed: bedName };
         document.body.style.overflow = 'hidden';
         overlay.style.display = 'flex';
-        ppRender(p, bedName, _ppCache[ppCurrentKey] || null, !_ppCache[ppCurrentKey]);
-        ppFetchStory(p, bedName);
+        const cached = _ppCache[ppCurrentKey] || null;
+        ppRender(p, bedName, cached, !cached);
+        if (!cached) ppFetchStory(p, bedName);   // only before the first bulk prefetch has ever landed
+        ppPrefetchAll();                          // TTL-guarded background refresh of the whole cache
       }
 
       function closePassport() {
@@ -8982,6 +9048,7 @@ if (typeof module !== 'undefined' && module.exports) {
               const res = JSON.parse(resStr);
               if (res.status === 'success' && res.data) {
                 _ppCache[key] = res.data;
+                ppCacheSave();
                 if (ppOpen && ppCurrentKey === key) ppRender(p, bedName, res.data, false);
               } else if (ppOpen && ppCurrentKey === key) ppStoryFailed(!!_ppCache[key]);
             } catch (e) { if (ppOpen && ppCurrentKey === key) ppStoryFailed(!!_ppCache[key]); }
@@ -9083,17 +9150,16 @@ if (typeof module !== 'undefined' && module.exports) {
         };
         const established = ppIsEstablished(p);
         const seedOrigin = !!p.estSprout;
+        // Origin line: absolute date first, relative age in parens — "Planted 1 July 2025 (12mo ago)"
+        // (owner, 15/07). A raised plant's sow date lives on the ribbon's Sown stamp, so no "(sown …)"
+        // parenthetical here.
         if (p.planted) {
-          if (established) {
-            line('pl-planted', 'Planted ' + (ppShortDate(p.planted) || p.planted));
-          } else if (p.phase === 'Sown') {
-            line('pl-planted', 'Sown ' + relativePast(p.planted));
-          } else if (seedOrigin && p.transplanted) {
-            line('pl-planted', 'Planted ' + relativePast(p.transplanted) + ' (sown ' + relativePast(p.planted).replace(/\s*ago$/, '') + ')');
+          if (seedOrigin && p.transplanted) {
+            line('pl-planted', 'Planted ' + ppWhen(p.transplanted));
           } else if (seedOrigin) {
-            line('pl-planted', 'Sown ' + relativePast(p.planted));
+            line('pl-planted', 'Sown ' + ppWhen(p.planted));
           } else {
-            line('pl-planted', 'Planted ' + relativePast(p.planted));
+            line('pl-planted', 'Planted ' + ppWhen(p.planted));
           }
         }
         const estDate = stripOverdueClient(p.estHarvest);
@@ -9118,9 +9184,11 @@ if (typeof module !== 'undefined' && module.exports) {
         return s;
       }
 
-      // The 4-stop ribbon. Stops: Sown · Sprouted · Growing · Producing (or Flowering for an ornamental —
-      // buildPlantModel().flowering). A stop is STAMPED (filled + date) only on real evidence; a phase the
-      // plant skipped past without evidence (a bought seedling's Sown/Sprouted) shows an honest hollow "—".
+      // The lifecycle ribbon — SHAPE-AWARE (owner, 15/07). A seed-raised plant's journey is
+      // Sown · Sprouted · Growing · finale; a bought seedling's recorded life starts at PLANTED, so it gets
+      // Planted · Growing · finale — a Sown/Sprouted pair it never had would read as missing data. The
+      // finale is Producing, or Flowering for an ornamental (buildPlantModel().flowering). A stop is
+      // STAMPED (filled + date) only on real evidence.
       function ppRibbonEl(p, story) {
         const wrap = document.createElement('div');
         wrap.className = 'pp-ribbon';
@@ -9140,22 +9208,32 @@ if (typeof module !== 'undefined' && module.exports) {
         }
         const finaleStamp = p.flowering ? (flowered ? (floweringDate || ' ') : '')
                                         : (p.yield ? ((story && story.firstYield) || ' ') : '');
+        const finaleReached = p.flowering ? flowered : (p.phase === 'Producing' || !!p.yield);
         // A Spent plant's ribbon is pure history: every stop reads as reached, evidence stamps show, and
-        // no stop is "now" — the plant is done.
-        const cur = p.isTombstone ? 99
-                  : p.flowering ? (flowered ? 3 : ppPhaseIdx(p.phase))
-                  : (p.phase === 'Producing' ? 3 : ppPhaseIdx(p.phase));
-        // Growing stamp: the plant-out date; for a direct-sow, emergence + the tender week — the SAME rule
-        // computePhase uses to age a direct-sow into Growing, so the stamp is derived, never invented.
-        const growingStamp = p.transplanted
-          || (!seedOrigin ? p.planted : '')
-          || (cur >= 2 && p.sprouted ? ppAddDays(p.sprouted, 7) : '');
-        const stops = [
-          { n: 'Sown', d: seedOrigin ? p.planted : '' },
-          { n: 'Sprouted', d: p.sprouted || '' },
-          { n: 'Growing', d: growingStamp },
-          { n: finaleName, d: finaleStamp }
-        ];
+        // no stop is "now" — the plant is done (cur 99 marks nothing as current).
+        let stops, cur;
+        if (seedOrigin) {
+          cur = p.isTombstone ? 99 : (finaleReached ? 3 : ppPhaseIdx(p.phase));
+          // Growing stamp: the plant-out date; for a direct-sow, emergence + the tender week — the SAME
+          // rule computePhase uses to age a direct-sow into Growing, so the stamp is derived, never invented.
+          const growingStamp = p.transplanted || (cur >= 2 && p.sprouted ? ppAddDays(p.sprouted, 7) : '');
+          stops = [
+            { n: 'Sown', d: p.planted },
+            { n: 'Sprouted', d: p.sprouted || '' },
+            { n: 'Growing', d: growingStamp },
+            { n: finaleName, d: finaleStamp }
+          ];
+        } else {
+          cur = p.isTombstone ? 99 : (finaleReached ? 2 : 1);
+          // Growing carries no date of its own here — it would just repeat the Planted stamp; the bright
+          // dot alone says where the plant is. (A rare bought-then-moved plant still shows its move date.)
+          stops = [
+            { n: 'Planted', d: p.planted },
+            { n: 'Growing', d: p.transplanted || '' },
+            { n: finaleName, d: finaleStamp }
+          ];
+          rb.classList.add('pp-rb-3');
+        }
         stops.forEach(function (s, i) {
           const ph = document.createElement('div');
           const reached = i <= cur;
