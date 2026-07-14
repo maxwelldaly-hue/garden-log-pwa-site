@@ -1643,7 +1643,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.61</span>
+        <span class="header-version">v6.63</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1913,7 +1913,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.61 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.63 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9031,7 +9031,8 @@ if (typeof module !== 'undefined' && module.exports) {
         const facts = ppFactsEl(p);
         if (facts) body.appendChild(facts);
 
-        body.appendChild(ppStoryEl(p, story, pending));
+        const storyEl = ppStoryEl(p, story, pending);
+        if (storyEl) body.appendChild(storyEl);
         const photos = ppPhotosEl(story);
         if (photos) body.appendChild(photos);
       }
@@ -9098,9 +9099,11 @@ if (typeof module !== 'undefined' && module.exports) {
         const estDate = stripOverdueClient(p.estHarvest);
         if (p.isTombstone) {
           line('pl-done', '✓ Harvested — clears tonight');
+        } else if (p.phase === 'Dormant') {
+          // The season line carries the state; "Harvesting · N" would read as active cropping (row parity).
         } else if (p.yield) {
           line('pl-yield', 'Harvesting · ' + p.yield);
-        } else if (p.phase !== 'Dormant' && estDate && !established) {
+        } else if (estDate && !established) {
           const days = daysUntil(estDate);
           if (days !== null && days <= 0) line('pl-harvest-check', 'Check for harvest');
           else line('pl-countdown', (days !== null) ? ('Est. harvest in ' + days + (days === 1 ? ' day' : ' days')) : ('Est. harvest ' + estDate));
@@ -9137,12 +9140,20 @@ if (typeof module !== 'undefined' && module.exports) {
         }
         const finaleStamp = p.flowering ? (flowered ? (floweringDate || ' ') : '')
                                         : (p.yield ? ((story && story.firstYield) || ' ') : '');
-        const cur = p.flowering ? (flowered ? 3 : ppPhaseIdx(p.phase))
-                                : (p.phase === 'Producing' ? 3 : ppPhaseIdx(p.phase));
+        // A Spent plant's ribbon is pure history: every stop reads as reached, evidence stamps show, and
+        // no stop is "now" — the plant is done.
+        const cur = p.isTombstone ? 99
+                  : p.flowering ? (flowered ? 3 : ppPhaseIdx(p.phase))
+                  : (p.phase === 'Producing' ? 3 : ppPhaseIdx(p.phase));
+        // Growing stamp: the plant-out date; for a direct-sow, emergence + the tender week — the SAME rule
+        // computePhase uses to age a direct-sow into Growing, so the stamp is derived, never invented.
+        const growingStamp = p.transplanted
+          || (!seedOrigin ? p.planted : '')
+          || (cur >= 2 && p.sprouted ? ppAddDays(p.sprouted, 7) : '');
         const stops = [
           { n: 'Sown', d: seedOrigin ? p.planted : '' },
           { n: 'Sprouted', d: p.sprouted || '' },
-          { n: 'Growing', d: p.transplanted || (seedOrigin ? '' : p.planted) },
+          { n: 'Growing', d: growingStamp },
           { n: finaleName, d: finaleStamp }
         ];
         stops.forEach(function (s, i) {
@@ -9162,6 +9173,14 @@ if (typeof module !== 'undefined' && module.exports) {
       }
       function ppPhaseIdx(phase) {
         return phase === 'Sown' ? 0 : phase === 'Sprouted' ? 1 : phase === 'Producing' ? 3 : 2;
+      }
+      // DD/MM/YYYY + n days -> DD/MM/YYYY ('' on a bad date). Client-side sibling of addDaysToDDMMYYYY.
+      function ppAddDays(dmy, n) {
+        const d = parseDMY(dmy);
+        if (!d) return '';
+        d.setDate(d.getDate() + n);
+        const p2 = function (x) { return x < 10 ? '0' + x : '' + x; };
+        return p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + '/' + d.getFullYear();
       }
 
       // "From the label" — the packet's own words, descriptive tier only. The section header IS the
@@ -9205,13 +9224,7 @@ if (typeof module !== 'undefined' && module.exports) {
           return sec;
         }
         const ms = story.milestones || [];
-        if (!ms.length) {
-          const q = document.createElement('div');
-          q.className = 'pp-quiet';
-          q.textContent = 'Nothing recorded yet.';
-          sec.appendChild(q);
-          return sec;
-        }
+        if (!ms.length) return null; // quiet omission — never an empty-state line (minimal surface)
         ms.forEach(function (m) {
           const row = document.createElement('div');
           row.className = 'pp-ms-row';
