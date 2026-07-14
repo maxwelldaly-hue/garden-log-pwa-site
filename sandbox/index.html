@@ -920,6 +920,127 @@
         border-radius: var(--r-xs);
       }
 
+      /* === Plant passport (docs/SCOPE-PLANT-HISTORY.md) ==================================================
+         Tap a plant row → a full-screen overlay: identity + a dead-quiet 4-stop lifecycle ribbon + the
+         packet facts + the plant's story + photo links. Mechanics mirror .plot-fs (fixed inset:0, scroll
+         lock, glide-in); the visual language is the soft inset-tile system. Quiet by design: mono dots,
+         no colour beyond the existing amber yield line, no countdowns on the ribbon. */
+      .pp-fs {
+        position: fixed; inset: 0; z-index: 1000;
+        background: var(--bg-primary);
+        display: flex; flex-direction: column;
+        animation: ppFsIn 0.22s ease-out;
+        padding-top: var(--safe-area-inset-top, 0);
+        padding-bottom: var(--safe-area-inset-bottom, 0);
+      }
+      @keyframes ppFsIn { from { transform: scale(0.97); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      .pp-bar {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 12px 16px 4px; flex: 0 0 auto;
+      }
+      .pp-crumb {
+        font-size: var(--fs-xs); color: var(--text-muted);
+        letter-spacing: var(--ls-wide); text-transform: uppercase;
+      }
+      .pp-close {
+        background: var(--surface-inset-02); border: 1px solid var(--surface-inset-03);
+        color: var(--text-muted); border-radius: var(--r-xs);
+        font-size: var(--fs-md); line-height: 1; padding: 6px 10px; cursor: pointer;
+      }
+      .pp-body {
+        flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch;
+        padding: 8px 16px 28px;
+        display: flex; flex-direction: column; gap: 18px;
+        max-width: 560px; width: 100%; margin: 0 auto; box-sizing: border-box;
+      }
+      /* Identity: crop sprite in an inset tile + name (variety muted) + count · bed. */
+      .pp-id { display: flex; gap: 12px; align-items: flex-start; }
+      .pp-id-ic {
+        width: 44px; height: 44px; flex: 0 0 44px;
+        border-radius: var(--r-md);
+        background: var(--surface-inset-02); border: 1px solid var(--surface-inset-03);
+        display: flex; align-items: center; justify-content: center;
+      }
+      .pp-id-ic .plant-ic { width: 30px; height: 30px; vertical-align: unset; margin: 0; }
+      .pp-id-ic .plant-ic-emoji { width: auto; font-size: 1.4rem; }
+      .pp-id h2 { margin: 0; font-size: var(--fs-lg); font-weight: 600; line-height: 1.25; color: var(--text-main); }
+      .pp-id h2 .pp-variety { color: var(--text-muted); font-weight: 400; }
+      .pp-id-sub { color: var(--text-muted); font-size: var(--fs-sm); margin-top: 2px; }
+      .pp-done .pp-id h2 { text-decoration: line-through; color: var(--text-muted); }
+      /* Ledger lines reuse the row voice (.pl-line palette) — same strings, same register. */
+      .pp-lines { display: flex; flex-direction: column; gap: 3px; }
+      /* Lifecycle ribbon: 4 mono stops. Stamped = filled muted dot + date; current = bright; future = hollow.
+         A passport stamp, not a progress bar — no colour, no motion. */
+      .pp-ribbon { padding: 4px 2px 0; }
+      .pp-rb { display: grid; grid-template-columns: repeat(4, 1fr); position: relative; }
+      .pp-rb::before {
+        content: ""; position: absolute; top: 5px; left: 12%; right: 12%; height: 1px;
+        background: var(--surface-inset-05);
+      }
+      .pp-ph { display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; }
+      .pp-ph-dot {
+        width: 11px; height: 11px; border-radius: 50%;
+        background: var(--bg-primary); border: 1.5px solid var(--surface-inset-05); box-sizing: border-box;
+      }
+      .pp-ph.past .pp-ph-dot { background: var(--text-muted); border-color: var(--text-muted); }
+      .pp-ph.now .pp-ph-dot { background: var(--text-main); border-color: var(--text-main); }
+      .pp-ph-n {
+        font-size: var(--fs-2xs); letter-spacing: var(--ls-wide); text-transform: uppercase;
+        color: var(--text-muted);
+      }
+      .pp-ph.now .pp-ph-n { color: var(--text-main); }
+      .pp-ph-dt { font-size: var(--fs-2xs); color: var(--text-muted); opacity: 0.7; min-height: 1em; }
+      /* Established / Dormant / Spent variant: the ribbon gives way to one quiet stamp line. */
+      .pp-season {
+        font-size: var(--fs-sm); color: var(--text-muted);
+        border: 1px solid var(--surface-inset-03); background: var(--surface-inset-01);
+        border-radius: var(--r-md); padding: 8px 12px;
+      }
+      /* Sections: quiet uppercase eyebrow + content. Absent data = absent section, never an empty state. */
+      .pp-sec-h {
+        font-size: var(--fs-2xs); letter-spacing: var(--ls-wide); text-transform: uppercase;
+        color: var(--text-muted); margin-bottom: 8px;
+      }
+      .pp-facts {
+        background: var(--surface-inset-02); border: 1px solid var(--surface-inset-03);
+        border-radius: var(--r-md); padding: 4px 12px;
+      }
+      .pp-fact {
+        display: grid; grid-template-columns: 92px 1fr; gap: 10px; padding: 7px 0;
+        border-top: 1px solid var(--surface-inset-02); font-size: var(--fs-sm);
+      }
+      .pp-fact:first-child { border-top: 0; }
+      .pp-fact-k { color: var(--text-muted); }
+      .pp-fact-v { color: var(--text-main); overflow-wrap: anywhere; }
+      .pp-fact.pp-fact-prose .pp-fact-v { color: var(--text-muted); }
+      /* Story milestones + photo rows: the Recent-row register (mark · text · short date). */
+      .pp-ms-row {
+        display: flex; gap: 10px; padding: 7px 2px; align-items: baseline;
+        border-top: 1px solid var(--surface-inset-02); font-size: var(--fs-sm);
+      }
+      .pp-ms-row:first-child { border-top: 0; }
+      .pp-ms-mk { flex: 0 0 18px; text-align: center; }
+      .pp-ms-t { flex: 1 1 auto; color: var(--text-main); min-width: 0; overflow-wrap: anywhere; }
+      .pp-ms-t small { display: block; color: var(--text-muted); font-size: var(--fs-xs); }
+      .pp-ms-when { color: var(--text-muted); font-size: var(--fs-xs); white-space: nowrap; }
+      .pp-photo-desc { color: var(--text-muted); }
+      .pp-photo-link { color: var(--text-main); text-decoration: none; white-space: nowrap; }
+      .pp-photo-link:hover { text-decoration: underline; }
+      .pp-quiet { color: var(--text-muted); font-size: var(--fs-xs); opacity: 0.85; }
+      /* Loading shimmer for the async story/photos half (mirrors .pending-spin's quiet pulse). */
+      .pp-skel {
+        height: 12px; border-radius: 6px; background: var(--surface-inset-03);
+        position: relative; overflow: hidden; margin: 9px 2px;
+      }
+      .pp-skel::after {
+        content: ""; position: absolute; inset: 0;
+        background: linear-gradient(90deg, transparent, var(--surface-inset-04), transparent);
+        animation: ppShimmer 1.4s infinite;
+      }
+      @keyframes ppShimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+      /* The row is now a tap target (the passport) — the pointer without any new visual noise. */
+      .plant-row[data-pp="1"] { cursor: pointer; }
+
       /* A11y: honour the OS "reduce motion" setting — drop the looping/entrance animations and long
          transitions for motion-sensitive users (keeps everything functional, just still). */
       @media (prefers-reduced-motion: reduce) {
@@ -1522,7 +1643,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.60</span>
+        <span class="header-version">v6.61</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1792,7 +1913,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.60 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.61 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -1866,6 +1987,17 @@
             <button class="settings-save-btn" onclick="runShedCategorySync(this)" style="margin-top:8px;">Sync category order</button>
             <button class="settings-save-btn" onclick="runBedRename(this)" style="margin-top:8px;">Rename Window (House) → House Window</button>
             <div id="devMaintResult" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;"></div>
+          </div>
+
+          <!-- Passport test plants (PassportTestSeed.js): SANDBOX-ONLY fixtures that exercise every plant-
+               passport card shape (full journey, 2nd-season, dormant perennial, ornamental, Spent, …).
+               The server refuses both on prod (appIsBeta guard), so these buttons are harmless there. -->
+          <div class="dev-section">
+            <h4 class="dev-h">Passport test plants</h4>
+            <p class="dev-note">Sandbox only. <strong>Seed</strong> adds a set of test plants (with backdated history) so every passport card shape can be reviewed on the Garden tab; <strong>Clear</strong> removes exactly those. Safe to tap more than once — seeding always clears first. The Spent radish is swept at the nightly flush; re-seed to bring it back.</p>
+            <button class="settings-save-btn" onclick="runPassportSeed(this)">Seed test plants</button>
+            <button class="settings-save-btn" onclick="runPassportClear(this)" style="margin-top:8px;">Clear test plants</button>
+            <div id="devPassportSeed" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;"></div>
           </div>
 
           <!-- Master switch for the quiet in-UI hints. Off by default on prod so the owner's daily surface
@@ -2719,6 +2851,17 @@
       </div>
 
     </main>
+
+    <!-- Plant passport (docs/SCOPE-PLANT-HISTORY.md): tap a Garden plant row → this full-screen overlay.
+         Same open/close mechanics as #plotFullscreen (fixed inset:0, scroll lock, Esc/✕). The body is
+         built per plant in Js-Passport.html (openPassport); top half from the cached model, story async. -->
+    <div id="passportOverlay" class="pp-fs" style="display:none;">
+      <div class="pp-bar">
+        <span id="ppCrumb" class="pp-crumb"></span>
+        <button type="button" class="pp-close" onclick="closePassport()" aria-label="Close passport">✕</button>
+      </div>
+      <div id="passportBody" class="pp-body" role="dialog" aria-modal="true"></div>
+    </div>
 
     <!-- Shared resolve dialog: ONE modal frame for confirming a garden "⚠ to confirm" card (tap a banner
          chip) or a shed "⚠ To confirm" draft (tap a draft row). Header/sub/body/actions are populated per
@@ -5400,6 +5543,14 @@ if (typeof module !== 'undefined' && module.exports) {
             row.className = 'plant-row';
             row.dataset.plantName = name;
             row.dataset.planted = metadata.planted || '';
+            // Plant passport: the row is the tap target (docs/SCOPE-PLANT-HISTORY.md). The full cached
+            // model `p` rides the closure, so the card's top half opens with ZERO lookup or network.
+            // Unspecified/to-confirm rows keep their own resolve flow (rule 24) — no passport there. The
+            // camera link below already stopPropagation()s, so it can't be shadowed by this.
+            if (!isUnspecified && typeof openPassport === 'function') {
+              row.dataset.pp = '1';
+              row.onclick = function () { openPassport(p, bedName); };
+            }
 
             const topRow = document.createElement('div');
             topRow.className = 'plant-row-top';
@@ -8735,6 +8886,414 @@ if (typeof module !== 'undefined' && module.exports) {
           authenticateAndBoot(storedPin);
         }
       });
+</script>
+
+    <script>
+      // === Plant passport — tap a plant row → its passport (docs/SCOPE-PLANT-HISTORY.md) ===
+      //
+      // The card's TOP half (identity, ledger lines, lifecycle ribbon, packet facts) renders SYNCHRONOUSLY
+      // from the plant model the row already holds — the cached stateModel carries labelFacts/phase/dates,
+      // so opening a passport costs zero network. Only the Story + Photos half needs the bounded
+      // getPlantPassport read; it fills in behind a quiet shimmer and is session-cached per plant (SWR).
+      //
+      // Register rules baked in here (don't drift): the ribbon is a passport STAMP, never a progress bar —
+      // no colour, no countdown; sections render-if-present (no empty-state nags); label facts show the
+      // DESCRIPTIVE tier only (PP_FACT_DISPLAY below) — instructional packet text (companion/sow/depth/
+      // spacing/germination/water/feed) stays in the Sheet, the card never borrows the app's authority to
+      // quote planting advice (owner, 14/07). World knowledge stays the Gem's job.
+
+      let ppOpen = false;
+      let ppCurrentKey = '';
+      const _ppCache = {};   // p.key -> {milestones, photos, firstYield} (session-only, SWR)
+
+      // The descriptive display tier, in LABEL_FACT_SPEC order. Everything captured stays stored; the card
+      // shows only the facts that DESCRIBE the variety. One-line change if the owner moves the line.
+      const PP_FACT_DISPLAY = [
+        ['description', 'About', true],
+        ['flavour', 'Flavour', true],
+        ['sun', 'Sun', false],
+        ['maturity', 'Maturity', false],
+        ['height', 'Height', false],
+        ['harvest', 'Harvest', false]
+      ];
+
+      // Established = the passport stops being a first-season journey: no planted date at all (the peach,
+      // the rosemary — they predate the app) or planted over a year ago (an overwintered capsicum on its
+      // second season). The ribbon gives way to the quiet season/status line.
+      function ppIsEstablished(p) {
+        if (!p) return false;
+        if (!p.planted) return true;
+        const d = daysUntil(p.planted);
+        return d !== null && d <= -365;
+      }
+
+      // "12 Apr", with the year added once it isn't this year's story ("12 Apr 2025").
+      function ppShortDate(s) {
+        const m = String(s || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (!m) return '';
+        const base = shortPlantedDate(s);
+        if (!base) return '';
+        const y = parseInt(m[3], 10);
+        return (y === new Date().getFullYear()) ? base : base + ' ' + m[3];
+      }
+
+      // Split a display name back into base + variety ("Tomato (Tommy Toe)" → ["Tomato", "Tommy Toe"]).
+      // Mirrors the server's stripCropVariety — only a TRAILING (…) is a variety.
+      function ppSplitName(name) {
+        const m = String(name || '').match(/^(.*?)\s*\(([^()]*)\)\s*$/);
+        return m ? [m[1], m[2]] : [String(name || ''), ''];
+      }
+
+      function openPassport(p, bedName) {
+        if (!p || ppOpen) return;
+        const overlay = document.getElementById('passportOverlay');
+        if (!overlay) return;
+        ppOpen = true;
+        ppCurrentKey = String(p.key || (p.name + '@' + bedName));
+        document.body.style.overflow = 'hidden';
+        overlay.style.display = 'flex';
+        ppRender(p, bedName, _ppCache[ppCurrentKey] || null, !_ppCache[ppCurrentKey]);
+        ppFetchStory(p, bedName);
+      }
+
+      function closePassport() {
+        const overlay = document.getElementById('passportOverlay');
+        if (!overlay || !ppOpen) return;
+        overlay.style.display = 'none';
+        ppOpen = false;
+        ppCurrentKey = '';
+        document.body.style.overflow = '';
+      }
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && ppOpen) closePassport();
+      });
+
+      // Background story read — the ONLY network this surface does. Cached per plant for the session;
+      // a repeat open paints the cached story instantly and still revalidates behind it.
+      function ppFetchStory(p, bedName) {
+        if (typeof isOnline !== 'undefined' && !isOnline) { ppStoryFailed(!!_ppCache[ppCurrentKey]); return; }
+        const pin = localStorage.getItem('garden_log_pin');
+        const token = localStorage.getItem('garden_log_token');
+        if (!pin && !token) { ppStoryFailed(!!_ppCache[ppCurrentKey]); return; }
+        const key = ppCurrentKey;
+        google.script.run
+          .withSuccessHandler(function (resStr) {
+            try {
+              const res = JSON.parse(resStr);
+              if (res.status === 'success' && res.data) {
+                _ppCache[key] = res.data;
+                if (ppOpen && ppCurrentKey === key) ppRender(p, bedName, res.data, false);
+              } else if (ppOpen && ppCurrentKey === key) ppStoryFailed(!!_ppCache[key]);
+            } catch (e) { if (ppOpen && ppCurrentKey === key) ppStoryFailed(!!_ppCache[key]); }
+          })
+          .withFailureHandler(function () { if (ppOpen && ppCurrentKey === key) ppStoryFailed(!!_ppCache[key]); })
+          .processClientRequest(JSON.stringify({
+            action: 'getPlantPassport', crop: p.name, zone: bedName, planted: p.planted || '',
+            token: token, pin: pin
+          }));
+      }
+
+      function ppStoryFailed(hadCache) {
+        if (hadCache) return; // the cached story is already painted — quiet
+        const holder = document.getElementById('ppStoryPending');
+        if (holder) {
+          holder.innerHTML = '';
+          const q = document.createElement('div');
+          q.className = 'pp-quiet';
+          q.textContent = 'Story unavailable right now.';
+          holder.appendChild(q);
+        }
+      }
+
+      // --- render ------------------------------------------------------------------------------------
+
+      function ppRender(p, bedName, story, pending) {
+        const body = document.getElementById('passportBody');
+        const crumb = document.getElementById('ppCrumb');
+        if (!body || !crumb) return;
+        crumb.textContent = bedDisplayName ? bedDisplayName(bedName) : bedName;
+        body.innerHTML = '';
+        const overlay = document.getElementById('passportOverlay');
+        overlay.classList.toggle('pp-done', !!p.isTombstone);
+
+        body.appendChild(ppIdentityEl(p, bedName));
+        const lines = ppLedgerLinesEl(p);
+        if (lines) body.appendChild(lines);
+
+        const established = ppIsEstablished(p);
+        if (p.phase === 'Dormant') {
+          body.appendChild(ppSeasonEl('Dormant over winter'));
+        } else if (!established) {
+          body.appendChild(ppRibbonEl(p, story));
+        }
+        // Established + not dormant: no ribbon, no season line — the identity + story carry it.
+
+        const facts = ppFactsEl(p);
+        if (facts) body.appendChild(facts);
+
+        body.appendChild(ppStoryEl(p, story, pending));
+        const photos = ppPhotosEl(story);
+        if (photos) body.appendChild(photos);
+      }
+
+      function ppIdentityEl(p, bedName) {
+        const wrap = document.createElement('div');
+        wrap.className = 'pp-id';
+        const ic = document.createElement('div');
+        ic.className = 'pp-id-ic';
+        ic.appendChild(plantIconSvgEl(p.name));
+        wrap.appendChild(ic);
+        const txt = document.createElement('div');
+        const h = document.createElement('h2');
+        const parts = ppSplitName(p.name);
+        h.appendChild(document.createTextNode(parts[0]));
+        // A distilled row descriptor ("75d · full sun") is the ROW's compression of facts this card shows
+        // in full — repeating it here is noise (one fact, one home). A real variety name stays.
+        if (parts[1] && parts[1].indexOf('·') === -1) {
+          const v = document.createElement('span');
+          v.className = 'pp-variety';
+          v.textContent = ' (' + parts[1] + ')';
+          h.appendChild(v);
+        }
+        txt.appendChild(h);
+        const sub = document.createElement('div');
+        sub.className = 'pp-id-sub';
+        const count = parseInt(p.count, 10);
+        const bits = [];
+        if (isFinite(count) && count > 1) bits.push('×' + count);
+        bits.push(bedDisplayName ? bedDisplayName(bedName) : bedName);
+        sub.textContent = bits.join(' · ');
+        txt.appendChild(sub);
+        wrap.appendChild(txt);
+        return wrap;
+      }
+
+      // The same quiet ledger voice as the Garden row (origin + status). Deliberately the SAME strings —
+      // the passport expands the row, it never re-words it. (Coupled by hand to the row logic in
+      // Js-State.html renderLayoutModel; if the row's lines change register, change these with them.)
+      function ppLedgerLinesEl(p) {
+        const wrap = document.createElement('div');
+        wrap.className = 'pp-lines';
+        const line = function (cls, text) {
+          const s = document.createElement('span');
+          s.className = 'pl-line ' + cls;
+          s.textContent = text;
+          wrap.appendChild(s);
+        };
+        const established = ppIsEstablished(p);
+        const seedOrigin = !!p.estSprout;
+        if (p.planted) {
+          if (established) {
+            line('pl-planted', 'Planted ' + (ppShortDate(p.planted) || p.planted));
+          } else if (p.phase === 'Sown') {
+            line('pl-planted', 'Sown ' + relativePast(p.planted));
+          } else if (seedOrigin && p.transplanted) {
+            line('pl-planted', 'Planted ' + relativePast(p.transplanted) + ' (sown ' + relativePast(p.planted).replace(/\s*ago$/, '') + ')');
+          } else if (seedOrigin) {
+            line('pl-planted', 'Sown ' + relativePast(p.planted));
+          } else {
+            line('pl-planted', 'Planted ' + relativePast(p.planted));
+          }
+        }
+        const estDate = stripOverdueClient(p.estHarvest);
+        if (p.isTombstone) {
+          line('pl-done', '✓ Harvested — clears tonight');
+        } else if (p.yield) {
+          line('pl-yield', 'Harvesting · ' + p.yield);
+        } else if (p.phase !== 'Dormant' && estDate && !established) {
+          const days = daysUntil(estDate);
+          if (days !== null && days <= 0) line('pl-harvest-check', 'Check for harvest');
+          else line('pl-countdown', (days !== null) ? ('Est. harvest in ' + days + (days === 1 ? ' day' : ' days')) : ('Est. harvest ' + estDate));
+        }
+        return wrap.children.length ? wrap : null;
+      }
+
+      function ppSeasonEl(text) {
+        const s = document.createElement('div');
+        s.className = 'pp-season';
+        s.textContent = text;
+        return s;
+      }
+
+      // The 4-stop ribbon. Stops: Sown · Sprouted · Growing · Producing (or Flowering for an ornamental —
+      // buildPlantModel().flowering). A stop is STAMPED (filled + date) only on real evidence; a phase the
+      // plant skipped past without evidence (a bought seedling's Sown/Sprouted) shows an honest hollow "—".
+      function ppRibbonEl(p, story) {
+        const wrap = document.createElement('div');
+        wrap.className = 'pp-ribbon';
+        const rb = document.createElement('div');
+        rb.className = 'pp-rb';
+        const seedOrigin = !!p.estSprout;
+        const finaleName = p.flowering ? 'Flowering' : 'Producing';
+        // Final-stop evidence: Producing = the first pick (story.firstYield, async); Flowering = the state
+        // row's stage having reached Flowering (sync) — its date arrives with the story's stage milestone.
+        const stageL = String(p.stage || '');
+        const flowered = p.flowering && ['Flowering', 'Fruiting', 'Harvesting'].indexOf(stageL) >= 0;
+        let floweringDate = '';
+        if (p.flowering && story && story.milestones) {
+          for (let i = story.milestones.length - 1; i >= 0; i--) {  // oldest matching stamp
+            if (story.milestones[i].stage === 'Flowering') { floweringDate = story.milestones[i].date; break; }
+          }
+        }
+        const finaleStamp = p.flowering ? (flowered ? (floweringDate || ' ') : '')
+                                        : (p.yield ? ((story && story.firstYield) || ' ') : '');
+        const cur = p.flowering ? (flowered ? 3 : ppPhaseIdx(p.phase))
+                                : (p.phase === 'Producing' ? 3 : ppPhaseIdx(p.phase));
+        const stops = [
+          { n: 'Sown', d: seedOrigin ? p.planted : '' },
+          { n: 'Sprouted', d: p.sprouted || '' },
+          { n: 'Growing', d: p.transplanted || (seedOrigin ? '' : p.planted) },
+          { n: finaleName, d: finaleStamp }
+        ];
+        stops.forEach(function (s, i) {
+          const ph = document.createElement('div');
+          const reached = i <= cur;
+          const stamped = reached && !!s.d;
+          ph.className = 'pp-ph' + (i === cur ? ' now' : (stamped ? ' past' : ''));
+          const dot = document.createElement('span'); dot.className = 'pp-ph-dot'; ph.appendChild(dot);
+          const n = document.createElement('span'); n.className = 'pp-ph-n'; n.textContent = s.n; ph.appendChild(n);
+          const dt = document.createElement('span'); dt.className = 'pp-ph-dt';
+          dt.textContent = stamped ? (ppShortDate(String(s.d).trim()) || '') : (reached ? '—' : '');
+          ph.appendChild(dt);
+          rb.appendChild(ph);
+        });
+        wrap.appendChild(rb);
+        return wrap;
+      }
+      function ppPhaseIdx(phase) {
+        return phase === 'Sown' ? 0 : phase === 'Sprouted' ? 1 : phase === 'Producing' ? 3 : 2;
+      }
+
+      // "From the label" — the packet's own words, descriptive tier only. The section header IS the
+      // provenance: everything in this box was literally printed on the user's packet/tag.
+      function ppFactsEl(p) {
+        const f = p.labelFacts;
+        if (!f) return null;
+        const rows = PP_FACT_DISPLAY.filter(function (spec) { return String(f[spec[0]] || '').trim(); });
+        if (!rows.length) return null;
+        const sec = document.createElement('div');
+        const h = document.createElement('div'); h.className = 'pp-sec-h'; h.textContent = 'From the label';
+        sec.appendChild(h);
+        const box = document.createElement('div'); box.className = 'pp-facts';
+        rows.forEach(function (spec) {
+          const row = document.createElement('div');
+          row.className = 'pp-fact' + (spec[2] ? ' pp-fact-prose' : '');
+          const k = document.createElement('div'); k.className = 'pp-fact-k'; k.textContent = spec[1];
+          const v = document.createElement('div'); v.className = 'pp-fact-v'; v.textContent = String(f[spec[0]]).trim();
+          row.appendChild(k); row.appendChild(v);
+          box.appendChild(row);
+        });
+        sec.appendChild(box);
+        return sec;
+      }
+
+      // Story — lifecycle turns + harvests only, in the Recent-row register. Marks reuse the feed's
+      // two-tier icon grammar (seeds/sprout for plantings, mono #ui-* for the rest).
+      function ppStoryEl(p, story, pending) {
+        const sec = document.createElement('div');
+        const h = document.createElement('div'); h.className = 'pp-sec-h'; h.textContent = 'Story';
+        sec.appendChild(h);
+        const holder = document.createElement('div');
+        holder.id = 'ppStoryPending';
+        if (pending || !story) {
+          [70, 45].forEach(function (w) {
+            const sk = document.createElement('div');
+            sk.className = 'pp-skel'; sk.style.width = w + '%';
+            holder.appendChild(sk);
+          });
+          sec.appendChild(holder);
+          return sec;
+        }
+        const ms = story.milestones || [];
+        if (!ms.length) {
+          const q = document.createElement('div');
+          q.className = 'pp-quiet';
+          q.textContent = 'Nothing recorded yet.';
+          sec.appendChild(q);
+          return sec;
+        }
+        ms.forEach(function (m) {
+          const row = document.createElement('div');
+          row.className = 'pp-ms-row';
+          const mk = document.createElement('span'); mk.className = 'pp-ms-mk';
+          const catL = String(m.category || '').toLowerCase();
+          const isSow = catL === 'planting' && String(m.stage || '').toLowerCase() === 'germination';
+          mk.innerHTML = isSow ? seedsIconSvg(14)
+                       : catL === 'planting' ? sproutIconSvg(14)
+                       : uiMarkSvg(recentCategoryMarkId(m.category), 14);
+          row.appendChild(mk);
+          const t = document.createElement('span'); t.className = 'pp-ms-t';
+          t.appendChild(document.createTextNode(m.details || m.category || ''));
+          if (m.fromZone) {
+            const small = document.createElement('small');
+            small.textContent = 'from ' + (bedDisplayName ? bedDisplayName(m.fromZone) : m.fromZone);
+            t.appendChild(small);
+          }
+          row.appendChild(t);
+          const when = document.createElement('span'); when.className = 'pp-ms-when';
+          when.textContent = ppShortDate(m.date) || m.date || '';
+          row.appendChild(when);
+          sec.appendChild(row);
+        });
+        return sec;
+      }
+
+      // Photos — every photo of this plant over time: date + what it shows + the Drive link. Links until
+      // the inline-thumbnail spike lands (prerequisite 2 in the scope doc); the DESCRIPTION carries the
+      // journey in words meanwhile.
+      function ppPhotosEl(story) {
+        const ph = (story && story.photos) || [];
+        if (!ph.length) return null;
+        const sec = document.createElement('div');
+        const h = document.createElement('div'); h.className = 'pp-sec-h'; h.textContent = 'Photos';
+        sec.appendChild(h);
+        ph.forEach(function (x) {
+          const row = document.createElement('div');
+          row.className = 'pp-ms-row';
+          const a = document.createElement('a');
+          a.className = 'pp-photo-link';
+          a.href = x.photoUrl; a.target = '_blank'; a.rel = 'noopener noreferrer';
+          a.innerHTML = uiMarkSvg('ui-camera', 13) + ' ↗';
+          row.appendChild(a);
+          const d = document.createElement('span');
+          d.className = 'pp-ms-t pp-photo-desc';
+          d.textContent = x.photoDesc || 'Photo';
+          row.appendChild(d);
+          const when = document.createElement('span'); when.className = 'pp-ms-when';
+          when.textContent = ppShortDate(x.date) || x.date || '';
+          row.appendChild(when);
+          sec.appendChild(row);
+        });
+        return sec;
+      }
+
+      // --- Dev drawer: passport test plants (SANDBOX-ONLY — the server refuses on prod) ----------------
+      function runPassportSeed(btn) { ppDevAction('seedPassportTestPlants', btn); }
+      function runPassportClear(btn) { ppDevAction('clearPassportTestPlants', btn); }
+      function ppDevAction(action, btn) {
+        const out = document.getElementById('devPassportSeed');
+        const pin = localStorage.getItem('garden_log_pin');
+        const token = localStorage.getItem('garden_log_token');
+        if (!pin && !token) { if (out) out.textContent = 'Enter your PIN in App Settings first.'; return; }
+        if (btn) btn.disabled = true;
+        if (out) out.textContent = 'Running…';
+        google.script.run
+          .withSuccessHandler(function (resStr) {
+            if (btn) btn.disabled = false;
+            try {
+              const res = JSON.parse(resStr);
+              if (out) out.textContent = (res.status === 'success')
+                ? JSON.stringify(res.data, null, 1)
+                : ('Error: ' + res.message);
+              if (res.status === 'success' && typeof refreshStateView === 'function') refreshStateView();
+            } catch (e) { if (out) out.textContent = 'Error: ' + e.message; }
+          })
+          .withFailureHandler(function (err) {
+            if (btn) btn.disabled = false;
+            if (out) out.textContent = 'Error: ' + (err && err.message ? err.message : err);
+          })
+          .processClientRequest(JSON.stringify({ action: action, token: token, pin: pin }));
+      }
 </script>
 
   </body>
