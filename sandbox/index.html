@@ -1654,7 +1654,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.71</span>
+        <span class="header-version">v6.72</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1924,7 +1924,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.71 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.72 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9062,11 +9062,18 @@ if (typeof module !== 'undefined' && module.exports) {
         ['harvest', 'Harvest', false]
       ];
 
-      // Established = the passport stops being a first-season journey: no planted date at all (the peach,
-      // the rosemary — they predate the app) or planted over a year ago (an overwintered capsicum on its
-      // second season). The ribbon gives way to the quiet season/status line.
+      // Established = the passport stops being a first-season journey and gives way to the quiet season/status
+      // line. Three ways in: (Move 3) it's a species that lives for years — a perennial herb/tree is
+      // established from day one, never a first-season plant, so mint at 10 months stops reading "Growing 287
+      // days, Producing hollow forever"; OR no planted date at all (the peach, the rosemary — they predate the
+      // app); OR planted over a year ago (an overwintered capsicum on its second season — the age test carries
+      // annuals + tender perennials, which have no `perennial` lifecycle). `lifecycle` is blank on an instance
+      // with no Crop Reference book, so this cleanly degrades to the age test there.
+      // NOTE (fruit trees): they fall here to the minimal card as a PLACEHOLDER — the cyclical tree lifecycle
+      // (Dormant → Flower → Fruit → Harvest → repeat) is scoped to supersede it. See SCOPE-CROP-LIFECYCLE.md.
       function ppIsEstablished(p) {
         if (!p) return false;
+        if (p.lifecycle === 'perennial') return true;
         if (!p.planted) return true;
         const d = daysUntil(p.planted);
         return d !== null && d <= -365;
@@ -9306,7 +9313,12 @@ if (typeof module !== 'undefined' && module.exports) {
         const wrap = document.createElement('div');
         wrap.className = 'pp-ribbon';
         const seedOrigin = !!p.estSprout;
-        const finaleName = p.flowering ? 'Flowering' : 'Producing';
+        // The finale stop's word, by crop shape (Move 2, owner 15/07 — "the app supports the garden, not the
+        // other way"). Flower → "Flowering"; an ongoing cropper → "Harvest" (matches the ledger's "Harvesting"
+        // — not a new word); a one_shot (lettuce, carrot, garlic) gets NO finale — it just grows, and the
+        // single pull is a Log record, never a card ceremony (harvesting it tombstones the row anyway). A
+        // one_shot with no book still reads harvestType from the code dict, so this holds pre-book too.
+        const finaleName = p.flowering ? 'Flowering' : (p.harvestType === 'one_shot' ? '' : 'Harvest');
         // Finale evidence: Producing = the first pick (story.firstYield, async); Flowering = the state
         // row's stage having reached Flowering (sync) — its date arrives with the story's stage milestone.
         const stageL = String(p.stage || '');
@@ -9358,10 +9370,14 @@ if (typeof module !== 'undefined' && module.exports) {
         const finaleDays = (finaleReached && finaleDate) ? ppDaysBetween(finaleDate, '') : null;
         const phases = [
           { n: 'Growing', txt: ppFmtDays(growingDays),
-            state: p.isTombstone ? (growingStarted ? 'past' : '') : (finaleReached ? 'past' : (growingStarted ? 'now' : '')) },
-          { n: finaleName, txt: finaleReached ? ppFmtDays(finaleDays) : '',
-            state: finaleReached ? (p.isTombstone ? 'past' : 'now') : '' }
+            state: p.isTombstone ? (growingStarted ? 'past' : '') : (finaleReached ? 'past' : (growingStarted ? 'now' : '')) }
         ];
+        // No finale for a one_shot (finaleName ''): the line is just Growing, counting up, until the pull
+        // clears the card. Ongoing croppers + flowers keep their second stop.
+        if (finaleName) {
+          phases.push({ n: finaleName, txt: finaleReached ? ppFmtDays(finaleDays) : '',
+            state: finaleReached ? (p.isTombstone ? 'past' : 'now') : '' });
+        }
         const row2 = document.createElement('div');
         row2.className = 'pp-rb pp-rb-phases';
         phases.forEach(function (s) {
