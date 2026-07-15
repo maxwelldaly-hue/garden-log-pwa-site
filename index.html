@@ -967,40 +967,10 @@
       .pp-id h2 .pp-variety { color: var(--text-muted); font-weight: 400; }
       .pp-id-sub { color: var(--text-muted); font-size: var(--fs-sm); margin-top: 2px; }
       .pp-done .pp-id h2 { text-decoration: line-through; color: var(--text-muted); }
-      /* Ledger lines reuse the row voice (.pl-line palette) — same strings, same register. */
+      /* Ledger lines reuse the row voice (.pl-line palette) — same strings, same register. The status
+         line carries the current stage (v6.76 — headline + ribbon retired; their .pp-ribbon/.pp-ph/
+         .pp-season CSS was removed with them). */
       .pp-lines { display: flex; flex-direction: column; gap: 3px; }
-      /* Lifecycle ribbon: 4 mono stops. Stamped = filled muted dot + date; current = bright; future = hollow.
-         A passport stamp, not a progress bar — no colour, no motion. */
-      .pp-ribbon { padding: 4px 2px 0; }
-      /* Two-line ribbon (owner, 15/07): line 1 = the origin-story DATE stamps (no dots — they're facts,
-         all past); line 2 = the life phases with dots, measured in live-counting DAYS. */
-      .pp-rb { display: grid; grid-template-columns: repeat(2, 1fr); position: relative; }
-      .pp-rb-dates { margin-bottom: 14px; }
-      .pp-rb-dates::before { display: none; }   /* no connector line — stamps, not a journey */
-      .pp-ph-date { font-size: var(--fs-xs); opacity: 0.9; }
-      .pp-rb::before {
-        content: ""; position: absolute; top: 5px; left: 25%; right: 25%; height: 1px;
-        background: var(--surface-inset-05);   /* spans the two phase dots (at 25% / 75%) */
-      }
-      .pp-ph { display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; }
-      .pp-ph-dot {
-        width: 11px; height: 11px; border-radius: 50%;
-        background: var(--bg-primary); border: 1.5px solid var(--surface-inset-05); box-sizing: border-box;
-      }
-      .pp-ph.past .pp-ph-dot { background: var(--text-muted); border-color: var(--text-muted); }
-      .pp-ph.now .pp-ph-dot { background: var(--text-main); border-color: var(--text-main); }
-      .pp-ph-n {
-        font-size: var(--fs-2xs); letter-spacing: var(--ls-wide); text-transform: uppercase;
-        color: var(--text-muted);
-      }
-      .pp-ph.now .pp-ph-n { color: var(--text-main); }
-      .pp-ph-dt { font-size: var(--fs-2xs); color: var(--text-muted); opacity: 0.7; min-height: 1em; }
-      /* Established / Dormant / Spent variant: the ribbon gives way to one quiet stamp line. */
-      .pp-season {
-        font-size: var(--fs-sm); color: var(--text-muted);
-        border: 1px solid var(--surface-inset-03); background: var(--surface-inset-01);
-        border-radius: var(--r-md); padding: 8px 12px;
-      }
       /* Sections: quiet uppercase eyebrow + content. Absent data = absent section, never an empty state. */
       .pp-sec-h {
         font-size: var(--fs-2xs); letter-spacing: var(--ls-wide); text-transform: uppercase;
@@ -1654,7 +1624,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.75</span>
+        <span class="header-version">v6.76</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1924,7 +1894,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v6.75 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v6.76 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -8920,13 +8890,16 @@ if (typeof module !== 'undefined' && module.exports) {
     <script>
       // === Plant passport — tap a plant row → its passport (docs/SCOPE-PLANT-HISTORY.md) ===
       //
-      // The card's TOP half (identity, ledger lines, lifecycle ribbon, packet facts) renders SYNCHRONOUSLY
-      // from the plant model the row already holds — the cached stateModel carries labelFacts/phase/dates,
-      // so opening a passport costs zero network. Only the Story + Photos half needs the bounded
+      // The card's TOP half (identity, ledger lines, packet facts) renders SYNCHRONOUSLY from the plant
+      // model the row already holds — the cached stateModel carries labelFacts/phase/dates, so opening a
+      // passport costs zero network. Only the Story + Photos half needs the bounded
       // getPlantPassport read; it fills in behind a quiet shimmer and is session-cached per plant (SWR).
       //
-      // Register rules baked in here (don't drift): the ribbon is a passport STAMP, never a progress bar —
-      // no colour, no countdown; sections render-if-present (no empty-state nags); label facts show the
+      // Register rules baked in here (don't drift): the stage is ONE quiet ledger line, never a headline
+      // and never a progress bar (owner, 15/07 — "not important enough to be strung up in lights"; the
+      // Story is the reward and sits directly under the lines). Evidence-only — a stage word shows only
+      // off a logged observation/pick (Dormant, derived from species + season, is the one exception);
+      // never the calendar. Sections render-if-present (no empty-state nags); label facts show the
       // DESCRIPTIVE tier only (PP_FACT_DISPLAY below) — instructional packet text (companion/sow/depth/
       // spacing/germination/water/feed) stays in the Sheet, the card never borrows the app's authority to
       // quote planting advice (owner, 14/07). World knowledge stays the Gem's job.
@@ -9020,8 +8993,10 @@ if (typeof module !== 'undefined' && module.exports) {
       // app); OR planted over a year ago (an overwintered capsicum on its second season — the age test carries
       // annuals + tender perennials, which have no `perennial` lifecycle). `lifecycle` is blank on an instance
       // with no Crop Reference book, so this cleanly degrades to the age test there.
-      // NOTE (fruit trees): they fall here to the minimal card as a PLACEHOLDER — the cyclical tree lifecycle
-      // (Dormant → Flower → Fruit → Harvest → repeat) is scoped to supersede it. See SCOPE-CROP-LIFECYCLE.md.
+      // Fruit trees land here ON PURPOSE (owner, 15/07 — trees are a 1% interest): the minimal card + the
+      // Dormant ledger line + whatever blossom/fruit observations happen to be logged into the Story IS the
+      // whole tree feature. The cyclical tree card (SCOPE-CROP-LIFECYCLE.md) was designed and then dropped
+      // in the same 15/07 pass — don't resurrect it without the owner asking.
       function ppIsEstablished(p) {
         if (!p) return false;
         if (p.lifecycle === 'perennial') return true;
@@ -9140,21 +9115,21 @@ if (typeof module !== 'undefined' && module.exports) {
         overlay.classList.toggle('pp-done', !!p.isTombstone);
 
         body.appendChild(ppIdentityEl(p, bedName));
-        // Current stage at the TOP (owner, 15/07 — the bar wasn't working). One clear label = the latest
-        // milestone that's actually happened (evidence-only, never guessed from the calendar); the dated
-        // history lives in the Story below. The old two-line ribbon (ppRibbonEl) is retired.
-        const stageEl = ppStageEl(p);
-        if (stageEl) body.appendChild(stageEl);
-        const lines = ppLedgerLinesEl(p);
+        // Two quiet ledger lines (origin + current stage), then the Story ABOVE the fact boxes — the
+        // journey is the reward (owner, 15/07). The v1 stage headline (ppStageEl) and the two-line ribbon
+        // (ppRibbonEl) are both gone. The status line reads the story for its "since" date, so it
+        // sharpens in place when the async story lands.
+        const lines = ppLedgerLinesEl(p, story);
         if (lines) body.appendChild(lines);
+
+        const storyEl = ppStoryEl(p, story, pending);
+        if (storyEl) body.appendChild(storyEl);
 
         const facts = ppFactsEl(p);
         if (facts) body.appendChild(facts);
         const ref = ppReferenceEl(p);
         if (ref) body.appendChild(ref);
 
-        const storyEl = ppStoryEl(p, story, pending);
-        if (storyEl) body.appendChild(storyEl);
         const photos = ppPhotosEl(story);
         if (photos) body.appendChild(photos);
       }
@@ -9204,20 +9179,24 @@ if (typeof module !== 'undefined' && module.exports) {
       // The same quiet ledger voice as the Garden row (origin + status). Deliberately the SAME strings —
       // the passport expands the row, it never re-words it. (Coupled by hand to the row logic in
       // Js-State.html renderLayoutModel; if the row's lines change register, change these with them.)
-      function ppLedgerLinesEl(p) {
+      // The status line now ALSO carries the current stage — one line, dates the only unit, yield folded
+      // in (kills the v6.73 "Harvesting shows twice" wart). Words a plant's origin makes impossible never
+      // show: a bought seedling (no estSprout) has no Sown line, and the early stage words (Germination/
+      // Seedling/Vegetative) show as no line at all — the origin date + the Story already carry that
+      // stretch ("Growing" is filler; the vegetative gap stays unlabeled, owner 15/07).
+      function ppLedgerLinesEl(p, story) {
         const wrap = document.createElement('div');
         wrap.className = 'pp-lines';
         const line = function (cls, text) {
           const s = document.createElement('span');
-          s.className = 'pl-line ' + cls;
+          s.className = cls ? 'pl-line ' + cls : 'pl-line';
           s.textContent = text;
           wrap.appendChild(s);
         };
         const established = ppIsEstablished(p);
         const seedOrigin = !!p.estSprout;
         // Origin line: absolute date first, relative age in parens — "Planted 1 July 2025 (12mo ago)"
-        // (owner, 15/07). A raised plant's sow date lives on the ribbon's Sown stamp, so no "(sown …)"
-        // parenthetical here.
+        // (owner, 15/07).
         if (p.planted) {
           if (seedOrigin && p.transplanted) {
             line('pl-planted', 'Planted ' + ppWhen(p.transplanted));
@@ -9228,14 +9207,17 @@ if (typeof module !== 'undefined' && module.exports) {
           }
         }
         const estDate = stripOverdueClient(p.estHarvest);
+        const st = String(p.stage || '').trim();
+        // "· since <date>" — the stamp's own log date, from the async story (absent until it lands).
+        const since = function (dmy) { const d = ppShortDate(dmy); return d ? ' · since ' + d : ''; };
         if (p.isTombstone) {
           line('pl-done', '✓ Harvested — clears tonight');
         } else if (p.phase === 'Dormant') {
-          // The season line carries the state; "Harvesting · N" would read as active cropping (row parity).
-        } else if (p.yield) {
-          line('pl-yield', 'Harvesting · ' + p.yield);
-        } else if (p.phase === 'Producing') {
-          line('pl-yield', 'Harvesting');   // producing off a real pick, no number logged (row parity)
+          line('', 'Dormant');   // derived from species + season — the one sanctioned non-observed word
+        } else if (p.yield || p.phase === 'Producing' || st === 'Harvesting') {
+          line('pl-yield', 'Harvesting' + (p.yield ? ' · ' + p.yield : '') + since((story && story.firstYield) || ''));
+        } else if (st === 'Fruiting' || st === 'Flowering') {
+          line('', st + since(ppStageSince(story, st)));
         } else if (estDate && !established) {
           const days = daysUntil(estDate);
           if (days !== null && days <= 0) line('pl-harvest-check', 'Check for harvest');
@@ -9243,155 +9225,14 @@ if (typeof module !== 'undefined' && module.exports) {
         }
         return wrap.children.length ? wrap : null;
       }
-
-      function ppSeasonEl(text) {
-        const s = document.createElement('div');
-        s.className = 'pp-season';
-        s.textContent = text;
-        return s;
-      }
-
-      // The plant's CURRENT stage — the single latest milestone that's actually been recorded (owner, 15/07).
-      // Evidence-only: it reads the logged Stage + the lifecycle events, never the calendar. A stage the owner
-      // hasn't noted simply doesn't advance it (a vegetatively-growing tomato reads "Germinated" until the
-      // first flowers are logged). v1 vocabulary — easy to change once the owner sees it live.
-      function ppCurrentStage(p) {
-        if (!p) return '';
-        if (p.isTombstone) return 'Harvested';
-        if (p.phase === 'Dormant') return 'Dormant';
-        const st = String(p.stage || '').trim();
-        if (p.yield || p.phase === 'Producing' || st === 'Harvesting') return 'Harvesting';
-        if (st === 'Fruiting') return 'Fruiting';
-        if (st === 'Flowering') return 'Flowering';
-        if (st === 'Germination' || st === 'Seedling' || st === 'Vegetative' || p.sprouted) return 'Germinated';
-        if (p.phase === 'Sown' || (p.estSprout && !p.sprouted)) return 'Sown';
-        return 'Planted';
-      }
-
-      // The current stage as a prominent label at the top of the card. v1 styling (inline) — the point is to
-      // see the shape; theming follows once the owner likes the direction.
-      function ppStageEl(p) {
-        const stage = ppCurrentStage(p);
-        if (!stage) return null;
-        const wrap = document.createElement('div');
-        wrap.className = 'pp-stage';
-        wrap.style.cssText = 'margin:12px 0 2px;font-size:1.5em;font-weight:600;letter-spacing:.2px;';
-        wrap.textContent = stage;
-        return wrap;
-      }
-
-      // The lifecycle ribbon — TWO LINES (owner, 15/07). A plant's interesting DATES cluster at the start
-      // of its life (sown, sprouted, planted); after that what matters is elapsed time — how long it grew,
-      // how long it's been producing. So: line 1 = the origin-story date stamps (only the events that
-      // actually happened — a bought seedling just shows Planted); line 2 = the life phases with the dots,
-      // measured in DAYS and live-counting (Growing = planted→first pick or →today; Producing/Flowering =
-      // since the first pick/bloom). No dashes anywhere — nothing here can be "missing".
-      function ppRibbonEl(p, story) {
-        const wrap = document.createElement('div');
-        wrap.className = 'pp-ribbon';
-        const seedOrigin = !!p.estSprout;
-        // The finale stop's word, by crop shape (Move 2, owner 15/07 — "the app supports the garden, not the
-        // other way"). Flower → "Flowering"; an ongoing cropper → "Harvest" (matches the ledger's "Harvesting"
-        // — not a new word); a one_shot (lettuce, carrot, garlic) gets NO finale — it just grows, and the
-        // single pull is a Log record, never a card ceremony (harvesting it tombstones the row anyway). A
-        // one_shot with no book still reads harvestType from the code dict, so this holds pre-book too.
-        const finaleName = p.flowering ? 'Flowering' : (p.harvestType === 'one_shot' ? '' : 'Harvest');
-        // Finale evidence: Producing = the first pick (story.firstYield, async); Flowering = the state
-        // row's stage having reached Flowering (sync) — its date arrives with the story's stage milestone.
-        const stageL = String(p.stage || '');
-        const flowered = p.flowering && ['Flowering', 'Fruiting', 'Harvesting'].indexOf(stageL) >= 0;
-        let floweringDate = '';
-        if (p.flowering && story && story.milestones) {
-          for (let i = story.milestones.length - 1; i >= 0; i--) {  // oldest matching stamp
-            if (story.milestones[i].stage === 'Flowering') { floweringDate = story.milestones[i].date; break; }
-          }
+      // The OLDEST story milestone carrying this stage — the date the stage was first observed.
+      // Milestones arrive newest-first, so scan from the end.
+      function ppStageSince(story, stageName) {
+        const ms = (story && story.milestones) || [];
+        for (let i = ms.length - 1; i >= 0; i--) {
+          if (String(ms[i].stage || '') === stageName) return ms[i].date || '';
         }
-        const finaleDate = p.flowering ? floweringDate : ((story && story.firstYield) || '');
-        // A real harvest in the story IS producing evidence — stamp the finale even when the pick carried no
-        // number (so the ribbon can't say "never produced" while the story shows a pick). This is DISPLAY-only:
-        // computePhase still derives Producing purely from logged Yield (the deliberate v5.36 rule, untouched),
-        // so a numberless pick leaves the plant "Growing" on the row; the passport, which reads the story, knows
-        // better. `finaleDate` is the first-pick date (async), so `!!finaleDate` = "a Harvesting row exists".
-        const finaleReached = p.flowering ? flowered : (p.phase === 'Producing' || !!p.yield || !!finaleDate);
-
-        // Line 1 — the dates. Only real stamps join; chronological by construction.
-        const dates = [];
-        if (seedOrigin) {
-          dates.push({ n: 'Sown', d: p.planted });
-          if (p.sprouted) dates.push({ n: 'Sprouted', d: p.sprouted });
-          if (p.transplanted) dates.push({ n: 'Planted', d: p.transplanted });
-        } else if (p.planted) {
-          dates.push({ n: 'Planted', d: p.planted });
-        }
-        if (dates.length) {
-          const row = document.createElement('div');
-          row.className = 'pp-rb pp-rb-dates';
-          row.style.gridTemplateColumns = 'repeat(' + dates.length + ', 1fr)';
-          dates.forEach(function (s) {
-            const ph = document.createElement('div');
-            ph.className = 'pp-ph';
-            const n = document.createElement('span'); n.className = 'pp-ph-n'; n.textContent = s.n; ph.appendChild(n);
-            const dt = document.createElement('span'); dt.className = 'pp-ph-dt pp-ph-date';
-            dt.textContent = ppShortDate(String(s.d).trim()) || '';
-            ph.appendChild(dt);
-            row.appendChild(ph);
-          });
-          wrap.appendChild(row);
-        }
-
-        // Line 2 — the life, in days. growStart = when it began growing in its final home.
-        const growStart = seedOrigin ? (p.transplanted || p.planted) : p.planted;
-        const growingStarted = p.isTombstone || finaleReached || ppPhaseIdx(p.phase) >= 2;
-        const growingDays = (growingStarted && growStart)
-          ? ppDaysBetween(growStart, finaleReached && finaleDate ? finaleDate : '') : null;
-        const finaleDays = (finaleReached && finaleDate) ? ppDaysBetween(finaleDate, '') : null;
-        const phases = [
-          { n: 'Growing', txt: ppFmtDays(growingDays),
-            state: p.isTombstone ? (growingStarted ? 'past' : '') : (finaleReached ? 'past' : (growingStarted ? 'now' : '')) }
-        ];
-        // No finale for a one_shot (finaleName ''): the line is just Growing, counting up, until the pull
-        // clears the card. Ongoing croppers + flowers keep their second stop.
-        if (finaleName) {
-          phases.push({ n: finaleName, txt: finaleReached ? ppFmtDays(finaleDays) : '',
-            state: finaleReached ? (p.isTombstone ? 'past' : 'now') : '' });
-        }
-        const row2 = document.createElement('div');
-        row2.className = 'pp-rb pp-rb-phases';
-        phases.forEach(function (s) {
-          const ph = document.createElement('div');
-          ph.className = 'pp-ph' + (s.state ? ' ' + s.state : '');
-          const dot = document.createElement('span'); dot.className = 'pp-ph-dot'; ph.appendChild(dot);
-          const n = document.createElement('span'); n.className = 'pp-ph-n'; n.textContent = s.n; ph.appendChild(n);
-          const dt = document.createElement('span'); dt.className = 'pp-ph-dt'; dt.textContent = s.txt;
-          ph.appendChild(dt);
-          row2.appendChild(ph);
-        });
-        wrap.appendChild(row2);
-        return wrap;
-      }
-      // Whole days from a DD/MM/YYYY to another (or to today when b is '') — the ribbon's duration math.
-      function ppDaysBetween(aDmy, bDmy) {
-        const a = parseDMY(aDmy);
-        const b = bDmy ? parseDMY(bDmy) : new Date();
-        if (!a || !b) return null;
-        a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0);
-        return Math.round((b - a) / 86400000);
-      }
-      function ppFmtDays(n) {
-        if (n == null || !isFinite(n) || n < 0) return '';
-        if (n === 0) return 'today';
-        return n + (n === 1 ? ' day' : ' days');
-      }
-      function ppPhaseIdx(phase) {
-        return phase === 'Sown' ? 0 : phase === 'Sprouted' ? 1 : phase === 'Producing' ? 3 : 2;
-      }
-      // DD/MM/YYYY + n days -> DD/MM/YYYY ('' on a bad date). Client-side sibling of addDaysToDDMMYYYY.
-      function ppAddDays(dmy, n) {
-        const d = parseDMY(dmy);
-        if (!d) return '';
-        d.setDate(d.getDate() + n);
-        const p2 = function (x) { return x < 10 ? '0' + x : '' + x; };
-        return p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + '/' + d.getFullYear();
+        return '';
       }
 
       // "From the label" — the packet's own words, descriptive tier only. The section header IS the
