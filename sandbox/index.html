@@ -1624,7 +1624,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.79</span>
+        <span class="header-version">v6.80</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1894,7 +1894,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.79 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.80 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3042,12 +3042,15 @@ const CROP_ICON_SYNONYMS = [
   [/chanterelle/, 'chantrelle'],      // upstream typo 'chantrelle'
   // Coloured capsicum/chilli/tomato variants — MUST precede the bare-crop defaults just below so a
   // named colour wins over the representative red. (Approved colour spread, 10/07.)
-  [/green ?capsicum/, 'green-bell-pepper'],
-  [/yellow ?capsicum/, 'yellow-bell-pepper'],
+  // Colour + crop are matched ORDER-INDEPENDENTLY (both-words lookahead): the app names varietied crops
+  // "Crop (Variety)" -> normalises to "tomato yellow", so a naive /yellow tomato/ (colour-first) silently
+  // missed every packet the app itself produces (owner, 16/07 — a "Tomato 'Yellow'" packet drew red).
+  [/(?=.*\bgreen\b)(?=.*\bcapsicum\b)/, 'green-bell-pepper'],
+  [/(?=.*\byellow\b)(?=.*\bcapsicum\b)/, 'yellow-bell-pepper'],
   [/green chill?i/, 'jalapeno'],               // green chilli -> jalapeño (a representative green chilli)
   [/jalape/, 'jalapeno'],                      // jalapeño/jalapeno (accent-safe: ñ normalises to a space)
-  [/green ?zebra|green tomato/, 'green-zebra-tomato'],
-  [/sunray|yellow tomato/, 'sunray-tomato'],
+  [/green ?zebra|(?=.*\bgreen\b)(?=.*\btomato\b)/, 'green-zebra-tomato'],
+  [/sunray|(?=.*\byellow\b)(?=.*\btomato\b)/, 'sunray-tomato'],
   [/capsicum|bell ?pepper/, 'red-bell-pepper'],
   [/\bchill?i\b|cayenne/, 'cayenne-pepper'],   // bare chilli/chili -> a representative red chilli
   [/mangetout|snow ?pea|sugar ?snap/, 'snap-pea'],
@@ -9045,6 +9048,27 @@ if (typeof module !== 'undefined' && module.exports) {
         ['harvest', 'Harvest', false]
       ];
 
+      // The SHED passport's fuller tier. A packet in the shed is UNSOWN, so its sowing instructions ARE its
+      // identity — the plant card hides them (the plant's already in the ground) but the shed must show them
+      // (owner, 16/07 — a real packet read "no detail?" with only Sun/Height/Harvest showing; Sow/Spacing/
+      // Germination were captured but filtered out). Everything captured stays stored; empty facts drop out
+      // in ppFactsEl. Order = packet-natural: identity → sowing → growing → harvest.
+      const PP_SHED_FACT_DISPLAY = [
+        ['description', 'About', true],
+        ['flavour', 'Flavour', true],
+        ['sun', 'Sun', false],
+        ['sow', 'Sow', false],
+        ['depth', 'Depth', false],
+        ['spacing', 'Spacing', false],
+        ['germination', 'Germination', false],
+        ['maturity', 'Maturity', false],
+        ['height', 'Height', false],
+        ['water', 'Water', false],
+        ['feed', 'Feed', false],
+        ['companion', 'Companion', true],
+        ['harvest', 'Harvest', false]
+      ];
+
       // Established = the passport stops being a first-season journey and gives way to the quiet season/status
       // line. Three ways in: (Move 3) it's a species that lives for years — a perennial herb/tree is
       // established from day one, never a first-season plant, so mint at 10 months stops reading "Growing 287
@@ -9206,8 +9230,10 @@ if (typeof module !== 'undefined' && module.exports) {
         wrap.appendChild(txt);
         body.appendChild(wrap);
 
-        // "From the label" — the whole point. Reuses the plant card's descriptive-tier renderer verbatim.
-        const facts = ppFactsEl({ labelFacts: item.labelFacts, name: item.item });
+        // "From the label" — the whole point. Same renderer as the plant card, but the SHED's fuller tier
+        // (PP_SHED_FACT_DISPLAY): an unsown packet is defined by its sowing facts, so Sow/Spacing/Germination
+        // show here where the plant card hides them.
+        const facts = ppFactsEl({ labelFacts: item.labelFacts, name: item.item }, PP_SHED_FACT_DISPLAY);
         if (facts) body.appendChild(facts);
       }
 
@@ -9383,10 +9409,10 @@ if (typeof module !== 'undefined' && module.exports) {
 
       // "From the label" — the packet's own words, descriptive tier only. The section header IS the
       // provenance: everything in this box was literally printed on the user's packet/tag.
-      function ppFactsEl(p) {
+      function ppFactsEl(p, displaySpec) {
         const f = p.labelFacts;
         if (!f) return null;
-        const rows = PP_FACT_DISPLAY.filter(function (spec) { return String(f[spec[0]] || '').trim(); });
+        const rows = (displaySpec || PP_FACT_DISPLAY).filter(function (spec) { return String(f[spec[0]] || '').trim(); });
         if (!rows.length) return null;
         const sec = document.createElement('div');
         const h = document.createElement('div'); h.className = 'pp-sec-h'; h.textContent = 'From the label';
