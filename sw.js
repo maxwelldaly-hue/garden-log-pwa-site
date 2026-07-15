@@ -1,5 +1,5 @@
 // Service worker for the static-hosted client (C2). Stamped per build by build-static.js
-// (v6.73 → the visible version), so every deploy is a NEW worker that activates immediately.
+// (v6.74 → the visible version), so every deploy is a NEW worker that activates immediately.
 //
 // Strategy: NETWORK-FIRST for every same-origin GET, cache as fallback. This repo's hardest-won
 // lesson is stale cache masking deploys (AGENTS rule 14) — so the worker is deliberately never
@@ -7,7 +7,7 @@
 // localStorage/IndexedDB layers already handle offline DATA.
 // POSTs (the GAS API) and cross-origin requests (fonts, the /exec redirect chain) pass through
 // untouched — the worker must never sit between the client and the API.
-const CACHE = 'garden-log-v6.73';
+const CACHE = 'garden-log-v6.74';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();

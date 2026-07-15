@@ -1654,7 +1654,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.73</span>
+        <span class="header-version">v6.74</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1924,7 +1924,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.73 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.74 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2001,12 +2001,12 @@
           </div>
 
           <!-- Crop Reference book (CropsBook.js): the ONE home for generic species facts, seeded from the
-               owner-signed-off audit (117 crops). First tap creates the per-instance spreadsheet + seeds it,
+               owner-signed-off audit (135 crops). First tap creates the per-instance spreadsheet + seeds it,
                then links it so the owner can eyeball the rows. Idempotent; per-instance (prod AND beta). Inert
                for now — nothing reads it into the app yet (Phase 3 repoints the crop lookups). -->
           <div class="dev-section">
             <h4 class="dev-h">Crop Reference</h4>
-            <p class="dev-note">One home for typical species facts — days to maturity, harvest type, lifecycle, botanical name, sun, spacing, sow window — seeded with 117 crops from the audit. <strong>Create / update</strong> makes your own Crop Reference spreadsheet (once), seeds it, and gives you a link to open and review it. Safe to tap more than once. Nothing in the app reads it yet — this just stands the book up.</p>
+            <p class="dev-note">One home for typical species facts — days to maturity, harvest type, lifecycle, botanical name, sun, spacing, sow window — seeded with 135 crops from the audit. <strong>Create / update</strong> makes your own Crop Reference spreadsheet (once), seeds it, and gives you a link to open and review it. Safe to tap more than once. The app reads it for the plant passports; edit a row in the sheet and it takes effect.</p>
             <button class="settings-save-btn" onclick="runCropsBookCreate(this)">Create / update Crop Reference book</button>
             <div id="devCropsResult" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;"></div>
           </div>
