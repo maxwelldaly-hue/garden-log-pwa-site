@@ -1624,7 +1624,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.76</span>
+        <span class="header-version">v6.77</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1894,7 +1894,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.76 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.77 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9087,6 +9087,14 @@ if (typeof module !== 'undefined' && module.exports) {
         return m ? [m[1], m[2]] : [String(name || ''), ''];
       }
 
+      // Close reachability (owner, 15/07 — "my thumb doesn't reach that high"): the phone's BACK
+      // gesture/button closes the passport. Opening pushes ONE history entry (guarded — the GAS iframe
+      // may refuse the history API; the static client allows it); back pops it and the popstate closes
+      // the card. A ✕/Esc close routes through history.back() so the entry can't pile up; if the push
+      // failed we just close directly and the ✕ keeps working everywhere.
+      let _ppPushed = false;
+      window.addEventListener('popstate', function () { if (ppOpen) closePassport(true); });
+
       function openPassport(p, bedName) {
         if (!p || ppOpen) return;
         const overlay = document.getElementById('passportOverlay');
@@ -9096,15 +9104,18 @@ if (typeof module !== 'undefined' && module.exports) {
         _ppLast = { p: p, bed: bedName };
         document.body.style.overflow = 'hidden';
         overlay.style.display = 'flex';
+        try { history.pushState({ pp: 1 }, ''); _ppPushed = true; } catch (e) { _ppPushed = false; }
         const cached = _ppCache[ppCurrentKey] || null;
         ppRender(p, bedName, cached, !cached);
         if (!cached) ppFetchStory(p, bedName);   // only before the first bulk prefetch has ever landed
         ppPrefetchAll();                          // TTL-guarded background refresh of the whole cache
       }
 
-      function closePassport() {
+      function closePassport(fromPop) {
         const overlay = document.getElementById('passportOverlay');
         if (!overlay || !ppOpen) return;
+        if (!fromPop && _ppPushed) { history.back(); return; }   // the popstate re-enters as fromPop
+        _ppPushed = false;
         overlay.style.display = 'none';
         ppOpen = false;
         ppCurrentKey = '';
