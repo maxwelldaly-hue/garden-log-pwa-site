@@ -1624,7 +1624,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.78</span>
+        <span class="header-version">v6.82</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1894,7 +1894,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v6.78 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v6.82 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2993,12 +2993,15 @@ const CROP_ICON_SYNONYMS = [
   [/chanterelle/, 'chantrelle'],      // upstream typo 'chantrelle'
   // Coloured capsicum/chilli/tomato variants — MUST precede the bare-crop defaults just below so a
   // named colour wins over the representative red. (Approved colour spread, 10/07.)
-  [/green ?capsicum/, 'green-bell-pepper'],
-  [/yellow ?capsicum/, 'yellow-bell-pepper'],
+  // Colour + crop are matched ORDER-INDEPENDENTLY (both-words lookahead): the app names varietied crops
+  // "Crop (Variety)" -> normalises to "tomato yellow", so a naive /yellow tomato/ (colour-first) silently
+  // missed every packet the app itself produces (owner, 16/07 — a "Tomato 'Yellow'" packet drew red).
+  [/(?=.*\bgreen\b)(?=.*\bcapsicum\b)/, 'green-bell-pepper'],
+  [/(?=.*\byellow\b)(?=.*\bcapsicum\b)/, 'yellow-bell-pepper'],
   [/green chill?i/, 'jalapeno'],               // green chilli -> jalapeño (a representative green chilli)
   [/jalape/, 'jalapeno'],                      // jalapeño/jalapeno (accent-safe: ñ normalises to a space)
-  [/green ?zebra|green tomato/, 'green-zebra-tomato'],
-  [/sunray|yellow tomato/, 'sunray-tomato'],
+  [/green ?zebra|(?=.*\bgreen\b)(?=.*\btomato\b)/, 'green-zebra-tomato'],
+  [/sunray|(?=.*\byellow\b)(?=.*\btomato\b)/, 'sunray-tomato'],
   [/capsicum|bell ?pepper/, 'red-bell-pepper'],
   [/\bchill?i\b|cayenne/, 'cayenne-pepper'],   // bare chilli/chili -> a representative red chilli
   [/mangetout|snow ?pea|sugar ?snap/, 'snap-pea'],
@@ -4400,6 +4403,7 @@ if (typeof module !== 'undefined' && module.exports) {
               cam.rel = 'noopener noreferrer';
               cam.innerHTML = uiMarkSvg('ui-camera', 14);   // mono camera mark (was the per-device 📷)
               cam.title = 'Latest photo';
+              cam.onclick = function (e) { e.stopPropagation(); };   // don't also open the passport
               top.appendChild(cam);
             }
             row.appendChild(top);
@@ -4418,6 +4422,7 @@ if (typeof module !== 'undefined' && module.exports) {
                 a.target = '_blank';
                 a.rel = 'noopener';
                 a.textContent = it.description ? (it.description + ' ↗') : invLinkLabel(it.link);
+                a.onclick = function (e) { e.stopPropagation(); };   // don't also open the passport
                 sub.appendChild(a);
               } else {
                 sub.textContent = it.description;
@@ -4438,6 +4443,14 @@ if (typeof module !== 'undefined' && module.exports) {
             }
             // Nothing under the name → a tighter card (no wasted height on a bare Tools row).
             if (!hasBelow) row.classList.add('inv-row--bare');
+            // Tap → the shed passport, but ONLY when the packet was read (it.labelFacts present). That
+            // self-scopes the affordance to seed packets / plant labels; fertilisers & tools stay inert
+            // (docs/SCOPE-SHED-PASSPORT.md). Same kill switch as the plant passports (ppEnabled).
+            if (it.labelFacts && typeof openShedPassport === 'function'
+                && (typeof ppEnabled !== 'function' || ppEnabled())) {
+              row.dataset.pp = '1';
+              row.onclick = function () { openShedPassport(it, g.category); };
+            }
             list.appendChild(row);
           });
           card.appendChild(list);
@@ -8986,6 +8999,64 @@ if (typeof module !== 'undefined' && module.exports) {
         ['harvest', 'Harvest', false]
       ];
 
+      // The SHED passport's fuller tier. A packet in the shed is UNSOWN, so its sowing instructions ARE its
+      // identity — the plant card hides them (the plant's already in the ground) but the shed must show them
+      // (owner, 16/07 — a real packet read "no detail?" with only Sun/Height/Harvest showing; Sow/Spacing/
+      // Germination were captured but filtered out). Everything captured stays stored; empty facts drop out
+      // in ppFactsEl. Order = packet-natural: identity → sowing → growing → harvest.
+      const PP_SHED_FACT_DISPLAY = [
+        ['description', 'About', true],
+        ['flavour', 'Flavour', true],
+        ['sun', 'Sun', false],
+        ['sowWhen', 'Sow', false],     // synthetic: local Adelaide window wins, packet season is the fallback
+        ['depth', 'Depth', false],
+        ['spacing', 'Spacing', false],
+        ['germination', 'Germination', false],
+        ['maturity', 'Maturity', false],
+        ['height', 'Height', false],
+        ['water', 'Water', false],
+        ['feed', 'Feed', false],
+        ['companion', 'Companion', true],
+        ['harvest', 'Harvest', false],
+        ['seedcount', 'Seed count', false],
+        ['bestbefore', 'Best before', false]
+      ];
+
+      const PP_MONTH_ABBR = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+      // "Sep, Oct, Nov, Dec, Jan, Feb" -> "Sep–Feb" when the months form ONE contiguous run on the 12-month
+      // wheel (wrap-aware); a full year -> "Year-round"; anything gappy stays a capitalised list. Degrades to
+      // the raw string if it holds no recognisable months.
+      function ppFormatSowMonths(csv) {
+        const toks = String(csv || '').split(/[,\s]+/).map(function (t) { return t.trim(); }).filter(Boolean);
+        const idxs = toks.map(function (t) { return PP_MONTH_ABBR.indexOf(t.slice(0, 3).toLowerCase()); }).filter(function (i) { return i >= 0; });
+        if (!idxs.length) return String(csv || '').trim();
+        if (idxs.length === 12) return 'Year-round';
+        const set = {}; idxs.forEach(function (i) { set[i] = true; });
+        const cap = function (i) { return PP_MONTH_ABBR[i].charAt(0).toUpperCase() + PP_MONTH_ABBR[i].slice(1); };
+        let start = -1;
+        for (let i = 0; i < 12; i++) { if (set[i] && !set[(i + 11) % 12]) { if (start !== -1) { start = -2; break; } start = i; } }
+        if (start >= 0) {
+          let n = 0, i = start; while (set[i % 12]) { n++; i++; }
+          if (n === idxs.length) return cap(start) + '–' + cap((start + n - 1) % 12);
+        }
+        return idxs.slice().sort(function (a, b) { return a - b; }).map(cap).join(', ');
+      }
+
+      // Pull a value out of the LabelOther catch-all ("Key: value; Key: value") by a key regex — the home
+      // for facts captured before a typed column existed (e.g. the beta test packet's seed count / best-before
+      // predate those columns). A typed field always wins; this only backfills the gap.
+      function ppOtherFact(other, re) {
+        const parts = String(other || '').split(';');
+        for (let i = 0; i < parts.length; i++) {
+          const ci = parts[i].indexOf(':');
+          if (ci === -1) continue;
+          const k = parts[i].slice(0, ci).trim();
+          const v = parts[i].slice(ci + 1).trim();
+          if (v && re.test(k)) return v;
+        }
+        return '';
+      }
+
       // Established = the passport stops being a first-season journey and gives way to the quiet season/status
       // line. Three ways in: (Move 3) it's a species that lives for years — a perennial herb/tree is
       // established from day one, never a first-season plant, so mint at 10 months stops reading "Growing 287
@@ -9075,6 +9146,98 @@ if (typeof module !== 'undefined' && module.exports) {
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && ppOpen) closePassport();
       });
+
+      // === Shed passport (docs/SCOPE-SHED-PASSPORT.md) — tap a seed packet / plant label → its captured
+      // packet facts. A supply has no lifecycle and no meaningful event story (restock events are noise by
+      // the owner's own thesis), so this is the plant passport with the time half removed: identity + "From
+      // the label" only. Reuses the SAME overlay, close/back-gesture scaffolding, kill switch, and ppFactsEl.
+      // Everything renders synchronously — labelFacts already ship in the inventory model, so ZERO network.
+      function openShedPassport(item, category) {
+        if (!item || ppOpen || !ppEnabled()) return;
+        if (!item.labelFacts) return;   // only items with captured packet facts — self-scopes to seeds/labels
+        const overlay = document.getElementById('passportOverlay');
+        if (!overlay) return;
+        ppOpen = true;
+        ppCurrentKey = 'shed:' + String(item.item || '');
+        _ppLast = null;   // no async story to re-render into
+        document.body.style.overflow = 'hidden';
+        overlay.style.display = 'flex';
+        try { history.pushState({ pp: 1 }, ''); _ppPushed = true; } catch (e) { _ppPushed = false; }
+        ppRenderShed(item, category);
+      }
+
+      // The category (e.g. "Seeds") is the shed's grouping, held on the GROUP not the item — so the caller
+      // passes it for the crumb (mirrors the plant card's bed-name crumb).
+      function ppRenderShed(item, category) {
+        const body = document.getElementById('passportBody');
+        const crumb = document.getElementById('ppCrumb');
+        if (!body || !crumb) return;
+        crumb.textContent = category || item.category || 'Shed';
+        body.innerHTML = '';
+        const overlay = document.getElementById('passportOverlay');
+        overlay.classList.remove('pp-done');   // a supply is never a tombstoned/harvested plant
+
+        // Identity — sprite · name (variety) · quantity · bought-when. The same quiet register as the plant
+        // card's header, read off the shed row's own fields.
+        const wrap = document.createElement('div');
+        wrap.className = 'pp-id';
+        const ic = document.createElement('div');
+        ic.className = 'pp-id-ic';
+        ic.appendChild(plantIconSvgEl(item.item));
+        wrap.appendChild(ic);
+        const txt = document.createElement('div');
+        const h = document.createElement('h2');
+        const parts = ppSplitName(item.item);
+        h.appendChild(document.createTextNode(parts[0]));
+        if (parts[1] && parts[1].indexOf('·') === -1) {
+          const v = document.createElement('span');
+          v.className = 'pp-variety';
+          v.textContent = ' (' + parts[1] + ')';
+          h.appendChild(v);
+        }
+        txt.appendChild(h);
+        const sub = document.createElement('div');
+        sub.className = 'pp-id-sub';
+        const bits = [];
+        const qty = (typeof shedQuantityParts === 'function') ? shedQuantityParts(item.quantity).display : String(item.quantity || '');
+        if (qty) bits.push(qty);
+        if (item.purchasedate) {
+          const rel = (typeof relativePast === 'function') ? relativePast(item.purchasedate) : '';
+          bits.push('bought ' + (rel || item.purchasedate));
+        }
+        sub.textContent = bits.join(' · ');
+        if (sub.textContent) txt.appendChild(sub);
+        // Botanical name if the packet gave one (same quiet italic as the plant card).
+        const latin = String((item.labelFacts && item.labelFacts.latin) || '').trim();
+        if (latin) {
+          const li = document.createElement('div');
+          li.className = 'pp-latin';
+          li.textContent = latin;
+          txt.appendChild(li);
+        }
+        wrap.appendChild(txt);
+        body.appendChild(wrap);
+
+        // "From the label" — the whole point. Same renderer as the plant card, but the SHED's fuller tier
+        // (PP_SHED_FACT_DISPLAY): an unsown packet is defined by its sowing facts, so Sow/Spacing/Germination
+        // show here where the plant card hides them. Three fields are SYNTHESISED before rendering:
+        //   • sowWhen — the LOCAL Adelaide window (item.sowMonths) wins the slot; the packet's own sow text
+        //     is only the fallback (owner, 16/07 — sow timing is location-dependent, the one fact where the
+        //     region's calendar outranks the label).
+        //   • seedcount / bestbefore — typed columns when captured, else recovered from the LabelOther
+        //     catch-all (the beta test packet predates those columns).
+        const lf = item.labelFacts || {};
+        const other = lf.other || '';
+        const sowWhen = item.sowMonths
+          ? (ppFormatSowMonths(item.sowMonths) + ' (Adelaide)')
+          : (lf.sow || ppOtherFact(other, /^when$|sow|season|plant/i));
+        const facts = ppFactsEl({ labelFacts: Object.assign({}, lf, {
+          sowWhen: sowWhen,
+          seedcount: lf.seedcount || ppOtherFact(other, /seed ?count|seeds per|no\.? of seeds/i),
+          bestbefore: lf.bestbefore || ppOtherFact(other, /best ?before|use ?by|sell ?by|expir/i)
+        }), name: item.item }, PP_SHED_FACT_DISPLAY);
+        if (facts) body.appendChild(facts);
+      }
 
       // Background story read — the ONLY network this surface does. Cached per plant for the session;
       // a repeat open paints the cached story instantly and still revalidates behind it.
@@ -9248,10 +9411,10 @@ if (typeof module !== 'undefined' && module.exports) {
 
       // "From the label" — the packet's own words, descriptive tier only. The section header IS the
       // provenance: everything in this box was literally printed on the user's packet/tag.
-      function ppFactsEl(p) {
+      function ppFactsEl(p, displaySpec) {
         const f = p.labelFacts;
         if (!f) return null;
-        const rows = PP_FACT_DISPLAY.filter(function (spec) { return String(f[spec[0]] || '').trim(); });
+        const rows = (displaySpec || PP_FACT_DISPLAY).filter(function (spec) { return String(f[spec[0]] || '').trim(); });
         if (!rows.length) return null;
         const sec = document.createElement('div');
         const h = document.createElement('div'); h.className = 'pp-sec-h'; h.textContent = 'From the label';
