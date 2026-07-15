@@ -1624,7 +1624,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.78</span>
+        <span class="header-version">v6.79</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1894,7 +1894,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.78 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.79 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -4449,6 +4449,7 @@ if (typeof module !== 'undefined' && module.exports) {
               cam.rel = 'noopener noreferrer';
               cam.innerHTML = uiMarkSvg('ui-camera', 14);   // mono camera mark (was the per-device 📷)
               cam.title = 'Latest photo';
+              cam.onclick = function (e) { e.stopPropagation(); };   // don't also open the passport
               top.appendChild(cam);
             }
             row.appendChild(top);
@@ -4467,6 +4468,7 @@ if (typeof module !== 'undefined' && module.exports) {
                 a.target = '_blank';
                 a.rel = 'noopener';
                 a.textContent = it.description ? (it.description + ' ↗') : invLinkLabel(it.link);
+                a.onclick = function (e) { e.stopPropagation(); };   // don't also open the passport
                 sub.appendChild(a);
               } else {
                 sub.textContent = it.description;
@@ -4487,6 +4489,14 @@ if (typeof module !== 'undefined' && module.exports) {
             }
             // Nothing under the name → a tighter card (no wasted height on a bare Tools row).
             if (!hasBelow) row.classList.add('inv-row--bare');
+            // Tap → the shed passport, but ONLY when the packet was read (it.labelFacts present). That
+            // self-scopes the affordance to seed packets / plant labels; fertilisers & tools stay inert
+            // (docs/SCOPE-SHED-PASSPORT.md). Same kill switch as the plant passports (ppEnabled).
+            if (it.labelFacts && typeof openShedPassport === 'function'
+                && (typeof ppEnabled !== 'function' || ppEnabled())) {
+              row.dataset.pp = '1';
+              row.onclick = function () { openShedPassport(it, g.category); };
+            }
             list.appendChild(row);
           });
           card.appendChild(list);
@@ -9124,6 +9134,82 @@ if (typeof module !== 'undefined' && module.exports) {
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && ppOpen) closePassport();
       });
+
+      // === Shed passport (docs/SCOPE-SHED-PASSPORT.md) — tap a seed packet / plant label → its captured
+      // packet facts. A supply has no lifecycle and no meaningful event story (restock events are noise by
+      // the owner's own thesis), so this is the plant passport with the time half removed: identity + "From
+      // the label" only. Reuses the SAME overlay, close/back-gesture scaffolding, kill switch, and ppFactsEl.
+      // Everything renders synchronously — labelFacts already ship in the inventory model, so ZERO network.
+      function openShedPassport(item, category) {
+        if (!item || ppOpen || !ppEnabled()) return;
+        if (!item.labelFacts) return;   // only items with captured packet facts — self-scopes to seeds/labels
+        const overlay = document.getElementById('passportOverlay');
+        if (!overlay) return;
+        ppOpen = true;
+        ppCurrentKey = 'shed:' + String(item.item || '');
+        _ppLast = null;   // no async story to re-render into
+        document.body.style.overflow = 'hidden';
+        overlay.style.display = 'flex';
+        try { history.pushState({ pp: 1 }, ''); _ppPushed = true; } catch (e) { _ppPushed = false; }
+        ppRenderShed(item, category);
+      }
+
+      // The category (e.g. "Seeds") is the shed's grouping, held on the GROUP not the item — so the caller
+      // passes it for the crumb (mirrors the plant card's bed-name crumb).
+      function ppRenderShed(item, category) {
+        const body = document.getElementById('passportBody');
+        const crumb = document.getElementById('ppCrumb');
+        if (!body || !crumb) return;
+        crumb.textContent = category || item.category || 'Shed';
+        body.innerHTML = '';
+        const overlay = document.getElementById('passportOverlay');
+        overlay.classList.remove('pp-done');   // a supply is never a tombstoned/harvested plant
+
+        // Identity — sprite · name (variety) · quantity · bought-when. The same quiet register as the plant
+        // card's header, read off the shed row's own fields.
+        const wrap = document.createElement('div');
+        wrap.className = 'pp-id';
+        const ic = document.createElement('div');
+        ic.className = 'pp-id-ic';
+        ic.appendChild(plantIconSvgEl(item.item));
+        wrap.appendChild(ic);
+        const txt = document.createElement('div');
+        const h = document.createElement('h2');
+        const parts = ppSplitName(item.item);
+        h.appendChild(document.createTextNode(parts[0]));
+        if (parts[1] && parts[1].indexOf('·') === -1) {
+          const v = document.createElement('span');
+          v.className = 'pp-variety';
+          v.textContent = ' (' + parts[1] + ')';
+          h.appendChild(v);
+        }
+        txt.appendChild(h);
+        const sub = document.createElement('div');
+        sub.className = 'pp-id-sub';
+        const bits = [];
+        const qty = (typeof shedQuantityParts === 'function') ? shedQuantityParts(item.quantity).display : String(item.quantity || '');
+        if (qty) bits.push(qty);
+        if (item.purchasedate) {
+          const rel = (typeof relativePast === 'function') ? relativePast(item.purchasedate) : '';
+          bits.push('bought ' + (rel || item.purchasedate));
+        }
+        sub.textContent = bits.join(' · ');
+        if (sub.textContent) txt.appendChild(sub);
+        // Botanical name if the packet gave one (same quiet italic as the plant card).
+        const latin = String((item.labelFacts && item.labelFacts.latin) || '').trim();
+        if (latin) {
+          const li = document.createElement('div');
+          li.className = 'pp-latin';
+          li.textContent = latin;
+          txt.appendChild(li);
+        }
+        wrap.appendChild(txt);
+        body.appendChild(wrap);
+
+        // "From the label" — the whole point. Reuses the plant card's descriptive-tier renderer verbatim.
+        const facts = ppFactsEl({ labelFacts: item.labelFacts, name: item.item });
+        if (facts) body.appendChild(facts);
+      }
 
       // Background story read — the ONLY network this surface does. Cached per plant for the session;
       // a repeat open paints the cached story instantly and still revalidates behind it.
