@@ -1654,7 +1654,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.72</span>
+        <span class="header-version">v6.73</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1924,7 +1924,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v6.72 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v6.73 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9140,16 +9140,13 @@ if (typeof module !== 'undefined' && module.exports) {
         overlay.classList.toggle('pp-done', !!p.isTombstone);
 
         body.appendChild(ppIdentityEl(p, bedName));
+        // Current stage at the TOP (owner, 15/07 — the bar wasn't working). One clear label = the latest
+        // milestone that's actually happened (evidence-only, never guessed from the calendar); the dated
+        // history lives in the Story below. The old two-line ribbon (ppRibbonEl) is retired.
+        const stageEl = ppStageEl(p);
+        if (stageEl) body.appendChild(stageEl);
         const lines = ppLedgerLinesEl(p);
         if (lines) body.appendChild(lines);
-
-        const established = ppIsEstablished(p);
-        if (p.phase === 'Dormant') {
-          body.appendChild(ppSeasonEl('Dormant over winter'));
-        } else if (!established) {
-          body.appendChild(ppRibbonEl(p, story));
-        }
-        // Established + not dormant: no ribbon, no season line — the identity + story carry it.
 
         const facts = ppFactsEl(p);
         if (facts) body.appendChild(facts);
@@ -9252,6 +9249,35 @@ if (typeof module !== 'undefined' && module.exports) {
         s.className = 'pp-season';
         s.textContent = text;
         return s;
+      }
+
+      // The plant's CURRENT stage — the single latest milestone that's actually been recorded (owner, 15/07).
+      // Evidence-only: it reads the logged Stage + the lifecycle events, never the calendar. A stage the owner
+      // hasn't noted simply doesn't advance it (a vegetatively-growing tomato reads "Germinated" until the
+      // first flowers are logged). v1 vocabulary — easy to change once the owner sees it live.
+      function ppCurrentStage(p) {
+        if (!p) return '';
+        if (p.isTombstone) return 'Harvested';
+        if (p.phase === 'Dormant') return 'Dormant';
+        const st = String(p.stage || '').trim();
+        if (p.yield || p.phase === 'Producing' || st === 'Harvesting') return 'Harvesting';
+        if (st === 'Fruiting') return 'Fruiting';
+        if (st === 'Flowering') return 'Flowering';
+        if (st === 'Germination' || st === 'Seedling' || st === 'Vegetative' || p.sprouted) return 'Germinated';
+        if (p.phase === 'Sown' || (p.estSprout && !p.sprouted)) return 'Sown';
+        return 'Planted';
+      }
+
+      // The current stage as a prominent label at the top of the card. v1 styling (inline) — the point is to
+      // see the shape; theming follows once the owner likes the direction.
+      function ppStageEl(p) {
+        const stage = ppCurrentStage(p);
+        if (!stage) return null;
+        const wrap = document.createElement('div');
+        wrap.className = 'pp-stage';
+        wrap.style.cssText = 'margin:12px 0 2px;font-size:1.5em;font-weight:600;letter-spacing:.2px;';
+        wrap.textContent = stage;
+        return wrap;
       }
 
       // The lifecycle ribbon — TWO LINES (owner, 15/07). A plant's interesting DATES cluster at the start
