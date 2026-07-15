@@ -1624,7 +1624,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.80</span>
+        <span class="header-version">v6.81</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1894,7 +1894,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.80 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.81 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9057,7 +9057,7 @@ if (typeof module !== 'undefined' && module.exports) {
         ['description', 'About', true],
         ['flavour', 'Flavour', true],
         ['sun', 'Sun', false],
-        ['sow', 'Sow', false],
+        ['sowWhen', 'Sow', false],     // synthetic: local Adelaide window wins, packet season is the fallback
         ['depth', 'Depth', false],
         ['spacing', 'Spacing', false],
         ['germination', 'Germination', false],
@@ -9066,8 +9066,45 @@ if (typeof module !== 'undefined' && module.exports) {
         ['water', 'Water', false],
         ['feed', 'Feed', false],
         ['companion', 'Companion', true],
-        ['harvest', 'Harvest', false]
+        ['harvest', 'Harvest', false],
+        ['seedcount', 'Seed count', false],
+        ['bestbefore', 'Best before', false]
       ];
+
+      const PP_MONTH_ABBR = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+      // "Sep, Oct, Nov, Dec, Jan, Feb" -> "Sep–Feb" when the months form ONE contiguous run on the 12-month
+      // wheel (wrap-aware); a full year -> "Year-round"; anything gappy stays a capitalised list. Degrades to
+      // the raw string if it holds no recognisable months.
+      function ppFormatSowMonths(csv) {
+        const toks = String(csv || '').split(/[,\s]+/).map(function (t) { return t.trim(); }).filter(Boolean);
+        const idxs = toks.map(function (t) { return PP_MONTH_ABBR.indexOf(t.slice(0, 3).toLowerCase()); }).filter(function (i) { return i >= 0; });
+        if (!idxs.length) return String(csv || '').trim();
+        if (idxs.length === 12) return 'Year-round';
+        const set = {}; idxs.forEach(function (i) { set[i] = true; });
+        const cap = function (i) { return PP_MONTH_ABBR[i].charAt(0).toUpperCase() + PP_MONTH_ABBR[i].slice(1); };
+        let start = -1;
+        for (let i = 0; i < 12; i++) { if (set[i] && !set[(i + 11) % 12]) { if (start !== -1) { start = -2; break; } start = i; } }
+        if (start >= 0) {
+          let n = 0, i = start; while (set[i % 12]) { n++; i++; }
+          if (n === idxs.length) return cap(start) + '–' + cap((start + n - 1) % 12);
+        }
+        return idxs.slice().sort(function (a, b) { return a - b; }).map(cap).join(', ');
+      }
+
+      // Pull a value out of the LabelOther catch-all ("Key: value; Key: value") by a key regex — the home
+      // for facts captured before a typed column existed (e.g. the beta test packet's seed count / best-before
+      // predate those columns). A typed field always wins; this only backfills the gap.
+      function ppOtherFact(other, re) {
+        const parts = String(other || '').split(';');
+        for (let i = 0; i < parts.length; i++) {
+          const ci = parts[i].indexOf(':');
+          if (ci === -1) continue;
+          const k = parts[i].slice(0, ci).trim();
+          const v = parts[i].slice(ci + 1).trim();
+          if (v && re.test(k)) return v;
+        }
+        return '';
+      }
 
       // Established = the passport stops being a first-season journey and gives way to the quiet season/status
       // line. Three ways in: (Move 3) it's a species that lives for years — a perennial herb/tree is
@@ -9232,8 +9269,22 @@ if (typeof module !== 'undefined' && module.exports) {
 
         // "From the label" — the whole point. Same renderer as the plant card, but the SHED's fuller tier
         // (PP_SHED_FACT_DISPLAY): an unsown packet is defined by its sowing facts, so Sow/Spacing/Germination
-        // show here where the plant card hides them.
-        const facts = ppFactsEl({ labelFacts: item.labelFacts, name: item.item }, PP_SHED_FACT_DISPLAY);
+        // show here where the plant card hides them. Three fields are SYNTHESISED before rendering:
+        //   • sowWhen — the LOCAL Adelaide window (item.sowMonths) wins the slot; the packet's own sow text
+        //     is only the fallback (owner, 16/07 — sow timing is location-dependent, the one fact where the
+        //     region's calendar outranks the label).
+        //   • seedcount / bestbefore — typed columns when captured, else recovered from the LabelOther
+        //     catch-all (the beta test packet predates those columns).
+        const lf = item.labelFacts || {};
+        const other = lf.other || '';
+        const sowWhen = item.sowMonths
+          ? (ppFormatSowMonths(item.sowMonths) + ' (Adelaide)')
+          : (lf.sow || ppOtherFact(other, /^when$|sow|season|plant/i));
+        const facts = ppFactsEl({ labelFacts: Object.assign({}, lf, {
+          sowWhen: sowWhen,
+          seedcount: lf.seedcount || ppOtherFact(other, /seed ?count|seeds per|no\.? of seeds/i),
+          bestbefore: lf.bestbefore || ppOtherFact(other, /best ?before|use ?by|sell ?by|expir/i)
+        }), name: item.item }, PP_SHED_FACT_DISPLAY);
         if (facts) body.appendChild(facts);
       }
 
