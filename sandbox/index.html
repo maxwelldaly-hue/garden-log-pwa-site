@@ -323,25 +323,20 @@
       
       @keyframes pulseRecording { 0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); } }
 
-      /* Two save buttons = the destination (no sticky toggle). Both filled (so neither reads as disabled
-         next to the grey input-action row); Garden stays dominant via WIDTH (flex 1.7 vs 1), not fill —
-         sage vs terracotta. (Verifying a to-confirm card is now a separate modal, not a re-skin here.) */
-      .save-row { display: flex; gap: 10px; margin-top: 5px; }
+      /* .save-btn is the shared capture-button base (the single 'Log entry' button carries save-btn save-log). */
       .save-btn { border: none; border-radius: var(--r-lg); padding: 16px; font-size: var(--fs-md); font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.1s; }
       .save-btn:active { transform: scale(0.98); }
-      .save-garden { flex: 1.7; background-color: var(--color-sage); color: #fff; box-shadow: 0 4px 10px rgba(45, 138, 96, 0.3); }
-      .save-shed { flex: 1; background-color: var(--color-terracotta); color: #fff; box-shadow: 0 4px 10px rgba(156, 84, 48, 0.3); }
 
-      /* === One-Log-button (Approach B, Phase 3) ============================================================
-         The single 'Log entry' primary action. Colour no longer signals a destination (the AI routes it), so
-         it's a NEUTRAL slate — deliberately not sage/terracotta (also retires the "green = foliage only"
-         tension). Shown only in body.one-button; CSS `order` floats the row ABOVE the controls-row (owner's
-         layout) without reordering the DOM. --color-log is tweakable if the owner wants a different neutral. */
+      /* === One-Log-button — THE capture submit =============================================================
+         The single 'Log entry' primary action (the two-button Garden/Shed destinations were retired in the
+         cutover — the AI routes each note). NEUTRAL slate, deliberately not sage/terracotta (also retires the
+         "green = foliage only" tension). CSS `order` floats the row ABOVE the controls-row (owner's layout)
+         without reordering the DOM; scoped to body.one-button (the permanent capture-layout class) so the
+         `order` never leaks onto other .ui-hint elements. --color-log is tweakable for a different neutral. */
       .log-row { display: none; margin-top: 5px; align-items: stretch; }
       body.one-button .log-row { display: flex; order: 1; }
       body.one-button .controls-row { order: 2; }
       body.one-button .ui-hint { order: 3; }
-      body.one-button .save-row { display: none; }
       .save-log { flex: 1; background-color: var(--color-log); color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.28); }
       .save-log:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
       .save-log:disabled:active { transform: none; }
@@ -1322,10 +1317,10 @@
 </style>
 
   </head>
-  <body class="">
-    <!-- One-Log-button flag (Approach B) injected server-side so CSS/JS branch with no flash. Index.html is a
-         template (scriptlets evaluate here) but its includes are NOT — so the JS files read window.ONE_BUTTON. -->
-    <script>window.ONE_BUTTON = false;</script>
+  <!-- `one-button` is now the permanent capture layout (the single Log button + its CSS order rules); the
+       two-button Garden/Shed path was retired in the one-Log-button cutover. Kept as a class (not un-scoped
+       into the base rules) so the `order` on .log-row/.controls-row/.ui-hint stays scoped to the card. -->
+  <body class="one-button">
     <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
   <!-- UI-marks stream (chrome). Solid monochrome glyphs, fill="currentColor", viewBox 0 0 24 24 — the same
        Material-filled weight as the Dictate/Photo/Upload nucleus (Index.html:95/99/103). Interior detail is
@@ -1664,7 +1659,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.14</span>
+        <span class="header-version">v7.15</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1745,27 +1740,12 @@
               Upload
             </button>
           </div>
-          <!-- Destination = which button. Garden is the primary (filled sage, ~90% of logs); Shed is the
-               secondary (terracotta outline). -->
-          <!-- The send-arrow (paper-plane) is DELIBERATE, restored v5.70: without it the bare words
-               "Garden" / "Shed" read as NAVIGATION (they echo the Garden/Shed TABS right above), not a
-               submit action. The arrow makes them verbs — "send this note TO Garden/Shed". It was dropped
-               as "ornament" in v5.43; that removal made the buttons ambiguous (owner, 11/07). Keep it. -->
-          <div class="save-row">
-            <button id="saveGardenBtn" class="save-btn save-garden" onclick="submitLog('garden')">
-              <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-              <span id="saveGardenLabel">Garden</span>
-            </button>
-            <button id="saveShedBtn" class="save-btn save-shed" onclick="submitLog('shed')">
-              <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-              Shed
-            </button>
-          </div>
-          <!-- ONE-LOG-BUTTON row (Approach B, Phase 3) — shown only when body.one-button (the ONE_BUTTON_LOG
-               flag). CSS `order` floats this ABOVE the controls-row (Dictate/Photo/Upload) per the owner's
-               layout. One full-width NEUTRAL button (colour no longer signals destination — the AI routes it);
-               the send-arrow stays (verb, v5.70). Disabled until there's text or a photo (JS: syncLogEntryState).
-               The chip (#logChip) replaces the button after submit: "Logged to Garden · tap to change". -->
+          <!-- THE capture submit — one full-width NEUTRAL 'Log entry' button (the AI routes each note to Garden
+               or Shed, so colour no longer signals a destination). CSS `order` floats this row ABOVE the
+               controls-row (Dictate/Photo/Upload) per the owner's layout. Disabled until there's text or a photo
+               (JS: syncLogEntryState). The send-arrow (paper-plane) is DELIBERATE (v5.70): without it the bare
+               word "Log" reads as NAVIGATION, not a submit action — the arrow makes it a verb. The chip
+               (#logChip) replaces the button after submit: "Logged to Garden/Shed · tap to change". -->
           <div class="log-row">
             <button id="logEntryBtn" class="save-btn save-log" onclick="submitLog('garden')" disabled>
               <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
@@ -1777,7 +1757,7 @@
                vertical space). Merges the old form / controls-row / save-row hints into a single ⓘ at the card
                foot — still point-of-use for the CARD, just not one ⓘ per control. Copy is neutral in one-button
                mode (there's no Garden/Shed choice to explain — the app routes it). -->
-          <button type="button" class="ui-hint" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">Jot a few words or dictate, and add a photo if you like — the app reads them and files what happened. Save to Garden for anything about the plants, or Shed for supplies you bought.</span></button>
+          <button type="button" class="ui-hint" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">Jot a few words or dictate, and add a photo if you like — the app reads them and files what happened, whether it's the garden or the shed.</span></button>
         </div>
           </div>
         </div>
@@ -1953,7 +1933,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.14 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.15 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -1988,16 +1968,6 @@
             <div id="devScribeCheck" class="dev-kv" style="margin-top:8px;"></div>
           </div>
 
-          <!-- One-Log-button rollout toggle (Approach B, Phase 2). Flips the ONE_BUTTON_LOG Script Property so a
-               supply note submitted via the Garden button auto-routes into the Shed (silently-categorised). Beta
-               test control — keep OFF on prod until the card + confirmation chip (Phase 3) land and it's proven. -->
-          <div class="dev-section">
-            <h4 class="dev-h">One-button routing (beta test)</h4>
-            <p class="dev-note">When ON, a note the scribe reads as a <strong>supply you bought</strong> is filed straight into the Shed (auto-categorised) even if you tap <strong>Garden</strong> — the server decides the destination. This is the engine behind the coming single “Log” button; leave it OFF until that lands. Type e.g. “bought two bags of compost”, tap Garden, and check it appears in the Shed under Feed &amp; Soil.</p>
-            <button class="settings-save-btn" onclick="setOneButtonRouting(true, this)">Turn on</button>
-            <button class="settings-save-btn" onclick="setOneButtonRouting(false, this)" style="margin-left:6px;">Turn off</button>
-            <div id="devOneButton" class="dev-kv" style="margin-top:8px;"></div>
-          </div>
 
           <!-- Formula-escape self-test (audit Finding 11): a cell written starting with =/+/-/@ would run as a
                live formula when the raw Sheet is opened. The guard prefixes a ' to neutralise it. This can't be
@@ -3810,10 +3780,6 @@ if (typeof module !== 'undefined' && module.exports) {
       // prose renderer). A payload with no model — a pre-cutover offline cache that hasn't re-synced since —
       // renders renderLayoutModel's "No layout data available." placeholder; one online sync repopulates it.
       function applyGardenState(data) {
-        // One-Log-button (Approach B): the live ONE_BUTTON_LOG flag rides the state bundle (Router getState).
-        // The static client bakes it false at build time, so applying it here — from fresh AND cached state —
-        // flips the card to one-button at runtime with no rebuild. Absent on old cached data → left unchanged.
-        if (data && typeof data.oneButton !== 'undefined' && typeof applyOneButtonMode === 'function') applyOneButtonMode(data.oneButton);
         // Fall back to the last-known cached model if this response carries none (a duplicate / older response
         // may omit stateModel) — render last-known state, NEVER a blank "No layout data" screen.
         let model = (data && data.stateModel) || null;
@@ -4972,32 +4938,6 @@ if (typeof module !== 'undefined' && module.exports) {
           .processClientRequest(JSON.stringify({ action: 'getLatencyStats', token: token, pin: pin }));
       }
 
-      // One-Log-button rollout toggle (Approach B, Phase 2): flips the ONE_BUTTON_LOG Script Property via a
-      // PIN-gated action so the owner can enable/disable the auto-route on beta without the Apps Script editor.
-      function setOneButtonRouting(on, btn) {
-        const box = document.getElementById('devOneButton');
-        if (!box) return;
-        const pin = localStorage.getItem('garden_log_pin');
-        const token = localStorage.getItem('garden_log_token');
-        if (!isOnline || !(pin || token)) { box.textContent = 'Connect + enter your PIN to change this.'; return; }
-        const label0 = btn.textContent; btn.disabled = true; btn.textContent = 'Saving…';
-        google.script.run
-          .withSuccessHandler(function (resStr) {
-            btn.disabled = false; btn.textContent = label0;
-            let res = null; try { res = JSON.parse(resStr); } catch (e) {}
-            const st = res && res.data && res.data.oneButton;
-            box.textContent = 'One-button routing is now ' + (st ? 'ON' : 'OFF') + '.';
-            // Apply live so the capture card flips immediately — without this the body class / single button only
-            // re-render on the next getState or a full reload (the toggle only touched the server flag before).
-            if (typeof applyOneButtonMode === 'function') applyOneButtonMode(!!st);
-          })
-          .withFailureHandler(function (e) {
-            btn.disabled = false; btn.textContent = label0;
-            box.textContent = 'Could not change — ' + (e && e.message ? e.message : 'try again.');
-          })
-          .processClientRequest(JSON.stringify({ action: 'setOneButtonRouting', set: on, token: token, pin: pin }));
-      }
-
       // Scribe check (the test seam for prompt changes): runs the live scribe over a representative case set
       // server-side (runScribeRegression) and renders pass/fail + what it produced per case. Online + PIN only.
       // The run makes ~15 text-scribe calls, so it takes ~20-30s — the button self-labels while it waits.
@@ -6121,12 +6061,11 @@ if (typeof module !== 'undefined' && module.exports) {
         if (ta) ta.placeholder = logBoxPlaceholder();
       })();
 
-      // === One-Log-button card behaviour (Approach B, Phase 3) — active only when the ONE_BUTTON_LOG flag is
-      // on (window.ONE_BUTTON, injected server-side in Index.html). Two pieces: (1) the neutral 'Log entry'
-      // button is DISABLED until there's text or a photo, so it doesn't compete with the capture row before
-      // there's anything to send; (2) KEYBOARD DOCKING — while the textarea is focused the button pins just
-      // above the keyboard like a chat send-bar, and returns to the flow on blur. Global so handlePhotoFile /
-      // submitLog can refresh the disabled state after they change the photo/text.
+      // === One-Log-button card behaviour — the capture card's permanent single-button model. Two pieces:
+      // (1) the neutral 'Log entry' button is DISABLED until there's text or a photo, so it doesn't compete
+      // with the capture row before there's anything to send; (2) KEYBOARD DOCKING — while the textarea is
+      // focused the button pins just above the keyboard like a chat send-bar, and returns to the flow on blur.
+      // Global so handlePhotoFile / submitLog can refresh the disabled state after they change the photo/text.
       function syncLogEntryState() {
         const btn = document.getElementById('logEntryBtn');
         if (!btn) return;
@@ -6135,8 +6074,7 @@ if (typeof module !== 'undefined' && module.exports) {
         btn.disabled = !(hasText || currentPhotoData);
       }
 
-      // Wire the one-button card's interactions ONCE (guarded — applyOneButtonMode may be called more than once:
-      // at load from the build-time flag, then again when getState returns the live flag on the static client).
+      // Wire the one-button card's interactions ONCE (guarded — belt-and-braces against a double call).
       let _oneButtonWired = false;
       function wireOneButtonCard() {
         if (_oneButtonWired) return;
@@ -6183,16 +6121,13 @@ if (typeof module !== 'undefined' && module.exports) {
         btn.addEventListener('mousedown', function (e) { if (row.classList.contains('kb-docked')) e.preventDefault(); });
       }
 
-      // Apply (or clear) one-button mode. Idempotent + re-appliable: the static client bakes ONE_BUTTON=false at
-      // build time, so the REAL state arrives at runtime from getState (data.oneButton) and re-invokes this — the
-      // body class flips, the card wires, no rebuild needed. On the GAS-served page the build-time flag is
-      // already correct, so this just confirms it (no flash).
-      function applyOneButtonMode(on) {
-        window.ONE_BUTTON = !!on;
-        if (document.body) document.body.classList.toggle('one-button', !!on);
-        if (on) { wireOneButtonCard(); syncLogEntryState(); }
-      }
-      applyOneButtonMode(window.ONE_BUTTON); // the build-time / GAS-server value (runtime getState may update it)
+      // The capture card is one-button permanently (the two-button Garden/Shed path was retired in the cutover;
+      // body.one-button is set statically in Index.html). Wire it once at load — the card DOM (#logTextarea /
+      // .log-row / #logEntryBtn) is defined in the body ABOVE all the script includes, so it already exists
+      // here; no getState round-trip needed (which also fixes the old hole where an offline static-client load
+      // left the card unwired until the first getState returned).
+      wireOneButtonCard();
+      syncLogEntryState();
 
       // === One-Log-button confirmation chip (Approach B, Phase 3b). After a submit the chip REPLACES the Log
       // button: "Logging…" while the route is decided server-side, then "✓ Logged to Garden/Shed · tap to
@@ -6218,7 +6153,6 @@ if (typeof module !== 'undefined' && module.exports) {
         syncLogEntryState();
       }
       function showLogChipPending(logId) {
-        if (!window.ONE_BUTTON) return;
         const chip = document.getElementById('logChip'); const btn = document.getElementById('logEntryBtn');
         if (!chip || !btn) return;
         _clearChipFade(); _chipLogId = logId;
@@ -6228,7 +6162,7 @@ if (typeof module !== 'undefined' && module.exports) {
         chip.style.display = 'flex';
       }
       function resolveLogChip(logId, domain, canChange) {
-        if (!window.ONE_BUTTON || _chipLogId !== logId) return; // a newer submit owns the chip now
+        if (_chipLogId !== logId) return; // a newer submit owns the chip now
         const chip = document.getElementById('logChip'); if (!chip) return;
         _clearChipFade(); chip.classList.remove('fading'); chip.textContent = '';
         const label = document.createElement('span');
@@ -6933,15 +6867,9 @@ if (typeof module !== 'undefined' && module.exports) {
           // Optimistic Garden-tab row (latency Slice A) — GARDEN notes only (a shed supply never touches the
           // Garden tab). No-ops silently when the note doesn't confidently target one visible plant.
           if (mode === 'garden') registerOptimisticPending(logId, text);
-          // One-button mode: the inline confirmation CHIP (Phase 3b) is the acknowledgement — it shows
-          // "Logging…" then "✓ Logged to Garden/Shed · tap to change" once the route lands — so the redundant
-          // "Saved" toast is suppressed there. Two-button mode keeps its destination-named toast.
-          if (window.ONE_BUTTON) {
-            showLogChipPending(logId);
-          } else {
-            showToast((mode === 'shed') ? "Saved to Shed queue" : "Saved to Queue",
-              (mode === 'shed') ? "Filing your supply in the background." : "Log will sync in background.", logId);
-          }
+          // The inline confirmation CHIP (Phase 3b) is the acknowledgement — "Logging…" then "✓ Logged to
+          // Garden/Shed · tap to change" once the route lands — so no separate "Saved" toast is needed.
+          showLogChipPending(logId);
           syncQueue();
         });
       }
@@ -7047,7 +6975,7 @@ if (typeof module !== 'undefined' && module.exports) {
                 // chip currently tracking currentLog.id updates (resolveLogChip guards that) — a stale response
                 // for an earlier queued log never claims a newer submit's chip. `typeof window` guard: the sync
                 // engine is unit-tested in a Node vm with no `window` (test/run-tests.js extracts syncQueue).
-                if (typeof window !== 'undefined' && window.ONE_BUTTON) {
+                if (typeof window !== 'undefined') {
                   if (res.data.unreadable) { dismissLogChip(); }
                   else { const cd = chipDomainFromRouted(res.data.routed); resolveLogChip(currentLog.id, cd.domain, cd.canChange); }
                 }
