@@ -1624,7 +1624,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.93</span>
+        <span class="header-version">v6.94</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1900,7 +1900,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.93 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.94 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -1933,6 +1933,17 @@
             <button class="settings-save-btn" onclick="runScribeCheck(this)">Run full check</button>
             <button class="settings-save-btn" onclick="runScribeCheck(this, 'routing')" style="margin-left:6px;">Routing only</button>
             <div id="devScribeCheck" class="dev-kv" style="margin-top:8px;"></div>
+          </div>
+
+          <!-- One-Log-button rollout toggle (Approach B, Phase 2). Flips the ONE_BUTTON_LOG Script Property so a
+               supply note submitted via the Garden button auto-routes into the Shed (silently-categorised). Beta
+               test control — keep OFF on prod until the card + confirmation chip (Phase 3) land and it's proven. -->
+          <div class="dev-section">
+            <h4 class="dev-h">One-button routing (beta test)</h4>
+            <p class="dev-note">When ON, a note the scribe reads as a <strong>supply you bought</strong> is filed straight into the Shed (auto-categorised) even if you tap <strong>Garden</strong> — the server decides the destination. This is the engine behind the coming single “Log” button; leave it OFF until that lands. Type e.g. “bought two bags of compost”, tap Garden, and check it appears in the Shed under Feed &amp; Soil.</p>
+            <button class="settings-save-btn" onclick="setOneButtonRouting(true, this)">Turn on</button>
+            <button class="settings-save-btn" onclick="setOneButtonRouting(false, this)" style="margin-left:6px;">Turn off</button>
+            <div id="devOneButton" class="dev-kv" style="margin-top:8px;"></div>
           </div>
 
           <!-- Formula-escape self-test (audit Finding 11): a cell written starting with =/+/-/@ would run as a
@@ -4893,6 +4904,29 @@ if (typeof module !== 'undefined' && module.exports) {
             box.textContent = 'Could not read — ' + (e && e.message ? e.message : 'try again.');
           })
           .processClientRequest(JSON.stringify({ action: 'getLatencyStats', token: token, pin: pin }));
+      }
+
+      // One-Log-button rollout toggle (Approach B, Phase 2): flips the ONE_BUTTON_LOG Script Property via a
+      // PIN-gated action so the owner can enable/disable the auto-route on beta without the Apps Script editor.
+      function setOneButtonRouting(on, btn) {
+        const box = document.getElementById('devOneButton');
+        if (!box) return;
+        const pin = localStorage.getItem('garden_log_pin');
+        const token = localStorage.getItem('garden_log_token');
+        if (!isOnline || !(pin || token)) { box.textContent = 'Connect + enter your PIN to change this.'; return; }
+        const label0 = btn.textContent; btn.disabled = true; btn.textContent = 'Saving…';
+        google.script.run
+          .withSuccessHandler(function (resStr) {
+            btn.disabled = false; btn.textContent = label0;
+            let res = null; try { res = JSON.parse(resStr); } catch (e) {}
+            const st = res && res.data && res.data.oneButton;
+            box.textContent = 'One-button routing is now ' + (st ? 'ON' : 'OFF') + '.';
+          })
+          .withFailureHandler(function (e) {
+            btn.disabled = false; btn.textContent = label0;
+            box.textContent = 'Could not change — ' + (e && e.message ? e.message : 'try again.');
+          })
+          .processClientRequest(JSON.stringify({ action: 'setOneButtonRouting', set: on, token: token, pin: pin }));
       }
 
       // Scribe check (the test seam for prompt changes): runs the live scribe over a representative case set
