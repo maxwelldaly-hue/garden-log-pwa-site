@@ -1624,7 +1624,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.86</span>
+        <span class="header-version">v6.87</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1900,7 +1900,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v6.86 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v6.87 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -4880,13 +4880,17 @@ if (typeof module !== 'undefined' && module.exports) {
         const strong = document.createElement('span'); strong.className = 'k'; strong.textContent = 'Result: ';
         head.appendChild(strong);
         head.appendChild(document.createTextNode(r.passed + '/' + r.total + ' passed'
-          + (r.failed ? ' · ' + r.failed + ' failed' : '')));
+          + (r.failed ? ' · ' + r.failed + ' failed' : '')
+          + (r.informational ? ' · ' + r.informational + ' ambiguous (not scored)' : '')));
         box.appendChild(head);
         (r.results || []).forEach(function (c) {
           const line = document.createElement('div'); line.style.marginTop = '7px';
           const mark = document.createElement('span'); mark.className = 'k';
-          mark.textContent = c.pass ? 'pass · ' : 'FAIL · ';
-          if (!c.pass) mark.style.color = 'var(--red-300)';
+          // Ambiguous routing notes have no ground-truth domain pre-refactor — shown as a neutral "info", never
+          // a green pass (which would falsely read as "correct"); only genuinely scored cases pass/FAIL.
+          mark.textContent = c.informational ? 'info · ' : (c.pass ? 'pass · ' : 'FAIL · ');
+          if (c.informational) mark.style.color = 'var(--text-muted, #9aa)';
+          else if (!c.pass) mark.style.color = 'var(--red-300)';
           line.appendChild(mark);
           line.appendChild(document.createTextNode(c.label));
           box.appendChild(line);
