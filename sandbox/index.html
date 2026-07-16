@@ -345,10 +345,11 @@
       .save-log { flex: 1; background-color: var(--color-log); color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.28); }
       .save-log:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
       .save-log:disabled:active { transform: none; }
-      /* Keyboard docking: while the textarea is focused (keyboard open) the Log button pins just above the
-         keyboard like a chat send-bar. JS toggles .kb-docked and sets `bottom` from visualViewport (iOS overlays
-         the keyboard; Android resizes) — bottom:0 is the fallback. Returns to in-flow on blur. */
-      .log-row.kb-docked { position: fixed; left: 0; right: 0; bottom: 0; margin: 0; padding: 8px 14px calc(8px + env(safe-area-inset-bottom, 0px)); background: var(--bg-card); box-shadow: 0 -6px 18px rgba(0,0,0,0.35); z-index: 60; transition: none; }
+      /* Keyboard docking: while the keyboard is open the Log button pins just above it like a chat send-bar.
+         JS drives this off the ACTUAL visualViewport shrink (not the focus event) and sets `top` to the visible
+         viewport's bottom edge minus the bar height — reliable on Android (resizes-visual, where bottom:0 would
+         sit BEHIND the keyboard) and iOS. `top` is clamped >= 0 so the bar can never fly off-screen. */
+      .log-row.kb-docked { position: fixed; left: 0; right: 0; margin: 0; padding: 8px 14px calc(8px + env(safe-area-inset-bottom, 0px)); background: var(--bg-card); box-shadow: 0 -6px 18px rgba(0,0,0,0.35); z-index: 60; transition: none; }
       /* Confirmation chip — replaces the button after a submit ("Logged to Garden · tap to change"). */
       .log-chip { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: var(--r-lg); padding: 14px; font-size: var(--fs-md); font-weight: 600; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-input); cursor: pointer; text-align: center; transition: opacity 0.4s ease; }
       .log-chip.fading { opacity: 0; }
@@ -1652,7 +1653,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.95</span>
+        <span class="header-version">v6.96</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1941,7 +1942,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.95 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.96 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6002,20 +6003,30 @@ if (typeof module !== 'undefined' && module.exports) {
         ta.addEventListener('input', syncLogEntryState);
         syncLogEntryState();
 
-        // (2) keyboard docking. iOS overlays the keyboard (visualViewport shrinks) → offset the fixed row up by
-        // the covered height; Android resizes the layout viewport → bottom:0 already sits above it. Recompute on
-        // every visualViewport change so it tracks the keyboard opening/closing/resizing.
-        function positionDock() {
-          if (!row.classList.contains('kb-docked')) return;
+        // (2) keyboard docking. Driven by the ACTUAL viewport shrink, not the focus event (which fires before
+        // the keyboard animates open): we only dock once visualViewport has actually shrunk by a keyboard-sized
+        // amount, and we position the bar via `top` = the visible viewport's bottom edge minus the bar height.
+        // That tracks the real keyboard on Android (resizes-visual — where a fixed bottom:0 would sit BEHIND the
+        // keyboard, the bug the owner hit) and iOS alike. `top` is clamped >= 0 so the bar can NEVER fly
+        // off-screen; if the viewport isn't shrunk (no keyboard, or unsupported) it stays in normal flow.
+        let _wantDock = false;
+        function refreshDock() {
           const vv = window.visualViewport;
-          const inset = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
-          row.style.bottom = inset + 'px';
+          const kbOpen = _wantDock && vv && (window.innerHeight - vv.height) > 120; // ~keyboard-sized shrink
+          if (kbOpen) {
+            row.classList.add('kb-docked');
+            const h = row.offsetHeight || 60;
+            row.style.top = Math.max(0, vv.offsetTop + vv.height - h) + 'px';
+          } else {
+            row.classList.remove('kb-docked');
+            row.style.top = '';
+          }
         }
-        ta.addEventListener('focus', function () { row.classList.add('kb-docked'); positionDock(); });
-        ta.addEventListener('blur', function () { row.classList.remove('kb-docked'); row.style.bottom = ''; });
+        ta.addEventListener('focus', function () { _wantDock = true; refreshDock(); });
+        ta.addEventListener('blur', function () { _wantDock = false; refreshDock(); });
         if (window.visualViewport) {
-          window.visualViewport.addEventListener('resize', positionDock);
-          window.visualViewport.addEventListener('scroll', positionDock);
+          window.visualViewport.addEventListener('resize', refreshDock);
+          window.visualViewport.addEventListener('scroll', refreshDock);
         }
         // Tapping the docked button must not blur the textarea first (that would un-dock it mid-tap and the
         // press could miss). Suppressing mousedown's default keeps focus on the field; the click still fires.
