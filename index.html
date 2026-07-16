@@ -1662,7 +1662,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.11</span>
+        <span class="header-version">v7.12</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1951,7 +1951,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.11 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.12 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2589,10 +2589,13 @@
                  shade is an illustrative garden-wide wash of the WHY (the house shadow). They are kept independent
                  ON PURPOSE: editing a sun cell moves the pills only; moving the shade line moves the shade only.
                  Do NOT wire one to the other.
-                 TUNING: the rect covers the whole garden east (house side) of its LEFT edge (currently x120) and
-                 fades out at that edge — move that x to set how far the deepest-winter shade reaches toward the
-                 street. #plotShadeLine is a dashed marker riding that leading (south) edge so the owner can line
-                 it up against the real shadow. Clipped to the garden outline (#plotGardenClip = the ground
+                 TUNING: the rect covers the whole garden east (house side) of its LEFT edge (x440 — pulled back
+                 from x120 on 16/07 against two deepest-winter photos, 12:16 + 15:00 on 14/07, w≈0.96: they show
+                 Plum + Redbud + the veg beds in FULL SUN even at solar noon, shadow only hugging the back-fence
+                 base, so the wash now sits over just the house-side margin — Peach Bed's back, the Shade Pots,
+                 the tree strip — the zone that genuinely loses winter sun). Move that x to set how far the
+                 deepest-winter shade reaches toward the street. #plotShadeLine is a dashed marker riding that
+                 leading (south) edge so the owner can line it up against the real shadow. Clipped to the garden outline (#plotGardenClip = the ground
                  polygon) so it covers the orchard trees + driveway strip but never spills past the boundary.
                  aria-hidden + pointer-events:none + no data-bed-id → tap / applyMapLive / the sun pills all skip
                  it (rule 15). Shown only when the ☀️ sun toggle is on; JS scales the INNER group toward the house
@@ -2607,11 +2610,11 @@
             </defs>
             <g id="plotHouseShade" aria-hidden="true" clip-path="url(#plotGardenClip)" style="display:none; pointer-events:none">
               <g id="plotHouseShadeScale">
-                <rect x="120" y="0" width="640" height="1074" fill="url(#plotShadeGrad)"/>
+                <rect x="440" y="0" width="320" height="1074" fill="url(#plotShadeGrad)"/>
                 <!-- Temporary shade-line marker (owner calibration aid, 06/07): a dashed border on the leading
                      SOUTH edge of the wash, to eyeball against the real shadow tomorrow. non-scaling-stroke so it
                      stays crisp as the wash breathes. Remove once the line is dialled in, if it reads as noise. -->
-                <line id="plotShadeLine" x1="120" y1="0" x2="120" y2="1074" stroke="#7fd0ff" stroke-width="2" stroke-dasharray="7 6" opacity="0.85" vector-effect="non-scaling-stroke"/>
+                <line id="plotShadeLine" x1="440" y1="0" x2="440" y2="1074" stroke="#7fd0ff" stroke-width="2" stroke-dasharray="7 6" opacity="0.85" vector-effect="non-scaling-stroke"/>
               </g>
             </g>
 
