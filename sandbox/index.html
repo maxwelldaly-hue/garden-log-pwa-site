@@ -1624,7 +1624,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.84</span>
+        <span class="header-version">v6.85</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1894,7 +1894,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.84 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.85 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -1959,14 +1959,13 @@
             <div id="devMapLint" class="dev-kv">—</div>
           </div>
 
-          <!-- One-tap maintenance jobs — so the owner runs them from the app, never the Apps Script editor
-               (runShedMigration → 'migrateShedCategories' action → migrateShedCategoriesToFour). Idempotent. -->
+          <!-- One-tap maintenance jobs — so the owner runs them from the app, never the Apps Script editor.
+               (The one-off "Re-tag Shed categories" + "Rename Window (House)→House Window" migrations were
+               retired v6.85 once complete — the shed is on the 4 categories and the bed is renamed.) -->
           <div class="dev-section">
             <h4 class="dev-h">Maintenance</h4>
-            <p class="dev-note">One-tap jobs. <strong>Re-tag Shed categories</strong> updates your existing supplies to the current 4 categories (Tools &amp; Hardware · Feed &amp; Soil · Seeds &amp; Seedlings · Pest &amp; Weed Control). <strong>Sync category order</strong> makes sure every category you use has a row on the <em>Shed Categories</em> tab, where you set the display order (edit the Order column — blank sorts last). <strong>Rename Window (House) → House Window</strong> reconciles the nursery bed's name across the Sheet (plants, Blueprint, Log) so it matches the Blueprint. All safe to tap more than once. <strong>Clear un-captured seed entries</strong> removes old description-only seed packets that can't open a passport, so you can re-add them fresh from the packets — it confirms first and never touches a properly-captured seed.</p>
-            <button class="settings-save-btn" onclick="runShedMigration(this)">Re-tag Shed categories</button>
-            <button class="settings-save-btn" onclick="runShedCategorySync(this)" style="margin-top:8px;">Sync category order</button>
-            <button class="settings-save-btn" onclick="runBedRename(this)" style="margin-top:8px;">Rename Window (House) → House Window</button>
+            <p class="dev-note">One-tap jobs. <strong>Sync category order</strong> makes sure every category you use has a row on the <em>Shed Categories</em> tab, where you set the display order (edit the Order column — blank sorts last). <strong>Clear un-captured seed entries</strong> removes old description-only seed packets that can't open a passport, so you can re-add them fresh from the packets — it confirms first and never touches a properly-captured seed. Both safe to tap more than once.</p>
+            <button class="settings-save-btn" onclick="runShedCategorySync(this)">Sync category order</button>
             <button class="settings-save-btn" onclick="runClearShedSeeds(this)" style="margin-top:8px;">Clear un-captured seed entries</button>
             <div id="devMaintResult" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;"></div>
           </div>
@@ -4223,8 +4222,8 @@ if (typeof module !== 'undefined' && module.exports) {
       // The Shed draws the same Open Crop-style sprite as plants — NEVER emoji. Per-item icons exist ONLY
       // for Tools & Hardware and Seeds & Seedlings; every other item falls back to its CATEGORY HEADER icon
       // (assets/shed-icons → ci-cat-*). Seasol keeps its own bespoke seaweed mark (handled at the call site).
-      // Tolerant of BOTH the current 4-category names and the older names, so it renders correctly before AND
-      // after the one-off re-tag migration (migrateShedCategoriesToFour) runs on the Sheet.
+      // Tolerant of BOTH the current 4-category names and any older names a long-untouched row might still
+      // carry, so it renders correctly regardless (the one-off re-tag migration was retired v6.85).
       function shedToolIconId(item) {
         const n = String(item || '').toLowerCase();
         // Saw is checked BEFORE secateurs — "pruning saw" contains "prun" and would otherwise route to secateurs.
@@ -4567,37 +4566,9 @@ if (typeof module !== 'undefined' && module.exports) {
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
       }
 
-      // Dev-drawer maintenance: run the idempotent Shed category re-tag from the APP (no Apps Script editor).
-      // Calls the PIN-gated 'migrateShedCategories' action, shows the server's report, and refreshes the Shed.
-      function runShedMigration(btn) {
-        const out = document.getElementById('devMaintResult');
-        const pin = localStorage.getItem('garden_log_pin');
-        const token = localStorage.getItem('garden_log_token');
-        if (!pin && !token) { if (out) out.textContent = 'Enter your PIN in App Settings first.'; return; }
-        if (btn) { btn.disabled = true; btn.textContent = 'Re-tagging…'; }
-        if (out) out.textContent = 'Working…';
-        const reset = function () { if (btn) { btn.disabled = false; btn.textContent = 'Re-tag Shed categories'; } };
-        google.script.run
-          .withSuccessHandler(function (resStr) {
-            reset();
-            let res = null; try { res = JSON.parse(resStr); } catch (e) {}
-            if (res && res.status === 'success') {
-              if (out) out.textContent = (res.data && res.data.report) || 'Done.';
-              try { loadInventory(); } catch (e) {}   // repaint the Shed tab with the new categories
-            } else if (out) {
-              out.textContent = (res && res.message) ? res.message : 'Could not run — try again.';
-            }
-          })
-          .withFailureHandler(function (e) {
-            reset();
-            if (out) out.textContent = 'Could not run — ' + (e && e.message ? e.message : 'try again.');
-          })
-          .processClientRequest(JSON.stringify({ action: 'migrateShedCategories', token: token, pin: pin }));
-      }
-
       // Dev-drawer maintenance: ensure every in-use shed category has a row on the 'Shed Categories' order
       // tab (the supplies-side Blueprint). Calls the PIN-gated 'syncShedCategories' action, shows the report,
-      // and refreshes the Shed so any re-order takes effect. Mirrors runShedMigration.
+      // and refreshes the Shed so any re-order takes effect. Same shape as the other Dev-drawer maintenance calls.
       function runShedCategorySync(btn) {
         const out = document.getElementById('devMaintResult');
         const pin = localStorage.getItem('garden_log_pin');
@@ -4626,7 +4597,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
       // Dev-drawer maintenance: remove legacy description-only seed entries (no captured label facts) so the
       // owner can re-add them fresh from the packets (owner, 16/07). DESTRUCTIVE, so it confirms first and the
-      // server side is self-limiting (never removes a captured packet). Mirrors runShedMigration.
+      // server side is self-limiting (never removes a captured packet). Same shape as the other Dev-drawer maintenance calls.
       function runClearShedSeeds(btn) {
         const out = document.getElementById('devMaintResult');
         const pin = localStorage.getItem('garden_log_pin');
@@ -4652,35 +4623,6 @@ if (typeof module !== 'undefined' && module.exports) {
             if (out) out.textContent = 'Could not run — ' + (e && e.message ? e.message : 'try again.');
           })
           .processClientRequest(JSON.stringify({ action: 'clearShedSeedEntries', token: token, pin: pin }));
-      }
-
-      // Dev-drawer maintenance: rename the nursery bed 'Window (House)' -> 'House Window' across the Sheet
-      // (Current State + Blueprint + Log), reconciling the drifted name. Idempotent; refreshes the Garden.
-      // Mirrors runShedMigration. After it runs, the map + Garden tab bind to the new name on the next load.
-      function runBedRename(btn) {
-        const out = document.getElementById('devMaintResult');
-        const pin = localStorage.getItem('garden_log_pin');
-        const token = localStorage.getItem('garden_log_token');
-        if (!pin && !token) { if (out) out.textContent = 'Enter your PIN in App Settings first.'; return; }
-        if (btn) { btn.disabled = true; btn.textContent = 'Renaming…'; }
-        if (out) out.textContent = 'Working…';
-        const reset = function () { if (btn) { btn.disabled = false; btn.textContent = 'Rename Window (House) → House Window'; } };
-        google.script.run
-          .withSuccessHandler(function (resStr) {
-            reset();
-            let res = null; try { res = JSON.parse(resStr); } catch (e) {}
-            if (res && res.status === 'success') {
-              if (out) out.textContent = (res.data && res.data.report) || 'Done.';
-              try { refreshStateView(true); } catch (e) {}   // repaint the Garden tab under the new bed name
-            } else if (out) {
-              out.textContent = (res && res.message) ? res.message : 'Could not run — try again.';
-            }
-          })
-          .withFailureHandler(function (e) {
-            reset();
-            if (out) out.textContent = 'Could not run — ' + (e && e.message ? e.message : 'try again.');
-          })
-          .processClientRequest(JSON.stringify({ action: 'renameWindowHouse', token: token, pin: pin }));
       }
 
       // Dev-drawer: create (first tap) or ensure the per-instance Crop Reference book, then link it so the
