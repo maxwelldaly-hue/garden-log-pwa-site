@@ -1565,7 +1565,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.16</span>
+        <span class="header-version">v7.17</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1839,7 +1839,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.16 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.17 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9363,12 +9363,19 @@ if (typeof module !== 'undefined' && module.exports) {
       let _ppPushed = false;
       window.addEventListener('popstate', function () { if (ppOpen) closePassport(true); });
 
+      // Batch-identity passport key (docs/SCOPE-BATCH-IDENTITY.md rule 8): '#planted' rides the key so
+      // two batches of one crop in one bed open DISTINCT cards. Must mirror getAllPlantPassports'
+      // server key exactly (GardenSheet.js) or the bulk cache misses every plant.
+      function ppKeyFor(p, bedName) {
+        return String(p.key || (p.name + '@' + bedName)) + '#' + String(p.planted || '');
+      }
+
       function openPassport(p, bedName) {
         if (!p || ppOpen) return;
         const overlay = document.getElementById('passportOverlay');
         if (!overlay) return;
         ppOpen = true;
-        ppCurrentKey = String(p.key || (p.name + '@' + bedName));
+        ppCurrentKey = ppKeyFor(p, bedName);
         _ppLast = { p: p, bed: bedName };
         document.body.style.overflow = 'hidden';
         overlay.style.display = 'flex';
@@ -9514,6 +9521,7 @@ if (typeof module !== 'undefined' && module.exports) {
           .withFailureHandler(function () { if (ppOpen && ppCurrentKey === key) ppStoryFailed(!!_ppCache[key]); })
           .processClientRequest(JSON.stringify({
             action: 'getPlantPassport', crop: p.name, zone: bedName, planted: p.planted || '',
+            transplanted: p.transplanted || '',   // window-chapter bound (SCOPE-BATCH-IDENTITY rule 5)
             token: token, pin: pin
           }));
       }
