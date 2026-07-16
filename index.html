@@ -1624,7 +1624,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.85</span>
+        <span class="header-version">v6.86</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1886,6 +1886,12 @@
             <input type="password" id="pinInput" placeholder="Enter PIN">
           </div>
           <button class="settings-save-btn" onclick="saveSettings(this)">Save</button>
+          <!-- Filler (owner, 16/07): show/hide the reference OVERLAY from the Crop Reference book — the plant
+               card's "Typical <crop>" box + its botanical-name fallback, and the shed card's "(Adelaide)" sow
+               window. On = garden with typical reference facts filled in; off = only what you've captured.
+               Per-device, instant (fillerEnabled / toggleFiller). -->
+          <label class="dev-toggle" style="margin-top:14px;"><input type="checkbox" id="fillerToggle" checked onchange="toggleFiller(this)"> Filler</label>
+          <p class="dev-note" style="margin-top:4px;">Fills gaps on the passport cards with typical facts from your Crop Reference book — the “Typical <span aria-hidden="true">…</span>” box and the local sow window. Turn off to see only what you’ve captured yourself.</p>
         </div>
 
         <!-- Dashboard outbound links (Oracle + Spreadsheet) removed 12/07/2026: the oracle is now a
@@ -1894,7 +1900,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v6.85 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v6.86 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -4477,6 +4483,8 @@ if (typeof module !== 'undefined' && module.exports) {
       }
       function toggleSettings() {
         document.getElementById('settingsDrawer').classList.toggle('open');
+        // Reflect the stored Filler state whenever the drawer opens (the HTML defaults to checked = on).
+        try { const f = document.getElementById('fillerToggle'); if (f && typeof fillerEnabled === 'function') f.checked = fillerEnabled(); } catch (e) {}
       }
 
       // --- Hidden Dev drawer -----------------------------------------------------
@@ -8908,6 +8916,25 @@ if (typeof module !== 'undefined' && module.exports) {
         if (typeof refreshStateView === 'function') refreshStateView(true); // re-render rows with/without the tap
       }
 
+      // Filler (owner, 16/07): the App Settings toggle for the reference OVERLAY — the generic Crop Reference
+      // facts the app lays over the user's own data, in the THREE places it shows: the plant card's "Typical
+      // <crop>" box, that card's reference-sourced botanical-name fallback, and the shed card's local
+      // "(Adelaide)" sow window. ON by default (the stored flag is the OFF state, like the passport kill
+      // switch), so a fresh device shows the overlay. OFF => the garden shows ONLY the user's own captured
+      // facts. DISPLAY-ONLY: the behind-the-scenes date estimates (sprout/harvest) still read the reference
+      // book — this gates what's SHOWN, not the math.
+      function fillerEnabled() {
+        try { return localStorage.getItem('garden_filler_off') !== '1'; } catch (e) { return true; }
+      }
+      function toggleFiller(cb) {
+        try {
+          if (cb.checked) localStorage.removeItem('garden_filler_off');
+          else localStorage.setItem('garden_filler_off', '1');
+        } catch (e) {}
+        // Repaint an open passport so the overlay appears/disappears at once (usually closed — a no-op then).
+        if (ppOpen && _ppLast) { try { ppRender(_ppLast.p, _ppLast.bed, _ppCache[ppCurrentKey], false); } catch (e) {} }
+      }
+
       // Story cache — PERSISTENT (localStorage) + prefetched in bulk. A GAS request costs ~5-7s of pure
       // invocation overhead whatever it returns (measured 15/07), so per-plant on-demand fetches feel slow.
       // Instead ONE background getAllPlantPassports request (same single bounded Log read serves every
@@ -8957,6 +8984,8 @@ if (typeof module !== 'undefined' && module.exports) {
         try {
           const t = document.getElementById('devPassportToggle');
           if (t) t.checked = ppEnabled();
+          const f = document.getElementById('fillerToggle');
+          if (f) f.checked = fillerEnabled();
           ppPrefetchAll();
         } catch (e) {}
       }, 5000);
@@ -9201,7 +9230,9 @@ if (typeof module !== 'undefined' && module.exports) {
         //     catch-all (the beta test packet predates those columns).
         const lf = item.labelFacts || {};
         const other = lf.other || '';
-        const sowWhen = item.sowMonths
+        // Filler ON: the local Adelaide window (reference overlay) wins. Filler OFF: show only the packet's
+        // own sow text — the reference calendar is suppressed (owner, 16/07 — "purely their data").
+        const sowWhen = (item.sowMonths && fillerEnabled())
           ? (ppFormatSowMonths(item.sowMonths) + ' (Adelaide)')
           : (lf.sow || ppOtherFact(other, /^when$|sow|season|plant/i));
         const facts = ppFactsEl({ labelFacts: Object.assign({}, lf, {
@@ -9310,9 +9341,9 @@ if (typeof module !== 'undefined' && module.exports) {
         sub.textContent = bits.join(' · ');
         txt.appendChild(sub);
         // Botanical name (owner, 15/07): the packet's captured LabelLatin wins; the species reference
-        // fills in otherwise. Quiet italic — a passport detail, not a headline.
+        // fills in otherwise (but only when Filler is on — the reference latin is overlay data). Quiet italic.
         const latin = (p.labelFacts && String(p.labelFacts.latin || '').trim())
-          || (p.reference && p.reference.latin) || '';
+          || (fillerEnabled() && p.reference && p.reference.latin) || '';
         if (latin) {
           const li = document.createElement('div');
           li.className = 'pp-latin';
@@ -9412,6 +9443,7 @@ if (typeof module !== 'undefined' && module.exports) {
       // captured label fact always wins; its key simply doesn't appear here.
       const PP_REF_DISPLAY = [['sun', 'Sun'], ['spacing', 'Spacing'], ['height', 'Height'], ['harvest', 'Harvest']];
       function ppReferenceEl(p) {
+        if (!fillerEnabled()) return null;   // the "Typical" box is reference overlay — hidden when Filler is off
         const ref = p.reference;
         if (!ref) return null;
         const f = p.labelFacts || {};
