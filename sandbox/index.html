@@ -1654,7 +1654,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.02</span>
+        <span class="header-version">v7.04</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1943,7 +1943,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.02 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.04 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6964,10 +6964,11 @@ if (typeof module !== 'undefined' && module.exports) {
       }
 
       // The SINGLE to-confirm surface: ONE banner above all tabs carrying BOTH garden cards and shed
-      // drafts as tappable chips (each opens the shared resolve dialog for its own domain). A leading
-      // icon marks which is which (🌱 garden · 🛖 shed). Hidden entirely when nothing needs confirming,
-      // so it's silent on a clean day. Garden + shed used to live on two different surfaces (banner vs a
-      // card inside the Shed tab); this unifies them on the banner.
+      // drafts as tappable chips (each opens the shared resolve dialog for its own domain). No domain
+      // emoji on the chips — with the one-Log button the old 🌻/🛖 badge on each name confused more than
+      // it clarified (owner, 16/07), so a chip is just the name. Hidden entirely when nothing needs
+      // confirming, so it's silent on a clean day. Garden + shed used to live on two different surfaces
+      // (banner vs a card inside the Shed tab); this unifies them on the banner.
       function rebuildToConfirmBanner() {
         const banner = document.getElementById('tidyBanner');
         const chips = document.getElementById('tidyChips');
@@ -6981,18 +6982,18 @@ if (typeof module !== 'undefined' && module.exports) {
         document.getElementById('tidyNoun').textContent = (total === 1) ? 'thing' : 'things'; // "1 thing / N things to confirm" (rule 24)
         chips.innerHTML = '';
         visibleGarden.forEach(function (card) {
-          chips.appendChild(toConfirmChip('🌻', card.name, function () { openGardenResolve(card); }));
+          chips.appendChild(toConfirmChip(card.name, function () { openGardenResolve(card); }));
         });
         visibleShed.forEach(function (draft) {
-          chips.appendChild(toConfirmChip('🛖', draft.item, function () { openShedResolve(draft); }));
+          chips.appendChild(toConfirmChip(draft.item, function () { openShedResolve(draft); }));
         });
         banner.style.display = 'flex';
       }
 
-      function toConfirmChip(icon, label, onClick) {
+      function toConfirmChip(label, onClick) {
         const b = document.createElement('button');
         b.type = 'button';
-        b.textContent = icon + ' ' + label;
+        b.textContent = label;
         b.onclick = onClick;
         return b;
       }
@@ -9426,6 +9427,22 @@ if (typeof module !== 'undefined' && module.exports) {
         return '';
       }
 
+      // "3 drops" — the packet's watering-droplet icons, read literally by OCR — reads as a plain word.
+      // Diggers-style packets use 1–3 drops for low→high water need; anything the pattern doesn't recognise
+      // passes through untouched (owner, 16/07 — "3 drops" was too cryptic).
+      function ppWaterLevel(v) {
+        const s = String(v || '').trim();
+        const m = s.match(/(\d+)\s*drop/i);
+        if (!m) return s;
+        return ({ '1': 'Low', '2': 'Moderate', '3': 'High' })[m[1]] || s;
+      }
+      // "90" (a bare germination percentage) regains the % it lost in OCR -> "90%". An already-marked value
+      // ("90%", "7–14 days") passes through unchanged (owner, 16/07).
+      function ppGermination(v) {
+        const s = String(v || '').trim();
+        return /^\d{1,3}$/.test(s) ? s + '%' : s;
+      }
+
       // Established = the passport stops being a first-season journey and gives way to the quiet season/status
       // line. Three ways in: (Move 3) it's a species that lives for years — a perennial herb/tree is
       // established from day one, never a first-season plant, so mint at 10 months stops reading "Growing 287
@@ -9589,21 +9606,26 @@ if (typeof module !== 'undefined' && module.exports) {
 
         // "From the label" — the whole point. Same renderer as the plant card, but the SHED's fuller tier
         // (PP_SHED_FACT_DISPLAY): an unsown packet is defined by its sowing facts, so Sow/Spacing/Germination
-        // show here where the plant card hides them. Three fields are SYNTHESISED before rendering:
+        // show here where the plant card hides them. A few fields are SYNTHESISED / tidied before rendering:
         //   • sowWhen — the LOCAL Adelaide window (item.sowMonths) wins the slot; the packet's own sow text
         //     is only the fallback (owner, 16/07 — sow timing is location-dependent, the one fact where the
         //     region's calendar outranks the label).
+        //   • water / germination — OCR literals tidied to plain words (ppWaterLevel / ppGermination).
         //   • seedcount / bestbefore — typed columns when captured, else recovered from the LabelOther
         //     catch-all (the beta test packet predates those columns).
         const lf = item.labelFacts || {};
         const other = lf.other || '';
-        // Filler ON: the local Adelaide window (reference overlay) wins. Filler OFF: show only the packet's
-        // own sow text — the reference calendar is suppressed (owner, 16/07 — "purely their data").
-        const sowWhen = (item.sowMonths && fillerEnabled())
+        // Sow timing is location-truth, so the local Adelaide window ALWAYS wins the Sow line — for seeds and
+        // garden alike (owner, 16/07 — "Adelaide always wins for both"). It's the one fact the region's calendar
+        // outranks the label AND the filler toggle; the packet's own sow text is only the fallback when we have
+        // no Adelaide window for that crop (e.g. a generic unnamed seed with no crop match).
+        const sowWhen = item.sowMonths
           ? (ppFormatSowMonths(item.sowMonths) + ' (Adelaide)')
           : (lf.sow || ppOtherFact(other, /^when$|sow|season|plant/i));
         const facts = ppFactsEl({ labelFacts: Object.assign({}, lf, {
           sowWhen: sowWhen,
+          water: ppWaterLevel(lf.water),
+          germination: ppGermination(lf.germination),
           seedcount: lf.seedcount || ppOtherFact(other, /seed ?count|seeds per|no\.? of seeds/i),
           bestbefore: lf.bestbefore || ppOtherFact(other, /best ?before|use ?by|sell ?by|expir/i)
         }), name: item.item }, PP_SHED_FACT_DISPLAY);
