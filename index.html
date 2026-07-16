@@ -922,10 +922,12 @@
       /* Hidden Dev drawer — opened by the discreet "Dev" link on the build stamp. */
       .dev-link { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 2px; }
       .dev-drawer { margin-top: 10px; }
-      /* Must comfortably EXCEED the Dev content height or the bottom (the scribe-rules list) is clipped —
-         .settings-drawer is overflow:hidden, and this overrides the 500px from .settings-drawer.open.
-         The content is ~1800px on a phone; keep generous headroom so added rules never clip again. */
-      .dev-drawer.open { max-height: 4000px; }
+      /* max-height drives the open/close animation, but .settings-drawer is overflow:hidden, so a cap shorter
+         than the real content silently CLIPS the bottom sections (the sandbox-refresh + scribe-rules) out of
+         reach — which is exactly what a too-small 4000px did once the garden grew. overflow:visible when open
+         is the belt-and-braces guarantee: the cap can never clip interactable content again, whatever its
+         length; the numeric value only sets the open-animation ceiling. */
+      .dev-drawer.open { max-height: 6000px; overflow: visible; }
       .dev-section { margin-bottom: 18px; }
       .dev-section:last-child { margin-bottom: 0; }
       .dev-h { font-size: var(--fs-sm); font-weight: 700; letter-spacing: var(--ls-tight); text-transform: uppercase; color: var(--text-muted); margin: 0 0 8px; }
@@ -1662,7 +1664,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.12</span>
+        <span class="header-version">v7.13</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1951,7 +1953,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.12 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.13 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -4751,14 +4753,17 @@ if (typeof module !== 'undefined' && module.exports) {
         const model = (readCachedGardenState() || {}).stateModel;
         const rows = cropIconCoverage(model);
         if (!rows.length) { box.textContent = 'No crops in the cached garden yet.'; return; }
-        const gaps = rows.filter(function (r) { return !r.matched; }).length;
+        const gapRows = rows.filter(function (r) { return !r.matched; });
+        const gaps = gapRows.length;
         const head = '<div><span class="k">Coverage:</span> ' + (rows.length - gaps) + '/' + rows.length + ' matched'
           + (gaps ? ' · ' + gaps + ' gap' + (gaps === 1 ? '' : 's') : '') + '</div>';
-        box.innerHTML = head + rows.map(function (r) {
-          const mark = r.matched ? '✓' : '⚠';
-          const tail = r.matched ? (escapeHtml(r.id) + ' · ' + r.via) : 'no icon → generic-plant';
-          return '<div><span class="k">' + mark + ' ' + escapeHtml(r.name) + ':</span> ' + tail + '</div>';
-        }).join('');
+        // Only the gaps are actionable — list those, not every matched crop (the full list ran the drawer off
+        // the bottom). The head still carries the full count for reassurance.
+        box.innerHTML = head + (gaps
+          ? gapRows.map(function (r) {
+              return '<div><span class="k">⚠ ' + escapeHtml(r.name) + ':</span> no icon → generic-plant</div>';
+            }).join('')
+          : '<div class="k">All matched ✓</div>');
       }
 
       // Awareness twin of cropIconCoverage for the SHED: resolve every distinct supply to its icon id and flag
@@ -4795,15 +4800,17 @@ if (typeof module !== 'undefined' && module.exports) {
         try { groups = JSON.parse(localStorage.getItem('garden_inventory_cache') || '[]'); } catch (e) {}
         const rows = shedIconCoverage(groups);
         if (!rows.length) { box.textContent = 'No Tools/other supplies with an icon slot yet.'; return; }
-        const gaps = rows.filter(function (r) { return !r.matched; }).length;
+        const gapRows = rows.filter(function (r) { return !r.matched; });
+        const gaps = gapRows.length;
         const head = '<div><span class="k">Bespoke art:</span> ' + (rows.length - gaps) + '/' + rows.length + ' items'
           + (gaps ? ' · ' + gaps + ' on the generic box' : '') + '</div>';
-        box.innerHTML = head + rows.map(function (r) {
-          const mark = r.matched ? '✓' : '⚠';
-          const tail = r.matched ? escapeHtml(r.id)
-            : (r.plantInShed ? 'generic-plant — check its category' : 'generic box (no specific art)');
-          return '<div><span class="k">' + mark + ' ' + escapeHtml(r.name) + ':</span> ' + tail + '</div>';
-        }).join('');
+        // Gaps-only, same as the crop twin — a full every-supply list is what overran the drawer.
+        box.innerHTML = head + (gaps
+          ? gapRows.map(function (r) {
+              const tail = r.plantInShed ? 'generic-plant — check its category' : 'generic box (no specific art)';
+              return '<div><span class="k">⚠ ' + escapeHtml(r.name) + ':</span> ' + tail + '</div>';
+            }).join('')
+          : '<div class="k">All have bespoke art ✓</div>');
       }
 
       // Map binding lint (engineering brief A3): the map binds each SVG zone to a bed by VERBATIM
