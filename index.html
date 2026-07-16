@@ -1624,7 +1624,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.89</span>
+        <span class="header-version">v6.90</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1900,7 +1900,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v6.89 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v6.90 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -1929,8 +1929,9 @@
                read-only, ~15 text calls (no photos → light on quota). -->
           <div class="dev-section">
             <h4 class="dev-h">Scribe check</h4>
-            <p class="dev-note">Runs a set of representative notes through the <em>live</em> scribe and checks each against its known-correct answer — the only way to catch a classification regression, since the scribe's understanding step can't be unit-tested. Tap this <strong>before and after</strong> any change to the scribe rules to compare. Uses the AI (~15 quick text reads, no photos, so it's light on quota) and writes nothing. Needs your PIN and a connection.</p>
-            <button class="settings-save-btn" onclick="runScribeCheck(this)">Run scribe check</button>
+            <p class="dev-note">Runs a set of representative notes through the <em>live</em> scribe and checks each against its known-correct answer — the only way to catch a classification regression, since the scribe's understanding step can't be unit-tested. Tap this <strong>before and after</strong> any change to the scribe rules to compare. The calls are <strong>spaced out</strong> to stay under the AI's rate limit, so a full run takes a few minutes; <strong>Routing only</strong> re-checks just the garden-vs-shed decision (~23 reads, quicker). No photos, writes nothing. Needs your PIN and a connection.</p>
+            <button class="settings-save-btn" onclick="runScribeCheck(this)">Run full check</button>
+            <button class="settings-save-btn" onclick="runScribeCheck(this, 'routing')" style="margin-left:6px;">Routing only</button>
             <div id="devScribeCheck" class="dev-kv" style="margin-top:8px;"></div>
           </div>
 
@@ -4848,28 +4849,34 @@ if (typeof module !== 'undefined' && module.exports) {
       // Scribe check (the test seam for prompt changes): runs the live scribe over a representative case set
       // server-side (runScribeRegression) and renders pass/fail + what it produced per case. Online + PIN only.
       // The run makes ~15 text-scribe calls, so it takes ~20-30s — the button self-labels while it waits.
-      function runScribeCheck(btn) {
+      function runScribeCheck(btn, mode) {
         const box = document.getElementById('devScribeCheck');
         if (!box) return;
         const pin = localStorage.getItem('garden_log_pin');
         const token = localStorage.getItem('garden_log_token');
         if (!isOnline || !(pin || token)) { box.textContent = 'Connect + enter your PIN to run this.'; return; }
+        // Calls are throttled server-side to respect the model's RPM cap (~4s/call), so the wait is minutes,
+        // not seconds — routing-only (~23 calls) is quicker than the full set (~42). Disable BOTH buttons so a
+        // second run can't stack on the first (that's what blew the rate limit before).
+        const btns = box.parentNode ? box.parentNode.querySelectorAll('button') : [btn];
+        const routing = (mode === 'routing');
         const label0 = btn.textContent;
-        btn.disabled = true; btn.textContent = 'Running… (~30s)';
-        box.textContent = 'Running the live scribe over the check set…';
+        btns.forEach(function (b) { b.disabled = true; });
+        btn.textContent = routing ? 'Running… (~1–2 min)' : 'Running… (~3–4 min)';
+        box.textContent = 'Running the live scribe over the ' + (routing ? 'routing' : 'full') + ' check set — calls are spaced to respect the rate limit, so this takes a few minutes…';
         google.script.run
           .withSuccessHandler(function (resStr) {
-            btn.disabled = false; btn.textContent = label0;
+            btns.forEach(function (b) { b.disabled = false; }); btn.textContent = label0;
             let res = null; try { res = JSON.parse(resStr); } catch (e) {}
             const r = res && res.data && res.data.scribeRegression;
             if (!r) { box.textContent = 'Could not run the check.'; return; }
             renderScribeCheck(r);
           })
           .withFailureHandler(function (e) {
-            btn.disabled = false; btn.textContent = label0;
+            btns.forEach(function (b) { b.disabled = false; }); btn.textContent = label0;
             box.textContent = 'Could not run — ' + (e && e.message ? e.message : 'try again.');
           })
-          .processClientRequest(JSON.stringify({ action: 'runScribeRegression', token: token, pin: pin }));
+          .processClientRequest(JSON.stringify({ action: 'runScribeRegression', token: token, pin: pin, mode: (routing ? 'routing' : 'full') }));
       }
       // Render the harness result. Built with textContent (never innerHTML) — the notes are fixed, but the
       // "got" / problem strings echo live scribe output, so they must never be able to inject markup.
@@ -4877,7 +4884,8 @@ if (typeof module !== 'undefined' && module.exports) {
         const box = document.getElementById('devScribeCheck');
         box.innerHTML = '';
         const head = document.createElement('div');
-        const strong = document.createElement('span'); strong.className = 'k'; strong.textContent = 'Result: ';
+        const strong = document.createElement('span'); strong.className = 'k';
+        strong.textContent = 'Result' + (r.mode === 'routing' ? ' (routing only)' : '') + ': ';
         head.appendChild(strong);
         head.appendChild(document.createTextNode(r.passed + '/' + r.total + ' passed'
           + (r.failed ? ' · ' + r.failed + ' failed' : '')
