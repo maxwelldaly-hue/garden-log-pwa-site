@@ -179,10 +179,6 @@
       /* A reversed/retracted entry — dimmed + struck so it reads as "undone", a visible trace (never hidden). */
       .recent-reversed { opacity: 0.55; }
       .recent-reversed .recent-head { text-decoration: line-through; }
-      /* Verify cancel bar — shown only while resolving a to-confirm card (no standalone toggle now). */
-      .verify-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: var(--fs-sm); color: var(--color-terracotta); margin-bottom: 4px; }
-      .verify-cancel { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); border-radius: var(--r-sm); padding: 4px 12px; font-size: var(--fs-sm); cursor: pointer; }
-
       /* Shared resolve dialog — one centred modal frame for confirming a garden "to confirm" card OR a
          shed draft (body built per-domain in JS). Replaces the old verify-via-textbox flow. */
       .resolve-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
@@ -312,8 +308,8 @@
       textarea:focus { border-color: var(--color-sage); }
 
       .controls-row { display: flex; gap: 10px; align-items: stretch; }
-      /* Dictate/Photo/Upload are neutral input actions (grey) so colour is reserved for the destination
-         (Save to Garden / Shed). Dictate flashes red only while actively recording (.recording). */
+      /* Dictate/Photo/Upload are neutral input actions (grey) so colour is reserved for the primary
+         ➤ Log entry action. Dictate flashes red only while actively recording (.recording). */
       .mic-btn { flex: 1; background-color: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-input); border-radius: var(--r-lg); padding: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.1s; }
       .mic-btn:active { transform: scale(0.98); }
       .mic-btn.recording { background-color: var(--rec-red); animation: pulseRecording 1.5s infinite; }
@@ -581,23 +577,6 @@
       /* (Life-phase, step 4) the .plant-stage-badge / .stage-* rules were removed with the Stage badge —
          they were already dead (the code used a non-matching `stage-badge` class). Lifecycle now reads from
          the derived phase (nursery icons + harvest/yield lines), not a botanical badge. */
-      .plant-row-details {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        padding-left: 6px;
-        border-left: 2px solid var(--border-color);
-        margin-left: 4px;
-        margin-top: 2px;
-      }
-      .plant-detail-item {
-        font-size: var(--fs-sm);
-        color: var(--text-muted);
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-
       .queue-banner { background-color: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: var(--r-md); padding: 10px 16px; font-size: var(--fs-base); color: var(--amber-400); display: none; align-items: center; justify-content: space-between; margin-bottom: 15px; }
 
       /* Shed item rows reuse .plant-row; the quantity sits right (muted), the description/link below. */
@@ -637,31 +616,9 @@
       .icon { width: 24px; height: 24px; fill: currentColor; }
       .icon-sm { width: 18px; height: 18px; fill: currentColor; }
 
-      /* Tags & Metrics */
-      .tags-container { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-      .tag-pill { background: var(--bg-input); color: var(--text-muted); border: 1px solid var(--border-input); border-radius: var(--r-xl); padding: 6px 12px; font-size: var(--fs-sm); cursor: pointer; transition: all 0.2s; }
-      .tag-pill.active { background: var(--color-sage); color: #fff; border-color: var(--color-sage); }
-
-      .metrics-container { display: none; margin-bottom: 12px; animation: slideDown 0.2s ease-out; }
-      .metrics-container.active { display: block; }
-      .metrics-input { width: 100%; background-color: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-input); border-radius: var(--r-sm); padding: 12px 14px; font-size: var(--fs-base); outline: none; }
-      .metrics-input:focus { border-color: var(--color-terracotta); }
-
-      /* Toggle Switch */
-      .switch { position: relative; display: inline-block; width: 46px; height: 26px; }
-      .switch input { opacity: 0; width: 0; height: 0; }
-      .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border-color); transition: .2s; border-radius: 26px; }
-      .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: #fff; transition: .2s; border-radius: var(--r-pill); }
-      input:checked + .slider { background-color: var(--blue-500); }
-      input:checked + .slider:before { transform: translateX(20px); }
-
-      /* Correction (🔧) — a pressable chip in the pill row (not a toggle switch). Amber so it reads
-         as a different kind of action; floats to the end of the row via margin-left:auto. */
-      .correction-chip { background: var(--bg-input); color: var(--amber-400); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: var(--r-xl); padding: 6px 12px; font-size: var(--fs-sm); cursor: pointer; margin-left: auto; transition: all 0.2s; }
-      .correction-chip.active { background: var(--amber-500); color: #fff; border-color: var(--amber-500); }
-      .correction-hint-line { font-size: var(--fs-sm); color: var(--amber-300); line-height: 1.3; margin-top: -6px; }
-      /* 0d — per-card resolve affordance on To-confirm cards */
-      .card-confirm-btn { flex: none; background: var(--amber-500); color: #fff; border: none; border-radius: var(--r-sm); padding: 6px 12px; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+      /* (The retired capture-era controls' CSS — tag pills, metrics inputs, the toggle switch, the
+         🔧 correction chips, the per-card confirm button — was removed as dead: no markup or JS creates
+         those classes since the resolve-dialog era.) */
 
       /* Environmental Insights Drawer */
       /* The Dashboard panel look is the canonical card style — Garden/Shed .bed-card is aligned to THESE
@@ -721,20 +678,6 @@
         transform: rotate(-90deg);
       }
       
-      .insight-row {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        margin-top: 15px;
-      }
-      .water-ring-wrapper {
-        position: relative;
-        width: 54px;
-        height: 54px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
       .water-ring-svg {
         transform: rotate(-90deg);
         transform-origin: 50% 50%;
@@ -754,12 +697,6 @@
         line-height: 1;
         color: var(--text-main);
       }
-      .ring-unit {
-        font-size: var(--fs-2xs);
-        font-weight: 600;
-        color: var(--text-muted);
-        margin-top: 1px;
-      }
       /* The Today/Tomorrow readout sits in its own inset "pot" (a nested rounded box, the same idea as a
          plant row inside a bed card) so it reads as a framed panel rather than text floating loose under the
          header. (An earlier rule trimmed the header's vertical padding while EXPANDED — it made the Weather
@@ -770,8 +707,6 @@
       #weatherPanel .insights-body { padding-top: 8px; gap: 9px; }
       .weather-box { background: var(--surface-inset-02); border: 1px solid var(--surface-inset-04); border-radius: var(--r-lg); padding: 14px 16px; }
       .weather-box .weather-grid { margin-bottom: 0; }
-      .weather-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-      .weather-title { font-size: var(--fs-base); font-weight: 600; color: var(--text-main); }
       /* Icon-led rows: one icon column + Today / Tomorrow value columns, so each metric emoji shows
          once (not repeated per column). The header row uses an empty icon cell + two column labels. */
       .weather-grid { display: grid; grid-template-columns: 26px 1fr 1fr; gap: 7px 14px; align-items: center; margin-bottom: 10px; position: relative; }
@@ -807,17 +742,6 @@
          Only rendered when the plant has a photo (renderLayoutModel), so it's never a dead end. */
       .plant-photo-link { margin-left: 6px; font-size: var(--fs-sm); text-decoration: none; opacity: 0.75; line-height: 1; }
       .plant-photo-link:hover, .plant-photo-link:focus { opacity: 1; }
-      .watering-tracker-insights {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        flex-grow: 1;
-      }
-      .tracker-title {
-        font-weight: 500;
-        font-size: var(--fs-base);
-      }
-
       /* Rain summary line under the Weather grid (7-day fallen + forecast). */
       .rain-line { font-size: var(--fs-sm); color: var(--text-muted); }
 
@@ -846,18 +770,8 @@
       .dev-simlabel { font-size: var(--fs-sm); color: var(--text-muted); min-width: 72px; }
       .dev-simbtn { background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-input); border-radius: var(--r-xs); padding: 4px 10px; font-size: var(--fs-xs); cursor: pointer; }
       .dev-simbtn:active { transform: scale(0.96); }
-      /* Rainfall on its own line under the Weather grid (§5): forecast figures stand out; the 7-day fallen
-         figure keeps the blue accent (carried over from the retired Water card's rain line). */
-      .rainfall-line #todayRain, .rainfall-line #tmrwRain { color: var(--text-main); font-weight: 600; }
       .water-unit { color: var(--text-muted); }
 
-      .insight-section {
-        background: var(--surface-inset-01);
-        border: 1px solid var(--surface-inset-03);
-        border-radius: var(--r-md);
-        padding: 12px;
-      }
-      
       /* Intervention alert chips — surfaced at the top of the insights drawer */
       .alert-stack { display: flex; flex-direction: column; gap: 8px; }
       .alert-chip {
@@ -1077,7 +991,7 @@
       .plot-fs {
         --plot-ground:#16233b;                 /* the plot boundary interior (just above bg-primary) */
         --plot-ink: var(--text-main); --plot-muted: var(--text-muted);
-        --plot-hair: var(--border-color); --plot-hair2:#3b4a63;
+        --plot-hair2:#3b4a63;
         /* category = fill (dark tint) · stroke (saturated) · text (light) */
         --plot-bed-f: rgba(45,138,96,0.30);  --plot-bed-s:#3fa373; --plot-bed-t:#a7e3c4;
         /* In-ground growing (herb strip + wine barrel): the SAME green family as a raised bed but a softer wash
@@ -1105,10 +1019,6 @@
          gap). It launches the full-screen map rather than collapsing, so its chevron rests pointing right (a
          "go/opens" mark) instead of down. */
       .plot-openmap-card .insights-arrow { transform: rotate(-90deg); }
-      .plot-warning { display: block; background: rgba(245,158,11,0.10); border: 1px solid rgba(245,158,11,0.35);
-        color: var(--amber-300); border-radius: 10px; padding: 9px 12px; margin: 10px 14px 0; font-size: var(--fs-xs); line-height: 1.5; }
-      .plot-warning strong { color: var(--amber-400); font-weight: 700; }
-      .plot-warning em { font-style: italic; color: var(--text-main); }
       .plot-legend { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 0; padding: 6px 12px 2px; font-size: var(--fs-2xs); color: var(--plot-muted); opacity: 0.85; }
       .plot-legend span { display: inline-flex; align-items: center; gap: 5px; }
       .plot-dot { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
@@ -1157,9 +1067,8 @@
       .plot-suntag-bg { fill: rgba(8,16,30,0.82); stroke: rgba(245,158,11,0.45); stroke-width: 0.75; pointer-events: none; }
       /* keep the chip solid even when .crops-on quiets the zone fills */
       #plotSvg.crops-on .plot-zone rect.plot-suntag-bg { fill-opacity: 1; }
-      /* Edit-mode placement grid: gridlines on rectangular beds, faint cell-dots on odd/pot zones. Draw-only
-         (non-interactive — placement is via the sheet picker); non-scaling stroke stays crisp at any zoom. */
-      .plot-gridline { stroke: var(--plot-hair2); stroke-width: 1; opacity: .5; pointer-events: none; vector-effect: non-scaling-stroke; }
+      /* Edit-mode placement grid: faint cell outlines. Draw-only (non-interactive — placement is via the
+         sheet picker); non-scaling stroke stays crisp at any zoom. */
       .plot-gridcell { fill: none; stroke: var(--plot-hair2); stroke-width: 1; opacity: .7; pointer-events: none; }
       /* Zone name labels — bold for legibility; hidden while the crop "images" overlay is on (JS toggles).
          ONE size for every zone name (owner, 13/07 font pass): sizes had drifted to 13–16px per-element (Redbud
@@ -1255,10 +1164,7 @@
         border: 1px solid var(--color-sage); border-radius: 10px; padding: 9px 12px; font-weight: 600;
         font-size: var(--fs-base); font-family: inherit; cursor: pointer; }
 
-      /* "✎ Arrange" edit mode: order (▲▼) + size (S/M/L) controls, hidden until the toggle is tapped. */
-      .plot-arrange-row { display: flex; justify-content: flex-end; margin: 2px 0 6px; }
-      .plot-arrange-toggle { background: none; border: 1px solid var(--border-color); color: var(--plot-muted);
-        border-radius: 8px; padding: 4px 10px; font-size: var(--fs-xs); font-family: inherit; cursor: pointer; min-height: 30px; }
+      /* "✎ Arrange" edit mode: order (▲▼) + size (S/M/L) controls (entered via the plot-arrange-cta button). */
       /* Edit row = a STABLE two-line shape regardless of name length: name on its own line (ellipsised),
          controls on the line below (order left, size/place right). This kills the old flex-wrap jitter where
          a long crop name shoved the size pills onto a ragged second line on some rows but not others. */
@@ -1659,7 +1565,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.15</span>
+        <span class="header-version">v7.16</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1704,11 +1610,11 @@
           </div>
           <div class="insights-body">
         <div class="input-container">
-          <!-- No capture-mode toggle: the destination is chosen at SAVE time by which button you press
-               (Save to Garden / Save to Shed), so there is no sticky hidden mode to leave set wrong (the
-               class of error that filed "purchased celery seeds" as a planting). Garden is the dominant
-               primary; Shed is a deliberate secondary. (Verifying a to-confirm card happens entirely via the
-               TOP-BANNER chips → shared resolve dialog, never through these save buttons.) -->
+          <!-- No capture-mode toggle: since the v7.15 one-button cutover the destination is chosen by the
+               SERVER router (partitionForRouting, GardenDoc.js) — one ➤ Log entry button, no sticky hidden
+               mode to leave set wrong (the class of error that filed "purchased celery seeds" as a planting).
+               (Verifying a to-confirm card happens entirely via the TOP-BANNER chips → shared resolve
+               dialog, never through the capture box.) -->
           <!-- Category pills, the yield button, and every standalone/per-card 🔧 Verify control are gone:
                the scribe classifies category + reads weights from the text, and "verify" is now resolving
                an AI-flagged "to confirm" card via the TOP BANNER chips, which open the shared RESOLVE
@@ -1933,7 +1839,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.15 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.16 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2080,14 +1986,10 @@
 
           <!-- Backend config, moved here from App Settings (v3.85): maintenance-only plumbing that a daily
                user should never touch. Editing any of these can break sync; the Gemini key is a secret.
-               Same input ids as before, so saveSettings() (still reading all four by id) is unchanged. -->
+               Same input ids as before, so saveSettings() (reading each by id) is unchanged. -->
           <div class="dev-section">
             <h4 class="dev-h">Backend config</h4>
             <p class="dev-note">Rarely touched. Wrong values here break sync — leave them unless you're setting the app up.</p>
-            <div class="form-group">
-              <label>Google Doc ID</label>
-              <input type="text" id="docIdInput" placeholder="Doc ID">
-            </div>
             <div class="form-group">
               <label>Weather Sheet ID</label>
               <input type="text" id="weatherSheetIdInput" placeholder="Google Sheet ID for Weather">
@@ -2142,13 +2044,6 @@
               <button class="dev-simbtn" onclick="devSimCare('seasol','red')">red</button>
               <button class="dev-simbtn" onclick="devSimCare('seasol','cold')">cold</button>
             </div>
-          </div>
-
-          <div class="dev-section">
-            <h4 class="dev-h">Plot snapshot (beta map)</h4>
-            <p class="dev-note">Freeze the current garden as a static point-in-time snapshot for the beta map. Tap <strong>Capture</strong> (on prod, with real data), copy the text, and send it to your agent to bake into beta. Read-only — nothing is uploaded.</p>
-            <button class="settings-save-btn" onclick="devCaptureSnapshot()">Capture snapshot</button>
-            <textarea id="devSnapshotOut" class="dev-kv" readonly style="display:none; width:100%; height:110px; margin-top:8px; font-size:11px;"></textarea>
           </div>
 
           
@@ -2210,8 +2105,7 @@
            optional crop "images" overlay live signals. A zone tap fills #plotFsSheet. The map binds LIVE on
            EVERY instance (prod + beta + friend copies, v4.42) — the SVG geometry is the original Morphettville
            garden, so an instance whose Blueprint keeps the default bed names lines up; renaming beds unbinds the
-           overlay (see docs/BETA-SETUP.md). (The old beta static-snapshot mode + plotIsStatic() gate are now
-           dormant — plotBetaWarning is gone so plotIsStatic() is always false.) AGENTS rule 15: overlays are
+           overlay (see docs/BETA-SETUP.md). AGENTS rule 15: overlays are
            text/getBBox only; zoom is viewBox-based (no transforms). -->
       <div id="plotFullscreen" class="plot-fs" style="display:none;">
         <div class="plot-fs-bar">
@@ -2711,12 +2605,12 @@
         </div><!-- /.plot-fs-body -->
       </div>
 
-      <!-- Shed: supplies (tools, fertilisers, treatments). Written by the pipeline via "Save to Shed"
-           (ShedLog→persistInventoryOp) and also hand-editable in the Sheet's Shed tab; this in-app TAB is
+      <!-- Shed: supplies (tools, fertilisers, treatments). Written by the pipeline via shed routing
+           (fileRoutedSupplies / legacy shedLogAction → persistInventoryOp) and also hand-editable in the Sheet's Shed tab; this in-app TAB is
            a read-only view (you log changes from the Dashboard, not by editing here). Collapsible category
            cards reuse the Current Layout bed-card pattern; categories sorted by the Order column. -->
       <div id="tab-inventory" class="tab-content">
-        <button type="button" class="ui-hint" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">Tools, fertilisers, treatments and seeds, grouped by type. A read-only view — you add things by logging "Save to Shed" from the Dashboard, by voice or a product photo. Uncertain reads wait as a ⚠ To confirm draft.</span></button>
+        <button type="button" class="ui-hint" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">Tools, fertilisers, treatments and seeds, grouped by type. A read-only view — you add things just by logging them from the Dashboard (the app files a supply to the Shed on its own), by voice or a product photo. Uncertain reads wait as a ⚠ To confirm draft.</span></button>
         <div class="state-container" id="inventoryContainer">Loading inventory…</div>
       </div>
 
@@ -4225,43 +4119,8 @@ if (typeof module !== 'undefined' && module.exports) {
         return '📦';
       }
 
-      // Per-ITEM emoji for a shed supply — the supplies counterpart to getPlantEmoji (garden plants).
-      // Specific keyword where one fits, neutral 📦 fallback (like the plant 🌱 fallback). First match
-      // wins, so order specific before generic. Kept to widely-rendering glyphs (no brand-new codepoints).
-      const SHED_ITEM_EMOJI = [
-        [/wheelbarrow|barrow/, '🛒'],
-        [/glove/, '🧤'],
-        [/secateur|prun|shear|scissor|snip|clipper/, '✂️'],
-        [/knife|blade/, '🔪'],
-        [/rake|hoe|fork|trowel|spade|shovel|cultivat|weeder/, '🛠️'],
-        [/spoon/, '🥄'],
-        [/watering can|bucket|tub|trug/, '🪣'],
-        [/hose|sprinkler|dripper|irrigation/, '🚿'],
-        [/scale|weigh/, '⚖️'],
-        [/snail|slug|pellet/, '🐌'],
-        [/pesticid|insecticid|fungicid|spray|neem|pyrethrum|copper|sulfur|sulphur/, '🧪'],
-        [/seaweed|fish|blood.?and.?bone|blood.?bone|fertil|tonic|nutrient|\bfeed\b|guano|worm.?cast|potash/, '🧴'],
-        [/manure/, '🐄'],
-        [/compost/, '🌰'],
-        [/mulch|straw|bark|wood ?chip|sugar ?cane/, '🍂'],
-        [/potting mix|soil|perlite|vermiculite|coir|peat/, '🪴'],
-        [/stake|bamboo/, '🎋'],
-        [/twine|string|\btie\b|ties|wire/, '🧵'],
-        [/net|mesh|exclusion/, '🕸️'],
-        [/shade ?cloth|frost ?cloth|hessian|cloth|fabric/, '🧶'],
-        [/\bpot\b|\bpots\b|tray|punnet|container/, '🪴'],
-        [/screw|nail|bolt|\bnut\b|bracket|hook|\bclip\b/, '🔩'],
-        [/label|marker|\btag\b|\bpen\b/, '🏷️'],
-        [/seedling|punnet/, '🌱'],
-        [/seed/, '🫘'],
-        [/laptop|computer|tablet|phone/, '💻'],
-        [/book|guide|manual/, '📖']
-      ];
-      function getShedItemEmoji(name) {
-        const n = String(name || '').toLowerCase();
-        for (let i = 0; i < SHED_ITEM_EMOJI.length; i++) if (SHED_ITEM_EMOJI[i][0].test(n)) return SHED_ITEM_EMOJI[i][1];
-        return '📦';
-      }
+      // (The old per-item SHED_ITEM_EMOJI table + getShedItemEmoji were removed — orphaned since the Shed
+      // moved to sprite icons; registry.json's vocab-getShedItemEmoji row records the retirement.)
 
       // --- Shed icon resolver (v5.06 taxonomy reorg) ------------------------------------------------
       // The Shed draws the same Open Crop-style sprite as plants — NEVER emoji. Per-item icons exist ONLY
@@ -4393,7 +4252,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
         const realGroups = groups.filter(function (g) { return !isDraftCat(g.category); });
         if (!realGroups.length) {
-          box.innerHTML = '<div class="inv-empty">No supplies yet. Add them from the dashboard with the Shed button, or in the Shed tab in the Sheet.</div>';
+          box.innerHTML = '<div class="inv-empty">No supplies yet. Add them from the dashboard Log entry box, or in the Shed tab in the Sheet.</div>';
           return;
         }
         const grid = document.createElement('div');
@@ -4560,15 +4419,6 @@ if (typeof module !== 'undefined' && module.exports) {
       // banner rebuilt authoritatively when the response lands (success = card gone; error = it reappears).
       let resolvingGardenNames = []; // garden cards being resolved (by card.name), excl. rename (stays in tray)
       let resolvingShedItems = [];   // shed drafts being resolved (by draft.item)
-      // The log input lives in a collapsible panel — expand it before we try to focus the textarea,
-      // else focusing a hidden (collapsed) field does nothing.
-      function ensureLogPanelOpen() {
-        const p = document.getElementById('logPanel');
-        if (p && p.classList.contains('collapsed')) {
-          p.classList.remove('collapsed');
-          try { localStorage.setItem('log_collapsed', 'false'); } catch (e) {}
-        }
-      }
       function toggleSettings() {
         document.getElementById('settingsDrawer').classList.toggle('open');
         // Reflect the stored Filler state whenever the drawer opens (the HTML defaults to checked = on).
@@ -4590,8 +4440,8 @@ if (typeof module !== 'undefined' && module.exports) {
       // reveals a discreet ⓘ beside every hinted control (CSS in Stylesheet.html), and toggleHint expands
       // one at a time. DEFAULT: off on prod (the owner's daily surface stays clean), ON on beta so
       // Playground visitors get the point-of-use help that used to live in the Info tab's "Under the hood"
-      // manual. Beta is detected by the server-gated #playgroundWelcome element ("element present ⇒ beta",
-      // same trick as plotIsStatic). Once the owner flips the switch, the stored choice wins on both.
+      // manual. Beta is detected by the server-gated #playgroundWelcome element ("element present ⇒ beta").
+      // Once the owner flips the switch, the stored choice wins on both.
       // Persisted like every other client toggle (localStorage); applied on boot from Js-UI init.
       function applyHints() {
         const stored = localStorage.getItem('garden_show_hints');
@@ -5606,44 +5456,6 @@ if (typeof module !== 'undefined' && module.exports) {
       }
 
 
-      function getRelativeDateStr(dateStr, isFuture = false) {
-        if (!dateStr) return '';
-        const parts = dateStr.split('/');
-        if (parts.length !== 3) return '';
-        const day = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10) - 1;
-        const year = parseInt(parts[2], 10);
-        
-        const targetDate = new Date(year, month, day);
-        const today = new Date();
-        
-        targetDate.setHours(0, 0, 0, 0);
-        today.setHours(0, 0, 0, 0);
-        
-        const diffTime = targetDate - today;
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diffDays === 0) return 'today';
-        
-        if (isFuture) {
-          if (diffDays < 0) {
-            return `passed ${Math.abs(diffDays)}d ago`;
-          }
-          return `in ${diffDays}d`;
-        } else {
-          if (diffDays > 0) {
-            return `in ${diffDays}d`;
-          }
-          const daysAgo = Math.abs(diffDays);
-          if (daysAgo < 7) {
-            return `${daysAgo}d ago`;
-          }
-          const weeksAgo = Math.floor(daysAgo / 7);
-          const remainingDays = daysAgo % 7;
-          return remainingDays > 0 ? `${weeksAgo}w ${remainingDays}d ago` : `${weeksAgo}w ago`;
-        }
-      }
-
       // Paren-aware colon finder: the first ':' NOT inside parentheses — the bed/plants separator
       // (a ':' inside a metadata block doesn't count). The last surviving prose-parser helper: the bed-name
       // picker (getKnownBeds) still parses the cached prose state with it. (Phase 4 deleted its other
@@ -6560,7 +6372,7 @@ if (typeof module !== 'undefined' && module.exports) {
         const body = document.getElementById('resolveBody');
         const actions = document.getElementById('resolveActions');
         document.getElementById('resolveTitle').textContent = 'Confirm “' + draft.item + '”';
-        document.getElementById('resolveSub').textContent = "Added via Save to Shed. Set the category (and tidy the details), or bin it.";
+        document.getElementById('resolveSub').textContent = "Filed to the Shed to confirm. Set the category (and tidy the details), or bin it.";
         body.innerHTML = '';
         actions.innerHTML = '';
 
@@ -6827,10 +6639,12 @@ if (typeof module !== 'undefined' && module.exports) {
           return;
         }
 
-        // Destination = which button was pressed (Garden default — e.g. the Enter key). The mode rides on
-        // the queued item so the offline replay (syncQueue) routes to the right scribe. Verifying a
-        // to-confirm card is NOT done here anymore — that's the resolve dialog (resolveCard), which never
-        // touches this box, so leftover text can never be mis-sent (the old "verify hangover").
+        // Since the v7.15 one-button cutover every caller passes 'garden' (the server router picks the
+        // domain), so `mode` is always 'garden' for NEW writes; the `dest` param survives only as the
+        // legacy shape. The mode still rides on the queued item because a pre-cutover phone can hold a
+        // mode:'shed' item in its persistent IndexedDB queue — syncQueue's isShed branch replays it to the
+        // right scribe. Verifying a to-confirm card is NOT done here — that's the resolve dialog
+        // (resolveCard), which never touches this box, so leftover text can never be mis-sent.
         const mode = (dest === 'shed') ? 'shed' : 'garden';
 
         // Unique per-submit id: a UUID, not Date.now(), so two saves in the same millisecond (double-tap,
@@ -6842,7 +6656,7 @@ if (typeof module !== 'undefined' && module.exports) {
           id: logId,
           rawText: text,
           photoData: currentPhotoData,
-          mode: mode, // 'garden' | 'shed' — selects the Router action in syncQueue
+          mode: mode, // always 'garden' since v7.15; 'shed' can only arrive from a pre-cutover queued item (selects the Router action in syncQueue)
           timestamp: Date.now()
         };
 
@@ -6903,6 +6717,12 @@ if (typeof module !== 'undefined' && module.exports) {
         if (!pin && !token) return;
 
         getLogsFromDB(logs => {
+          // Re-check INSIDE the async callback (§1.2): the guard at the top of syncQueue ran synchronously, so
+          // two triggers firing in the same burst (focus + visibilitychange) can both pass it before either sets
+          // isSyncing — both would then reach getLogsFromDB and double-send the head log. Everything from here to
+          // `isSyncing = true` below is synchronous, so this re-check + that set is atomic against a second
+          // callback. (Set stays AFTER the early returns below, so an empty/all-wedged queue never sticks it on.)
+          if (isSyncing) return;
           if (logs.length === 0) return;
           // UUID keys aren't insertion-ordered, so sort by capture time to keep FIFO replay (the state
           // machine applies events in sequence). Then pick the first log that hasn't exhausted its retries
@@ -6976,7 +6796,10 @@ if (typeof module !== 'undefined' && module.exports) {
                 // for an earlier queued log never claims a newer submit's chip. `typeof window` guard: the sync
                 // engine is unit-tested in a Node vm with no `window` (test/run-tests.js extracts syncQueue).
                 if (typeof window !== 'undefined') {
-                  if (res.data.unreadable) { dismissLogChip(); }
+                  // Both branches must be OWNERSHIP-GUARDED (§1.3): resolveLogChip already checks _chipLogId, but
+                  // the dismiss did not — an OLDER queued log returning `unreadable` would clear a NEWER submit's
+                  // "Logging…" chip and its "✓ Logged" would never show. Only touch the chip this response owns.
+                  if (res.data.unreadable) { if (_chipLogId === currentLog.id) dismissLogChip(); }
                   else { const cd = chipDomainFromRouted(res.data.routed); resolveLogChip(currentLog.id, cd.domain, cd.canChange); }
                 }
               } else {
@@ -7137,10 +6960,6 @@ if (typeof module !== 'undefined' && module.exports) {
       let plotPlaceKey = null;                   // crop key armed for tap-a-cell placement (null = not placing)
       let plotPlaceBedId = null;                 // bed the armed crop belongs to
 
-      // Beta = static prototype. Detected by the beta-only warning element (server-gated in Index.html),
-      // mirroring maybeShowPlaygroundWelcome's "element present ⇒ beta" trick. No live data in beta.
-      function plotIsStatic() { return !!document.getElementById('plotBetaWarning'); }
-
       // A "real" (live) plant, defined identically to the Garden renderer's tallyCount: not a free
       // 'Empty' slot and not a count=0 tombstone (harvested-to-empty / removed).
       function plotRealPlants(plants) {
@@ -7297,35 +7116,11 @@ if (typeof module !== 'undefined' && module.exports) {
         return '<div class="plot-sunrank">Sunniest this week:<ol>' + items + '</ol></div>';
       }
 
-      // Dev panel → freeze the current garden into a snapshot payload to paste into PlotSnapshot.html (beta
-      // map). Reads the cached stateModel ONLY and copies it locally — sends nothing anywhere. Run on prod
-      // (real data). The agent splits {capturedAt, model} into PLOT_SNAPSHOT / PLOT_SNAPSHOT_DATE + redeploys.
-      function devCaptureSnapshot() {
-        const out = document.getElementById('devSnapshotOut');
-        if (!out) return;
-        out.style.display = '';
-        let model = null;
-        try { model = JSON.parse(localStorage.getItem('garden_log_state_v2') || 'null'); } catch (e) {}
-        if (!model) { out.value = 'No cached garden state yet — open the Garden tab first, then tap Capture again.'; return; }
-        const d = new Date();
-        const asOf = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
-        const payload = JSON.stringify({ capturedAt: asOf, model: model });
-        out.value = payload;
-        out.focus(); out.select();
-        try {
-          navigator.clipboard.writeText(payload).then(
-            function () { showToast('Snapshot copied — paste it to your agent'); },
-            function () { showToast('Select the text above and copy it'); });
-        } catch (e) { showToast('Select the text above and copy it'); }
-      }
-
       // Overlay live signals on the category-coloured map: a plant-count badge per bed, and (if the images
       // toggle is on) flat crop icons inside each box. Does NOT touch zone fills — colour stays by category.
-      function applyMapLive(model, isSnapshot) {
+      function applyMapLive(model) {
         const svg = document.getElementById('plotSvg');
-        // Static (beta) normally paints no data — EXCEPT a baked-in frozen snapshot (isSnapshot=true),
-        // which is a point-in-time copy, not a live bind. Taps still show name/dims only (see plotSelectZone).
-        if (!svg || (plotIsStatic() && !isSnapshot)) return;
+        if (!svg) return;
         plotModel = model;
         plotModelById = {};
         if (model && model.beds) model.beds.forEach(function (b) { plotModelById[b.zone] = b; });
@@ -7960,8 +7755,8 @@ if (typeof module !== 'undefined' && module.exports) {
         const nameEl = document.getElementById('plotFsName');
         const detEl = document.getElementById('plotFsDetail');
         const id = z.getAttribute('data-bed-id');
-        const bed = (!plotIsStatic() && id) ? plotModelById[id] : null;
-        if (bed) {                                    // prod, live data present → plants + jump
+        const bed = id ? plotModelById[id] : null;
+        if (bed) {                                    // live data present → plants + jump
           const rp = plotRealPlants(bed.plants);
           // Arrange is PER BED (no global toggle): a bed opens in plain VIEW with an "✎ Arrange this bed"
           // button; that flips plotArrangeMode on for this bed only. Switching to a different bed drops back to
@@ -8018,7 +7813,6 @@ if (typeof module !== 'undefined' && module.exports) {
       function plotSetArrange(on) {
         plotArrangeMode = !!on;
         if (!plotArrangeMode) plotCancelPlace(true);
-        if (plotIsStatic()) { plotRerenderSheet(); return; }   // beta has no live beds to arrange
         applyMapLive(readCachedGardenState().stateModel);       // repaints overlays + re-renders the sheet
         if (plotArrangeMode && plotArrangeBedId) {              // zoom in on the bed you're arranging.
           const zones = plotBedZones(plotArrangeBedId);
@@ -8157,16 +7951,6 @@ if (typeof module !== 'undefined' && module.exports) {
         overlay.classList.remove('editing');
         plotZoomReset();                                        // fit the map to the stage
 
-        if (plotIsStatic()) {                                   // beta: no live bind — paint a frozen snapshot if one's baked in
-          if (typeof PLOT_SNAPSHOT !== 'undefined' && PLOT_SNAPSHOT) {
-            const asOf = document.getElementById('plotSnapshotAsOf');
-            if (asOf && typeof PLOT_SNAPSHOT_DATE !== 'undefined' && PLOT_SNAPSHOT_DATE) asOf.textContent = ' (as of ' + PLOT_SNAPSHOT_DATE + ')';
-            applyMapLive(PLOT_SNAPSHOT.model || PLOT_SNAPSHOT, true);   // accept {capturedAt,model} or a bare model
-          } else {
-            plotClearOverlays();
-          }
-          return;
-        }
         applyMapLive(readCachedGardenState().stateModel);       // instant paint from cache
         if (isOnline) {                                         // revalidate in the background
           const pin = localStorage.getItem('garden_log_pin');
@@ -8385,8 +8169,7 @@ if (typeof module !== 'undefined' && module.exports) {
         });
         const it = document.getElementById('plotImgToggle');
         if (it) it.addEventListener('change', function () {
-          if (!plotIsStatic()) applyMapLive(readCachedGardenState().stateModel);
-          else if (typeof PLOT_SNAPSHOT !== 'undefined' && PLOT_SNAPSHOT) applyMapLive(PLOT_SNAPSHOT.model || PLOT_SNAPSHOT, true);
+          applyMapLive(readCachedGardenState().stateModel);
         });
         // Arrange is per-bed now (the "✎ Arrange this bed" button in each bed's sheet — plotSetArrange), so
         // there's no global "edit" toggle to wire here any more.
@@ -9047,11 +8830,9 @@ if (typeof module !== 'undefined' && module.exports) {
       // three backend inputs moved to the Dev drawer (v3.85) but keep the same ids, so this is unchanged.
       function saveSettings(btnEl) {
         const pin = document.getElementById('pinInput').value;
-        const docId = document.getElementById('docIdInput').value;
         const apiKey = document.getElementById('apiKeyInput').value;
         const weatherSheetId = document.getElementById('weatherSheetIdInput').value;
         localStorage.setItem('garden_log_pin', pin);
-        localStorage.setItem('garden_log_doc_id', docId);
         localStorage.setItem('garden_log_weather_sheet_id', weatherSheetId);
 
         const saveBtn = btnEl || document.querySelector('.settings-save-btn');
@@ -9081,7 +8862,7 @@ if (typeof module !== 'undefined' && module.exports) {
             }
             showToast("Error", "Failed to save settings: " + (err.message || "Unknown error"));
           })
-          .processClientRequest(JSON.stringify({ action: 'saveSettings', pin, docId, apiKey, weatherSheetId }));
+          .processClientRequest(JSON.stringify({ action: 'saveSettings', pin, apiKey, weatherSheetId }));
       }
 
       // First-run login gate (PIN auth is live — AUTH_DISABLED=false in Router.js). Shown until a PIN
@@ -9284,7 +9065,6 @@ if (typeof module !== 'undefined' && module.exports) {
           showToast('Limited mode', "This device's storage is unavailable, so notes can't be saved or queued here — reading still works. Try a normal (non-private) browser window.", null, { alert: true });
         }
         document.getElementById('pinInput').value = localStorage.getItem('garden_log_pin') || '';
-        document.getElementById('docIdInput').value = localStorage.getItem('garden_log_doc_id') || '';
         document.getElementById('weatherSheetIdInput').value = localStorage.getItem('garden_log_weather_sheet_id') || '';
 
         // Prefill each Dev cadence input pair from its stored (or default) threshold.
