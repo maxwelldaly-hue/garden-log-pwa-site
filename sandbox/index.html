@@ -1624,7 +1624,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.87</span>
+        <span class="header-version">v6.88</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1900,7 +1900,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.87 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.88 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -4932,14 +4932,19 @@ if (typeof module !== 'undefined' && module.exports) {
           + (r.failed ? ' · ' + r.failed + ' failed' : '')
           + (r.informational ? ' · ' + r.informational + ' ambiguous (not scored)' : '')));
         box.appendChild(head);
-        (r.results || []).forEach(function (c) {
+
+        const all = (r.results || []);
+        // FAILURES FIRST, then ambiguous, then passes — the Dev drawer clips at a fixed max-height, so the
+        // thing you actually read (what broke) must be at the TOP, never buried below 30 passing rows.
+        const failed = all.filter(function (c) { return !c.informational && !c.pass; });
+        const info = all.filter(function (c) { return c.informational; });
+        const passed = all.filter(function (c) { return !c.informational && c.pass; });
+
+        // One full-detail block (label + note + got + why) — for a failure or an ambiguous case.
+        function fullBlock(c, markText, markColor) {
           const line = document.createElement('div'); line.style.marginTop = '7px';
           const mark = document.createElement('span'); mark.className = 'k';
-          // Ambiguous routing notes have no ground-truth domain pre-refactor — shown as a neutral "info", never
-          // a green pass (which would falsely read as "correct"); only genuinely scored cases pass/FAIL.
-          mark.textContent = c.informational ? 'info · ' : (c.pass ? 'pass · ' : 'FAIL · ');
-          if (c.informational) mark.style.color = 'var(--text-muted, #9aa)';
-          else if (!c.pass) mark.style.color = 'var(--red-300)';
+          mark.textContent = markText; if (markColor) mark.style.color = markColor;
           line.appendChild(mark);
           line.appendChild(document.createTextNode(c.label));
           box.appendChild(line);
@@ -4949,12 +4954,31 @@ if (typeof module !== 'undefined' && module.exports) {
           const got = document.createElement('div'); got.className = 'dev-note'; got.style.margin = '0';
           got.textContent = 'got: ' + ((c.got && c.got.length) ? c.got.join('  ||  ') : '(nothing)');
           box.appendChild(got);
-          if (!c.pass && c.problems && c.problems.length) {
+          if (c.problems && c.problems.length) {
             const pr = document.createElement('div'); pr.className = 'dev-note'; pr.style.margin = '0';
             pr.textContent = 'why: ' + c.problems.join(' ; ');
             box.appendChild(pr);
           }
-        });
+        }
+        function sectionLabel(txt) {
+          const h = document.createElement('div'); h.className = 'k'; h.style.marginTop = '10px'; h.textContent = txt;
+          box.appendChild(h);
+        }
+
+        if (failed.length) { sectionLabel('Failed (' + failed.length + '):'); failed.forEach(function (c) { fullBlock(c, 'FAIL · ', 'var(--red-300)'); }); }
+        if (info.length) { sectionLabel('Ambiguous — not scored (' + info.length + '):'); info.forEach(function (c) { fullBlock(c, 'info · ', 'var(--text-muted, #9aa)'); }); }
+        // Passes are COMPACT one-liners (no note/got/why) — keeps total height under the drawer's clip so the
+        // failures above always render. The full detail for a pass is rarely what you're after here.
+        if (passed.length) {
+          sectionLabel('Passed (' + passed.length + '):');
+          passed.forEach(function (c) {
+            const line = document.createElement('div'); line.style.margin = '2px 0 0';
+            const mark = document.createElement('span'); mark.className = 'k'; mark.textContent = 'pass · ';
+            line.appendChild(mark);
+            line.appendChild(document.createTextNode(c.label));
+            box.appendChild(line);
+          });
+        }
       }
 
       // Formula-escape self-test (audit Finding 11): tap → the backend writes each trigger raw + guarded to a
