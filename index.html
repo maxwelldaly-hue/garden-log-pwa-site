@@ -1664,7 +1664,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.13</span>
+        <span class="header-version">v7.14</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1953,7 +1953,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.13 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.14 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -1983,8 +1983,8 @@
           <div class="dev-section">
             <h4 class="dev-h">Scribe check</h4>
             <p class="dev-note">Runs a set of representative notes through the <em>live</em> scribe and checks each against its known-correct answer — the only way to catch a classification regression, since the scribe's understanding step can't be unit-tested. Tap this <strong>before and after</strong> any change to the scribe rules to compare. The calls are <strong>spaced out</strong> to stay under the AI's rate limit, so a full run takes a few minutes; <strong>Routing only</strong> re-checks just the garden-vs-shed decision (~23 reads, quicker). No photos, writes nothing. Needs your PIN and a connection.</p>
-            <button class="settings-save-btn" onclick="runScribeCheck(this)">Run full check</button>
-            <button class="settings-save-btn" onclick="runScribeCheck(this, 'routing')" style="margin-left:6px;">Routing only</button>
+            <button class="dev-simbtn" onclick="runScribeCheck(this)">Run full check</button>
+            <button class="dev-simbtn" onclick="runScribeCheck(this, 'routing')" style="margin-left:6px;">Routing only</button>
             <div id="devScribeCheck" class="dev-kv" style="margin-top:8px;"></div>
           </div>
 
