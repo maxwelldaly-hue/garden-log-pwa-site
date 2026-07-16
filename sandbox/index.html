@@ -574,6 +574,14 @@
       .pl-line { font-size: var(--fs-sm); color: var(--text-muted); }
       .pl-countdown { color: var(--text-muted); }                    /* growing — muted, never green */
       .pl-harvest-check { color: var(--text-muted); font-weight: 600; } /* estimate reached — a quiet "go look" nudge, muted (no green) */
+      /* Optimistic Garden-tab row (latency Slice A, docs/SCOPE-LATENCY-SLICES.md): the confident-match case
+         dims the row + adds a quiet "saving…" line while the real write is still in flight. .plant-row-spin
+         reuses the SAME pulse language as the Log-feed echo (.pending-spin, Option 1), so "in progress" reads
+         consistently across both tabs. Applied/stripped by applyOptimisticOverlays/clearOptimisticPending
+         (Js-State.html) — never baked into renderLayoutModel itself. */
+      .plant-row.optimistic-saving { opacity: 0.72; }
+      .plant-row-spin { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--amber-500); box-shadow: 0 0 8px var(--amber-500); animation: pulse 1s infinite alternate; margin-right: 6px; vertical-align: middle; }
+      .pl-saving { color: var(--amber-400); }
       .pl-yield { color: var(--amber-400); }                        /* cropping — amber */
       /* (Life-phase, step 4) the .plant-stage-badge / .stage-* rules were removed with the Stage badge —
          they were already dead (the code used a non-matching `stage-badge` class). Lifecycle now reads from
@@ -1654,7 +1662,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.09</span>
+        <span class="header-version">v7.10</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1943,7 +1951,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.09 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.10 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3809,6 +3817,7 @@ if (typeof module !== 'undefined' && module.exports) {
         // renderLayoutModel stays untouched so its golden-snapshot test is unaffected. See repaintIfChanged.
         repaintIfChanged('garden', model ? JSON.stringify(model) : 'null', function () {
           renderLayoutModel(model);
+          if (typeof applyOptimisticOverlays === 'function') applyOptimisticOverlays(); // re-coat pending rows (Slice A)
           unspecifiedPlantsList = getUnspecifiedPlantsModel(model);
           rebuildToConfirmBanner();
         });
@@ -5269,10 +5278,134 @@ if (typeof module !== 'undefined' && module.exports) {
         try {
           localStorage.setItem('collapsed_beds', JSON.stringify(Array.from(collapsedBeds)));
         } catch (e) {}
-        
+
         // Re-render layout locally to reflect the toggle instantly (from the cached typed model;
         // renderLayoutModel shows its placeholder if no model is cached yet).
         renderLayoutModel(readCachedGardenState().stateModel);
+        applyOptimisticOverlays(); // re-coat any still-pending optimistic row (Slice A) — see definition below
+      }
+
+      // --- Optimistic Garden-tab row (latency Slice A, docs/SCOPE-LATENCY-SLICES.md) --------------
+      // The honest constraint that shapes this whole feature: the client must NEVER invent a plant's
+      // placement (the To-confirm contract), so an optimistic row is only offered for the CONFIDENT common
+      // case — an action on an existing, unambiguous plant already on screen. A Planting or an ambiguous
+      // note gets NO optimistic row and keeps the existing Log-feed echo (Option 1) as its only "in
+      // progress" signal, exactly as before this shipped.
+      //
+      // logId -> {plantName, bedName} for a queued note that matched exactly one visible plant. In-memory
+      // only (not persisted) — a reload just loses the overlay, never a stuck-wrong one. Cleared the instant
+      // the real result lands, success OR failure (clearOptimisticPending), so a repaint can never re-coat a
+      // resolved log. renderLayoutModel fully rebuilds #stateContainer on every call, so the overlay is
+      // reapplied from this map after each repaint (applyOptimisticOverlays) rather than baked into the
+      // (golden-tested, deliberately untouched) renderer itself — the same seam Option 1 used.
+      let optimisticPendingByLog = {};
+
+      // PURE: does rawText plausibly target EXACTLY ONE live (non-tombstoned, non-Unspecified) plant
+      // currently in the model? Whole-word match against the plant's full name OR its base crop name
+      // (a varietied name like "Tomato (Black Cherry)" strips the parenthetical — a user rarely types the
+      // exact varietal string back). More than one hit (two beds, or two rows of the same crop — a
+      // succession) is ambiguous -> null; zero hits -> null. Both cases fall back to the safe default: no
+      // optimistic row. Testable standalone (test/run-tests.js extracts + runs this directly).
+      function matchOptimisticPlant(rawText, model) {
+        const text = String(rawText || '').toLowerCase().trim();
+        if (!text || !model || !model.beds) return null;
+        const esc = function (s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
+        const matches = [];
+        model.beds.forEach(function (bed) {
+          if (bed.isUnspecified) return;
+          (bed.plants || []).forEach(function (p) {
+            const name = String((p && p.name) || '');
+            if (!name || name.toLowerCase() === 'empty') return;
+            const count = parseInt(p.count, 10);
+            if (count === 0) return; // tombstoned (harvested-to-empty / removed) — not a live plant to act on
+            const base = name.replace(/\s*\([^)]*\)\s*$/, '').trim();
+            const candidates = (base && base !== name) ? [name, base] : [name];
+            const hit = candidates.some(function (c) {
+              return c && new RegExp('\\b' + esc(c.toLowerCase()) + '\\b', 'i').test(text);
+            });
+            if (hit) matches.push({ plantName: name, bedName: bed.zone });
+          });
+        });
+        return matches.length === 1 ? matches[0] : null;
+      }
+
+      // Register a just-queued GARDEN note for the overlay (called from submitLog, before syncQueue fires).
+      // A miss does nothing — the note keeps the Log-feed echo as its only signal, unchanged from before.
+      // Best-effort: a bad match must never block the real submit, which has already been queued by the time
+      // this runs.
+      function registerOptimisticPending(logId, rawText) {
+        try {
+          const model = readCachedGardenState().stateModel;
+          const match = matchOptimisticPlant(rawText, model);
+          if (!match) return;
+          optimisticPendingByLog[logId] = match;
+          applyOptimisticOverlays(); // paint immediately if the Garden tab is already the visible one
+        } catch (e) { /* best-effort */ }
+      }
+
+      // The real result for logId landed — success OR failure. Stop tracking it AND strip its row's overlay
+      // directly, right now — a SUCCESS is always followed by a repaint (applyGardenState), which would clear
+      // it anyway, but a FAILURE is not, so the DOM must be reverted here or a wedged/retrying note would
+      // leave a "saving…" row stuck forever. This is the whole game (scope doc: "a stuck-wrong row is worse
+      // than the wait") — clearing unconditionally on ANY server response, success or retryable failure, means
+      // the worst case is the dim/"saving…" flickers off during a backoff retry, never that it lingers on a
+      // plant the real result disagrees with.
+      function clearOptimisticPending(logId) {
+        const m = optimisticPendingByLog[logId];
+        delete optimisticPendingByLog[logId];
+        if (!m || typeof document === 'undefined') return;
+        // Only strip the DOM if no OTHER still-pending log claims the same row (two queued notes can target
+        // the same plant — see applyOptimisticOverlays' de-dupe-by-row note).
+        const stillClaimed = Object.keys(optimisticPendingByLog).some(function (id) {
+          const o = optimisticPendingByLog[id];
+          return o && o.plantName === m.plantName && o.bedName === m.bedName;
+        });
+        if (stillClaimed) return;
+        const rows = document.querySelectorAll('.plant-row.optimistic-saving[data-plant-name]');
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.dataset.plantName !== m.plantName) continue;
+          const bedCard = row.closest('.bed-card');
+          if (!bedCard || bedCard.dataset.bedName !== m.bedName) continue;
+          row.classList.remove('optimistic-saving');
+          const line = row.querySelector('.pl-saving');
+          if (line) line.remove();
+          break;
+        }
+      }
+
+      // Re-coat the just-rebuilt Garden DOM with every still-pending overlay. Called after every
+      // renderLayoutModel call (Js-Core.html applyGardenState + toggleBedCollapse above) — NOT from inside
+      // renderLayoutModel itself, which stays untouched so its golden-snapshot test is unaffected (mirrors
+      // the Option 1 Log-feed echo's separation from the pure renderer). Silent when nothing's pending.
+      function applyOptimisticOverlays() {
+        const ids = Object.keys(optimisticPendingByLog);
+        if (!ids.length) return;
+        const rows = document.querySelectorAll('.plant-row[data-plant-name]');
+        ids.forEach(function (logId) {
+          const m = optimisticPendingByLog[logId];
+          if (!m) return;
+          for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            if (row.dataset.plantName !== m.plantName) continue;
+            const bedCard = row.closest('.bed-card');
+            if (!bedCard || bedCard.dataset.bedName !== m.bedName) continue;
+            if (!row.classList.contains('optimistic-saving')) {
+              row.classList.add('optimistic-saving');
+              const meta = row.querySelector('.plant-meta');
+              if (meta) {
+                const line = document.createElement('span');
+                line.className = 'pl-line pl-saving';
+                const spin = document.createElement('span');
+                spin.className = 'plant-row-spin';
+                line.appendChild(spin);
+                line.appendChild(document.createTextNode('saving…'));
+                meta.appendChild(line);
+              }
+            }
+            break; // one row claimed per logId — stop scanning
+          }
+        });
       }
 
       // --- Relative-date helpers for the glanceable plant rows (Tier A) ---
@@ -6787,6 +6920,9 @@ if (typeof module !== 'undefined' && module.exports) {
           if (isRecording) recognition.stop();
 
           updateQueueUI();
+          // Optimistic Garden-tab row (latency Slice A) — GARDEN notes only (a shed supply never touches the
+          // Garden tab). No-ops silently when the note doesn't confidently target one visible plant.
+          if (mode === 'garden') registerOptimisticPending(logId, text);
           // One-button mode: the inline confirmation CHIP (Phase 3b) is the acknowledgement — it shows
           // "Logging…" then "✓ Logged to Garden/Shed · tap to change" once the route lands — so the redundant
           // "Saved" toast is suppressed there. Two-button mode keeps its destination-named toast.
@@ -6855,6 +6991,9 @@ if (typeof module !== 'undefined' && module.exports) {
               const res = JSON.parse(resStr);
               if (res.status === 'success') {
                 delete syncFailures[currentLog.id];
+                // The real result landed (incl. a duplicate ack) — stop tracking this log's optimistic row
+                // BEFORE applyGardenState repaints below, so the repaint can't re-coat a resolved log (Slice A).
+                clearOptimisticPending(currentLog.id);
                 deleteLogFromDB(currentLog.id, () => {
                   isSyncing = false;
                   updateQueueUI();
@@ -6924,6 +7063,9 @@ if (typeof module !== 'undefined' && module.exports) {
         document.getElementById('connectionIndicator').className = 'status-indicator';
         document.getElementById('connectionIndicator').title = 'Online';
         renderPendingLogs(); // reflect the wedged/retrying state in the Log-tab echo (latency Option 1)
+        // Slice A: drop this log's optimistic row on ANY failure (retryable or wedged) — no repaint happens
+        // on a failure, so clearOptimisticPending must revert the DOM directly (it does — see definition).
+        clearOptimisticPending(log.id);
         if (attempts >= MAX_SYNC_ATTEMPTS) {
           showToast("Still in queue", "A log couldn't sync after several tries — it's kept and will retry later.", null, { alert: true });
           syncQueue(); // move on to the next, unwedged log immediately
