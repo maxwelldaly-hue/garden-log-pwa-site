@@ -56,6 +56,7 @@
 
         --color-sage: #2d8a60;
         --color-terracotta: #9c5430;
+        --color-log: #4e5d78;  /* one-Log-button primary — a NEUTRAL slate (not sage/terracotta): colour no longer signals a destination, the AI routes it */
 
         /* Accent palette — named tokens for the status/badge colours. Single source of
            truth: every solid-hex usage across the sheet references these (rgba tints keep
@@ -330,6 +331,30 @@
       .save-btn:active { transform: scale(0.98); }
       .save-garden { flex: 1.7; background-color: var(--color-sage); color: #fff; box-shadow: 0 4px 10px rgba(45, 138, 96, 0.3); }
       .save-shed { flex: 1; background-color: var(--color-terracotta); color: #fff; box-shadow: 0 4px 10px rgba(156, 84, 48, 0.3); }
+
+      /* === One-Log-button (Approach B, Phase 3) ============================================================
+         The single 'Log entry' primary action. Colour no longer signals a destination (the AI routes it), so
+         it's a NEUTRAL slate — deliberately not sage/terracotta (also retires the "green = foliage only"
+         tension). Shown only in body.one-button; CSS `order` floats the row ABOVE the controls-row (owner's
+         layout) without reordering the DOM. --color-log is tweakable if the owner wants a different neutral. */
+      .log-row { display: none; margin-top: 5px; align-items: stretch; }
+      body.one-button .log-row { display: flex; order: 1; }
+      body.one-button .controls-row { order: 2; }
+      body.one-button .ui-hint { order: 3; }
+      body.one-button .save-row { display: none; }
+      .save-log { flex: 1; background-color: var(--color-log); color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.28); }
+      .save-log:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
+      .save-log:disabled:active { transform: none; }
+      /* Keyboard docking: while the textarea is focused (keyboard open) the Log button pins just above the
+         keyboard like a chat send-bar. JS toggles .kb-docked and sets `bottom` from visualViewport (iOS overlays
+         the keyboard; Android resizes) — bottom:0 is the fallback. Returns to in-flow on blur. */
+      .log-row.kb-docked { position: fixed; left: 0; right: 0; bottom: 0; margin: 0; padding: 8px 14px calc(8px + env(safe-area-inset-bottom, 0px)); background: var(--bg-card); box-shadow: 0 -6px 18px rgba(0,0,0,0.35); z-index: 60; transition: none; }
+      /* Confirmation chip — replaces the button after a submit ("Logged to Garden · tap to change"). */
+      .log-chip { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: var(--r-lg); padding: 14px; font-size: var(--fs-md); font-weight: 600; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-input); cursor: pointer; text-align: center; transition: opacity 0.4s ease; }
+      .log-chip.fading { opacity: 0; }
+      .log-chip-pick { display: inline-flex; gap: 6px; margin-left: 8px; }
+      .log-chip-pick button { background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-input); border-radius: var(--r-sm); padding: 4px 10px; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; }
+      .log-chip-pick button.active { background: var(--color-sage); color: #fff; border-color: var(--color-sage); }
 
       .state-container {
         padding: 0;
@@ -1285,7 +1310,10 @@
 </style>
 
   </head>
-  <body>
+  <body class="">
+    <!-- One-Log-button flag (Approach B) injected server-side so CSS/JS branch with no flash. Index.html is a
+         template (scriptlets evaluate here) but its includes are NOT — so the JS files read window.ONE_BUTTON. -->
+    <script>window.ONE_BUTTON = false;</script>
     <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
   <!-- UI-marks stream (chrome). Solid monochrome glyphs, fill="currentColor", viewBox 0 0 24 24 — the same
        Material-filled weight as the Dictate/Photo/Upload nucleus (Index.html:95/99/103). Interior detail is
@@ -1624,7 +1652,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.94</span>
+        <span class="header-version">v6.95</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1721,9 +1749,22 @@
               Shed
             </button>
           </div>
+          <!-- ONE-LOG-BUTTON row (Approach B, Phase 3) — shown only when body.one-button (the ONE_BUTTON_LOG
+               flag). CSS `order` floats this ABOVE the controls-row (Dictate/Photo/Upload) per the owner's
+               layout. One full-width NEUTRAL button (colour no longer signals destination — the AI routes it);
+               the send-arrow stays (verb, v5.70). Disabled until there's text or a photo (JS: syncLogEntryState).
+               The chip (#logChip) replaces the button after submit: "Logged to Garden · tap to change". -->
+          <div class="log-row">
+            <button id="logEntryBtn" class="save-btn save-log" onclick="submitLog('garden')" disabled>
+              <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+              <span>Log entry</span>
+            </button>
+            <div id="logChip" class="log-chip" style="display:none"></div>
+          </div>
           <!-- ONE consolidated capture-card hint (owner 12/07: the per-control ⓘ stacked, each adding a row of
                vertical space). Merges the old form / controls-row / save-row hints into a single ⓘ at the card
-               foot — still point-of-use for the CARD, just not one ⓘ per control. -->
+               foot — still point-of-use for the CARD, just not one ⓘ per control. Copy is neutral in one-button
+               mode (there's no Garden/Shed choice to explain — the app routes it). -->
           <button type="button" class="ui-hint" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">Jot a few words or dictate, and add a photo if you like — the app reads them and files what happened. Save to Garden for anything about the plants, or Shed for supplies you bought.</span></button>
         </div>
           </div>
@@ -1900,7 +1941,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.94 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v6.95 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3754,6 +3795,10 @@ if (typeof module !== 'undefined' && module.exports) {
       // prose renderer). A payload with no model — a pre-cutover offline cache that hasn't re-synced since —
       // renders renderLayoutModel's "No layout data available." placeholder; one online sync repopulates it.
       function applyGardenState(data) {
+        // One-Log-button (Approach B): the live ONE_BUTTON_LOG flag rides the state bundle (Router getState).
+        // The static client bakes it false at build time, so applying it here — from fresh AND cached state —
+        // flips the card to one-button at runtime with no rebuild. Absent on old cached data → left unchanged.
+        if (data && typeof data.oneButton !== 'undefined' && typeof applyOneButtonMode === 'function') applyOneButtonMode(data.oneButton);
         // Fall back to the last-known cached model if this response carries none (a duplicate / older response
         // may omit stateModel) — render last-known state, NEVER a blank "No layout data" screen.
         let model = (data && data.stateModel) || null;
@@ -5862,6 +5907,7 @@ if (typeof module !== 'undefined' && module.exports) {
             const preview = document.getElementById('photoPreview');
             preview.src = currentPhotoData;
             preview.style.display = 'block';
+            if (typeof syncLogEntryState === 'function') syncLogEntryState(); // enable Log (one-button): a photo counts as content
           });
         };
         reader.readAsDataURL(file);
@@ -5926,6 +5972,66 @@ if (typeof module !== 'undefined' && module.exports) {
         const ta = document.getElementById('logTextarea');
         if (ta) ta.placeholder = logBoxPlaceholder();
       })();
+
+      // === One-Log-button card behaviour (Approach B, Phase 3) — active only when the ONE_BUTTON_LOG flag is
+      // on (window.ONE_BUTTON, injected server-side in Index.html). Two pieces: (1) the neutral 'Log entry'
+      // button is DISABLED until there's text or a photo, so it doesn't compete with the capture row before
+      // there's anything to send; (2) KEYBOARD DOCKING — while the textarea is focused the button pins just
+      // above the keyboard like a chat send-bar, and returns to the flow on blur. Global so handlePhotoFile /
+      // submitLog can refresh the disabled state after they change the photo/text.
+      function syncLogEntryState() {
+        const btn = document.getElementById('logEntryBtn');
+        if (!btn) return;
+        const ta = document.getElementById('logTextarea');
+        const hasText = !!(ta && ta.value.trim());
+        btn.disabled = !(hasText || currentPhotoData);
+      }
+
+      // Wire the one-button card's interactions ONCE (guarded — applyOneButtonMode may be called more than once:
+      // at load from the build-time flag, then again when getState returns the live flag on the static client).
+      let _oneButtonWired = false;
+      function wireOneButtonCard() {
+        if (_oneButtonWired) return;
+        const ta = document.getElementById('logTextarea');
+        const row = document.querySelector('#tab-log .log-row');
+        const btn = document.getElementById('logEntryBtn');
+        if (!ta || !row || !btn) return;
+        _oneButtonWired = true;
+
+        // (1) enable/disable as the note fills or empties
+        ta.addEventListener('input', syncLogEntryState);
+        syncLogEntryState();
+
+        // (2) keyboard docking. iOS overlays the keyboard (visualViewport shrinks) → offset the fixed row up by
+        // the covered height; Android resizes the layout viewport → bottom:0 already sits above it. Recompute on
+        // every visualViewport change so it tracks the keyboard opening/closing/resizing.
+        function positionDock() {
+          if (!row.classList.contains('kb-docked')) return;
+          const vv = window.visualViewport;
+          const inset = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+          row.style.bottom = inset + 'px';
+        }
+        ta.addEventListener('focus', function () { row.classList.add('kb-docked'); positionDock(); });
+        ta.addEventListener('blur', function () { row.classList.remove('kb-docked'); row.style.bottom = ''; });
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', positionDock);
+          window.visualViewport.addEventListener('scroll', positionDock);
+        }
+        // Tapping the docked button must not blur the textarea first (that would un-dock it mid-tap and the
+        // press could miss). Suppressing mousedown's default keeps focus on the field; the click still fires.
+        btn.addEventListener('mousedown', function (e) { if (row.classList.contains('kb-docked')) e.preventDefault(); });
+      }
+
+      // Apply (or clear) one-button mode. Idempotent + re-appliable: the static client bakes ONE_BUTTON=false at
+      // build time, so the REAL state arrives at runtime from getState (data.oneButton) and re-invokes this — the
+      // body class flips, the card wires, no rebuild needed. On the GAS-served page the build-time flag is
+      // already correct, so this just confirms it (no flash).
+      function applyOneButtonMode(on) {
+        window.ONE_BUTTON = !!on;
+        if (document.body) document.body.classList.toggle('one-button', !!on);
+        if (on) { wireOneButtonCard(); syncLogEntryState(); }
+      }
+      applyOneButtonMode(window.ONE_BUTTON); // the build-time / GAS-server value (runtime getState may update it)
 
       // Discoverability: a quiet one-line hint, desktop only (hover + fine pointer). Phones reach the
       // camera/gallery straight from the Photo/Upload buttons and have no Ctrl+V image paste, so the
@@ -6551,11 +6657,15 @@ if (typeof module !== 'undefined' && module.exports) {
           document.getElementById('photoInput').value = '';
           document.getElementById('photoUploadInput').value = '';
           currentPhotoData = null;
+          if (typeof syncLogEntryState === 'function') syncLogEntryState(); // re-disable Log (one-button): box is empty again
           if (isRecording) recognition.stop();
 
           updateQueueUI();
-          const title = (mode === 'shed') ? "Saved to Shed queue" : "Saved to Queue";
-          const body = (mode === 'shed') ? "Filing your supply in the background." : "Log will sync in background.";
+          // One-button mode has a single neutral 'Log entry' button, so there's no Garden/Shed destination to
+          // name at submit time — the AI routes it. Use one neutral toast; the two-button path keeps its wording.
+          const title = window.ONE_BUTTON ? "Logged" : ((mode === 'shed') ? "Saved to Shed queue" : "Saved to Queue");
+          const body = window.ONE_BUTTON ? "Filing what happened in the background."
+            : ((mode === 'shed') ? "Filing your supply in the background." : "Log will sync in background.");
           showToast(title, body, logId);
           syncQueue();
         });
