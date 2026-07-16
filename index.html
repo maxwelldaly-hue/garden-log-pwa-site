@@ -353,6 +353,7 @@
       /* Confirmation chip — replaces the button after a submit ("Logged to Garden · tap to change"). */
       .log-chip { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: var(--r-lg); padding: 14px; font-size: var(--fs-md); font-weight: 600; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-input); cursor: pointer; text-align: center; transition: opacity 0.4s ease; }
       .log-chip.fading { opacity: 0; }
+      .log-chip-change { text-decoration: underline; text-underline-offset: 2px; color: var(--text-muted); font-weight: 600; }
       .log-chip-pick { display: inline-flex; gap: 6px; margin-left: 8px; }
       .log-chip-pick button { background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-input); border-radius: var(--r-sm); padding: 4px 10px; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; }
       .log-chip-pick button.active { background: var(--color-sage); color: #fff; border-color: var(--color-sage); }
@@ -1653,7 +1654,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v6.96</span>
+        <span class="header-version">v6.97</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1942,7 +1943,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v6.96 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v6.97 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -5950,8 +5951,11 @@ if (typeof module !== 'undefined' && module.exports) {
         if (!ta || !row || !btn) return;
         _oneButtonWired = true;
 
-        // (1) enable/disable as the note fills or empties
-        ta.addEventListener('input', syncLogEntryState);
+        // (1) enable/disable as the note fills or empties; typing a new note also clears a lingering chip so
+        // the button comes back (the previous submit still completes in the background).
+        ta.addEventListener('input', function () {
+          if (_chipLogId && ta.value) { dismissLogChip(); } else { syncLogEntryState(); }
+        });
         syncLogEntryState();
 
         // (2) keyboard docking. Driven by the ACTUAL viewport shrink, not the focus event (which fires before
@@ -5994,6 +5998,105 @@ if (typeof module !== 'undefined' && module.exports) {
         if (on) { wireOneButtonCard(); syncLogEntryState(); }
       }
       applyOneButtonMode(window.ONE_BUTTON); // the build-time / GAS-server value (runtime getState may update it)
+
+      // === One-Log-button confirmation chip (Approach B, Phase 3b). After a submit the chip REPLACES the Log
+      // button: "Logging…" while the route is decided server-side, then "✓ Logged to Garden/Shed · tap to
+      // change". Tapping opens an inline Garden/Shed picker (no modal) that moves the just-filed entry to the
+      // other domain (rerouteLog). Auto-fades after a few seconds, or clears the moment the user types a new
+      // note. Tracks ONE logId at a time (the latest submit) — a stale response never claims the chip.
+      let _chipLogId = null, _chipFade = null;
+      function _clearChipFade() { if (_chipFade) { clearTimeout(_chipFade); _chipFade = null; } }
+      function _scheduleChipFade(ms) {
+        _clearChipFade();
+        const chip = document.getElementById('logChip'); if (!chip) return;
+        const owner = _chipLogId;
+        _chipFade = setTimeout(function () {
+          chip.classList.add('fading');
+          setTimeout(function () { if (_chipLogId === owner) dismissLogChip(); }, 450);
+        }, ms);
+      }
+      function dismissLogChip() {
+        _clearChipFade(); _chipLogId = null;
+        const chip = document.getElementById('logChip'); const btn = document.getElementById('logEntryBtn');
+        if (chip) { chip.style.display = 'none'; chip.classList.remove('fading'); chip.onclick = null; chip.textContent = ''; }
+        if (btn) btn.style.display = '';
+        syncLogEntryState();
+      }
+      function showLogChipPending(logId) {
+        if (!window.ONE_BUTTON) return;
+        const chip = document.getElementById('logChip'); const btn = document.getElementById('logEntryBtn');
+        if (!chip || !btn) return;
+        _clearChipFade(); _chipLogId = logId;
+        btn.style.display = 'none';
+        chip.classList.remove('fading'); chip.onclick = null;
+        chip.textContent = 'Logging…';
+        chip.style.display = 'flex';
+      }
+      function resolveLogChip(logId, domain, canChange) {
+        if (!window.ONE_BUTTON || _chipLogId !== logId) return; // a newer submit owns the chip now
+        const chip = document.getElementById('logChip'); if (!chip) return;
+        _clearChipFade(); chip.classList.remove('fading'); chip.textContent = '';
+        const label = document.createElement('span');
+        label.textContent = '✓ Logged to ' + domain + (canChange ? ' · ' : '');
+        chip.appendChild(label);
+        if (canChange) {
+          const a = document.createElement('span'); a.className = 'log-chip-change'; a.textContent = 'tap to change';
+          chip.appendChild(a);
+          chip.onclick = function () { openChipPicker(logId, domain); };
+        } else { chip.onclick = null; }
+        chip.style.display = 'flex';
+        _scheduleChipFade(5000);
+      }
+      function openChipPicker(logId, currentDomain) {
+        const chip = document.getElementById('logChip'); if (!chip) return;
+        _clearChipFade(); chip.onclick = null; chip.classList.remove('fading');
+        chip.textContent = 'Move to: ';
+        const pick = document.createElement('span'); pick.className = 'log-chip-pick';
+        ['Garden', 'Shed'].forEach(function (d) {
+          const b = document.createElement('button'); b.type = 'button'; b.textContent = d;
+          if (d === currentDomain) b.classList.add('active');
+          b.onclick = function (e) {
+            e.stopPropagation();
+            if (d === currentDomain) { resolveLogChip(logId, currentDomain, true); return; }
+            doReroute(logId, d.toLowerCase());
+          };
+          pick.appendChild(b);
+        });
+        chip.appendChild(pick);
+      }
+      function _chipTerminal(text) {
+        const chip = document.getElementById('logChip'); if (!chip) return;
+        chip.onclick = null; chip.classList.remove('fading'); chip.textContent = text; chip.style.display = 'flex';
+        _scheduleChipFade(4000);
+      }
+      function doReroute(logId, toDomain) {
+        const chip = document.getElementById('logChip'); if (chip) { chip.onclick = null; chip.textContent = 'Moving…'; }
+        const pin = localStorage.getItem('garden_log_pin');
+        const token = localStorage.getItem('garden_log_token');
+        google.script.run
+          .withSuccessHandler(function (resStr) {
+            let res = null; try { res = JSON.parse(resStr); } catch (e) {}
+            const d = res && res.data;
+            if (d && d.rerouted) {
+              if (d.currentState) { try { cacheState(d); } catch (e) {} applyGardenState(d); }
+              if (d.inventory) { try { localStorage.setItem('garden_inventory_cache', JSON.stringify(d.inventory)); } catch (e) {} try { cacheShedCats(d); } catch (e) {} try { renderInventory(d.inventory); } catch (e) {} }
+              if (_chipLogId === logId) _chipTerminal('✓ Moved to ' + (toDomain === 'shed' ? 'Shed' : 'Garden'));
+              showToast('Moved', (d && d.message) || 'Moved.');
+            } else {
+              dismissLogChip();
+              showToast("Couldn't move", (d && d.message) || 'Change it from the Garden or Shed instead.');
+            }
+          })
+          .withFailureHandler(function () { dismissLogChip(); showToast("Couldn't move", 'Network error — try again.'); })
+          .processClientRequest(JSON.stringify({ action: 'rerouteLog', logId: logId, toDomain: toDomain, token: token, pin: pin }));
+      }
+      // Compute the chip's domain label + whether "tap to change" applies, from handleLogAction's `routed`
+      // summary. Absent routed = a plain garden log; a compound (both) is correctly split, so no single move.
+      function chipDomainFromRouted(routed) {
+        if (routed && routed.garden > 0 && routed.shed > 0) return { domain: 'Garden + Shed', canChange: false };
+        if (routed && routed.shed > 0) return { domain: 'Shed', canChange: true };
+        return { domain: 'Garden', canChange: true };
+      }
 
       // Discoverability: a quiet one-line hint, desktop only (hover + fine pointer). Phones reach the
       // camera/gallery straight from the Photo/Upload buttons and have no Ctrl+V image paste, so the
@@ -6623,12 +6726,15 @@ if (typeof module !== 'undefined' && module.exports) {
           if (isRecording) recognition.stop();
 
           updateQueueUI();
-          // One-button mode has a single neutral 'Log entry' button, so there's no Garden/Shed destination to
-          // name at submit time — the AI routes it. Use one neutral toast; the two-button path keeps its wording.
-          const title = window.ONE_BUTTON ? "Logged" : ((mode === 'shed') ? "Saved to Shed queue" : "Saved to Queue");
-          const body = window.ONE_BUTTON ? "Filing what happened in the background."
-            : ((mode === 'shed') ? "Filing your supply in the background." : "Log will sync in background.");
-          showToast(title, body, logId);
+          // One-button mode: the inline confirmation CHIP (Phase 3b) is the acknowledgement — it shows
+          // "Logging…" then "✓ Logged to Garden/Shed · tap to change" once the route lands — so the redundant
+          // "Saved" toast is suppressed there. Two-button mode keeps its destination-named toast.
+          if (window.ONE_BUTTON) {
+            showLogChipPending(logId);
+          } else {
+            showToast((mode === 'shed') ? "Saved to Shed queue" : "Saved to Queue",
+              (mode === 'shed') ? "Filing your supply in the background." : "Log will sync in background.", logId);
+          }
           syncQueue();
         });
       }
@@ -6725,6 +6831,15 @@ if (typeof module !== 'undefined' && module.exports) {
                 // would vanish with no signal. Separate toast so it can't be masked by a To-confirm message.
                 if (res.data.photoFailed) {
                   showToast("Photo didn't save", "Your note was saved, but the photo couldn't be stored — try attaching it again.");
+                }
+                // One-Log-button chip (Phase 3b): resolve THIS submit's pending chip with where the router
+                // filed it ("✓ Logged to Garden/Shed · tap to change"), or clear it if nothing landed. Only the
+                // chip currently tracking currentLog.id updates (resolveLogChip guards that) — a stale response
+                // for an earlier queued log never claims a newer submit's chip. `typeof window` guard: the sync
+                // engine is unit-tested in a Node vm with no `window` (test/run-tests.js extracts syncQueue).
+                if (typeof window !== 'undefined' && window.ONE_BUTTON) {
+                  if (res.data.unreadable) { dismissLogChip(); }
+                  else { const cd = chipDomainFromRouted(res.data.routed); resolveLogChip(currentLog.id, cd.domain, cd.canChange); }
                 }
               } else {
                 isSyncing = false;
