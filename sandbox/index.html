@@ -1588,7 +1588,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.26</span>
+        <span class="header-version">v7.27</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1862,7 +1862,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.26 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.27 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3333,9 +3333,96 @@ function buildAlerts(forecastData, todayIdx, today, tmrw, waterBalance, wateredT
   return alerts;
 }
 
+// 5. Sow / plant-out readiness (reconciliation end goal). PURE. Turns a crop's stored sow model +
+// the Adelaide sow-months window + the current conditions into the LIVE passport lines. The three
+// decisions come from three different variables (the reconciliation thesis): direct-sow = soil in the
+// germination band; start-indoors = in season but soil still too cold AND the crop wants a head-start;
+// plant-out = forecast night air above the transplant floor. Degrade-safe: an unparseable window or a
+// missing soil reading returns sowLine:null, and the caller keeps the static "Sep–Feb (Adelaide)" text.
+const SOW_MON3 = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+const SOW_MONDISP = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function parseSowWindow(sowMonthsStr) {
+  // → { allYear } | { months:[1..12] } | null (a phrase we can't map to months: winter, prose, etc.)
+  if (!sowMonthsStr) return null;
+  const s = String(sowMonthsStr).toLowerCase();
+  if (/all ?year|year-?round|any ?time/.test(s)) return { allYear: true };
+  const months = [];
+  s.split(/[^a-z]+/).forEach(function (tok) {
+    const i = SOW_MON3.indexOf(tok.slice(0, 3));
+    if (i >= 0 && months.indexOf(i + 1) < 0) months.push(i + 1);
+  });
+  return months.length ? { months: months } : null;
+}
+function nextSowMonth(months, cur) {
+  const set = {}; months.forEach(function (m) { set[m] = 1; });
+  for (let k = 1; k <= 12; k++) { const m = ((cur - 1 + k) % 12) + 1; if (set[m]) return m; }
+  return months[0];
+}
+function computeSowReadiness(model, sowMonthsStr, ctx) {
+  model = model || {}; ctx = ctx || {};
+  const win = parseSowWindow(sowMonthsStr);
+  const monthIdx = ctx.monthIdx;
+  const blank = { sowLine: null, canDirectSow: false, canStartIndoors: false, canPlantOut: false, inWindow: false };
+  if (!win || !monthIdx) return blank;
+
+  const num = function (v) { return v == null || v === '' ? null : Number(v); };
+  const soil = num(ctx.soilTemp), night = num(ctx.nightMinC);
+  const germMin = num(model.germMinC), germMax = num(model.germMaxC), tNight = num(model.transplantNightMinC);
+  const lead = Number(model.indoorLeadWeeks || 0);
+
+  const hasSoilGate = germMin !== null || germMax !== null;
+  const inWindow = !!win.allYear || win.months.indexOf(monthIdx) >= 0;
+  const soilKnown = soil !== null;
+  const soilTooCold = soilKnown && germMin !== null && soil < germMin;
+  const soilTooWarm = soilKnown && germMax !== null && soil > germMax;
+  const soilOk = soilKnown && hasSoilGate && !soilTooCold && !soilTooWarm;
+
+  const canDirectSow = inWindow && soilOk;
+  const canStartIndoors = inWindow && lead > 0 && soilTooCold;       // head-start while the soil catches up
+  const canPlantOut = (night !== null && tNight !== null) ? night >= tNight : false;
+  let sowLine = null;
+  if (inWindow) {
+    // No soil gate on this crop (unclassified / soil-only entry) → we can't give a live reading; keep static.
+    if (!hasSoilGate) sowLine = null;
+    else if (canDirectSow) sowLine = 'Sow now · direct';
+    else if (canStartIndoors) sowLine = 'Start indoors now';
+    else if (soilTooCold) sowLine = 'Soon — soil still cool';
+    else if (soilTooWarm) sowLine = 'Too warm to sow now';
+    // soil unknown → leave null so the caller keeps the static window text.
+  } else if (win.months) {
+    sowLine = 'Sow from ' + SOW_MONDISP[nextSowMonth(win.months, monthIdx) - 1];
+  }
+  return { sowLine: sowLine, canDirectSow: canDirectSow, canStartIndoors: canStartIndoors, canPlantOut: canPlantOut, inWindow: inWindow };
+}
+
+// Build the readiness context from the SAME cached forecast the weather card uses. PURE (today is passed
+// in as a 'YYYY-MM-DD' string, no Date at module scope). soilTemp mirrors computeSoilStatus (rolling 3-day
+// actual soil + raised-bed offset); nightMinC = the coldest upcoming forecast night (a conservative "are
+// nights safe yet" for plant-out); monthIdx from today's date. hasData gates the live lines on vs the static.
+function computeSowContext(forecastData, todayIso, bedSoilOffset) {
+  const arr = Array.isArray(forecastData) ? forecastData : [];
+  const hist = arr.filter(function (d) { return d && d.type === 'Historical' && d.avgSoilTemp !== null && d.avgSoilTemp !== undefined; })
+    .map(function (d) { return Number(d.avgSoilTemp); }).filter(function (n) { return !isNaN(n); });
+  const last3 = hist.slice(-3);
+  let soilTemp = null;
+  if (last3.length) soilTemp = last3.reduce(function (a, b) { return a + b; }, 0) / last3.length + (Number(bedSoilOffset) || 0);
+  else {
+    const todayRow = arr.filter(function (d) { return d && d.date === todayIso && d.avgSoilTemp !== null && d.avgSoilTemp !== undefined; })[0];
+    if (todayRow) soilTemp = Number(todayRow.avgSoilTemp) + (Number(bedSoilOffset) || 0);
+  }
+  const fNights = arr.filter(function (d) { return d && d.type === 'Forecast' && d.minTemp !== null && d.minTemp !== undefined; })
+    .map(function (d) { return Number(d.minTemp); }).filter(function (n) { return !isNaN(n); });
+  const nightMinC = fNights.length ? Math.min.apply(null, fNights) : null;
+  let monthIdx = null;
+  const m = String(todayIso || '').match(/^\d{4}-(\d{2})/);
+  if (m) monthIdx = parseInt(m[1], 10);
+  return { soilTemp: soilTemp, nightMinC: nightMinC, monthIdx: monthIdx, hasData: soilTemp !== null && monthIdx !== null };
+}
+
 // Node harness reaches these via the eval'd sandbox; the browser gets them as globals.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { classifyStress, computeWaterRing, computeCareRing, computeSoilStatus, buildAlerts };
+  module.exports = { classifyStress, computeWaterRing, computeCareRing, computeSoilStatus, buildAlerts,
+    computeSowReadiness, computeSowContext, parseSowWindow };
 }
 </script>
 
@@ -9295,6 +9382,25 @@ if (typeof module !== 'undefined' && module.exports) {
         return idxs.slice().sort(function (a, b) { return a - b; }).map(cap).join(', ');
       }
 
+      // Build the sow-readiness context from the CACHED forecast (the same data the weather card uses), so the
+      // packet passport can turn its Sow line live with no extra network. Degrade-safe: returns null when no
+      // forecast is cached yet (first run / offline before a fetch) and the line stays the static Adelaide
+      // window. Pure compute lives in ForecastMath (computeSowContext); this only gathers the cached inputs.
+      function ppSowContext() {
+        try {
+          if (typeof computeSowContext !== 'function') return null;
+          const fc = JSON.parse(localStorage.getItem('garden_log_forecast'));
+          if (!Array.isArray(fc) || !fc.length) return null;
+          let offset = 0;
+          try {
+            const a = JSON.parse(localStorage.getItem('garden_log_alert_thresholds'));
+            if (a && a.bedSoilOffsetC != null) offset = Number(a.bedSoilOffsetC);
+          } catch (e) {}
+          const todayIso = (typeof todayAdelaide === 'function') ? todayAdelaide() : '';
+          return computeSowContext(fc, todayIso, offset);
+        } catch (e) { return null; }
+      }
+
       // Pull a value out of the LabelOther catch-all ("Key: value; Key: value") by a key regex — the home
       // for facts captured before a typed column existed (e.g. the beta test packet's seed count / best-before
       // predate those columns). A typed field always wins; this only backfills the gap.
@@ -9509,9 +9615,25 @@ if (typeof module !== 'undefined' && module.exports) {
         // garden alike (owner, 16/07 — "Adelaide always wins for both"). It's the one fact the region's calendar
         // outranks the label AND the filler toggle; the packet's own sow text is only the fallback when we have
         // no Adelaide window for that crop (e.g. a generic unnamed seed with no crop match).
-        const sowWhen = item.sowMonths
-          ? (ppFormatSowMonths(item.sowMonths) + ' (Adelaide)')
-          : (lf.sow || ppOtherFact(other, /^when$|sow|season|plant/i));
+        // The Sow line goes LIVE when we have the crop's threshold model AND a cached forecast: the static
+        // Adelaide window ("Sep–Feb (Adelaide)") becomes a reading of right-now ("Sow now · direct" /
+        // "Start indoors now" / "Soon — soil still cool" / "Sow from Sep"). It quietly falls back to the
+        // static window whenever the model or forecast is missing — a state, never a nag (reconciliation end goal).
+        let sowWhen;
+        if (item.sowMonths) {
+          const staticWin = ppFormatSowMonths(item.sowMonths) + ' (Adelaide)';
+          let live = null;
+          if (item.sowModel && typeof computeSowReadiness === 'function') {
+            const ctx = ppSowContext();
+            if (ctx && ctx.hasData) {
+              const r = computeSowReadiness(item.sowModel, item.sowMonths, ctx);
+              if (r && r.sowLine) live = r.sowLine;
+            }
+          }
+          sowWhen = live || staticWin;
+        } else {
+          sowWhen = lf.sow || ppOtherFact(other, /^when$|sow|season|plant/i);
+        }
         const facts = ppFactsEl({ labelFacts: Object.assign({}, lf, {
           sowWhen: sowWhen,
           water: ppWaterLevel(lf.water),
