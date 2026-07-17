@@ -602,6 +602,7 @@
       .pl-line { font-size: var(--fs-sm); color: var(--text-muted); }
       .pl-countdown { color: var(--text-muted); }                    /* growing — muted, never green */
       .pl-harvest-check { color: var(--text-muted); font-weight: 600; } /* estimate reached — a quiet "go look" nudge, muted (no green) */
+      .pl-ready { color: var(--color-go); font-weight: 600; }         /* "✓ Ready to plant" — the sanctioned green: an actionable GO, not a nudge */
       /* Optimistic Garden-tab row (latency Slice A, docs/SCOPE-LATENCY-SLICES.md): the confident-match case
          dims the row + adds a quiet "saving…" line while the real write is still in flight. .plant-row-spin
          reuses the SAME pulse language as the Log-feed echo (.pending-spin, Option 1), so "in progress" reads
@@ -1624,7 +1625,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.37</span>
+        <span class="header-version">v7.39</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -1908,7 +1909,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.37 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.39 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9454,6 +9455,20 @@ if (typeof module !== 'undefined' && module.exports) {
         } catch (e) { return null; }
       }
 
+      // Surface 2: is this under-cover seedling ready to plant out RIGHT NOW? True only when the server flagged
+      // it raisingUnderCover (a sprouted, not-yet-transplanted nursery seedling) AND the cached forecast's
+      // coldest upcoming night has warmed past the crop's transplant floor (ForecastMath.computeSowReadiness →
+      // canPlantOut). Degrade-safe: no model / no cached forecast → false → the card shows no line (a state,
+      // never a nag). Green tick = "go" — the one sanctioned green, matching the row palette.
+      function ppReadyToPlant(p) {
+        if (!p || !p.raisingUnderCover || !p.sowModel) return false;
+        if (typeof computeSowReadiness !== 'function') return false;
+        const ctx = ppSowContext();
+        if (!ctx || !ctx.hasData) return false;
+        const r = computeSowReadiness(p.sowModel, p.sowMonths, ctx);
+        return !!(r && r.canPlantOut);
+      }
+
       // Pull a value out of the LabelOther catch-all ("Key: value; Key: value") by a key regex — the home
       // for facts captured before a typed column existed (e.g. the beta test packet's seed count / best-before
       // predate those columns). A typed field always wins; this only backfills the gap.
@@ -9849,6 +9864,8 @@ if (typeof module !== 'undefined' && module.exports) {
           line('pl-yield', 'Harvesting' + (p.yield ? ' · ' + p.yield : '') + since((story && story.firstYield) || ''));
         } else if (st === 'Fruiting' || st === 'Flowering') {
           line('', st + since(ppStageSince(story, st)));
+        } else if (ppReadyToPlant(p)) {
+          line('pl-ready', '✓ Ready to plant');   // under-cover seedling, nights now warm enough (surface 2)
         } else if (estDate && !established) {
           const days = daysUntil(estDate);
           if (days !== null && days <= 0) line('pl-harvest-check', 'Check for harvest');
