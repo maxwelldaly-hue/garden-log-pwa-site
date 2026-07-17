@@ -1675,7 +1675,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.52</span>
+        <span class="header-version">v7.53</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -1973,7 +1973,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.52 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.53 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3218,7 +3218,19 @@ function resolveCropIcon(name) {
   //    its id appears as a whole word in the plant name. Most tokens wins (specific variety
   //    beats bare crop). Whole-word (not substring) avoids false hits like 'pea' in 'peach'.
   const words = {};
-  norm.split(' ').forEach(function (w) { words[w] = true; });
+  norm.split(' ').forEach(function (w) {
+    words[w] = true;
+    // Also index a SINGULAR form, so a plural crop NAME ("Pumpkins", "Melons", "Brussels Sprouts", "Onions,
+    // Storage") still matches its singular icon id ("pumpkin", "melon", "brussel-sprout", "onion"). Append-only
+    // (never removes a word), so it can only ADD a match, never break an existing singular one. The ss/us/is
+    // guard stops false stems (grass→gras, cactus→cactu).
+    let s = null;
+    if (/ies$/.test(w) && w.length > 4) s = w.slice(0, -3) + 'y';   // berries → berry
+    else if (/(ss|us|is)$/.test(w)) s = null;
+    else if (/es$/.test(w) && w.length > 4) s = w.slice(0, -2);     // tomatoes → tomato, radishes → radish
+    else if (/s$/.test(w) && w.length > 3) s = w.slice(0, -1);      // pumpkins → pumpkin, beans → bean
+    if (s) words[s] = true;
+  });
   let best = null, bestScore = 0;
   for (let j = 0; j < CROP_ICON_MANIFEST.length; j++) {
     const toks = CROP_ICON_MANIFEST[j].split('-');
