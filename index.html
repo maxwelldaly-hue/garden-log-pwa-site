@@ -39,6 +39,7 @@
         --bg-card: #1e293b;
         --bg-input: #334155;
         --text-main: #f8fafc;
+        --text-soft: #cbd5e1;   /* between main and muted — a readable value tone that isn't stark white (passport facts, v7.19) */
         --text-muted: #94a3b8;
         --border-color: #334155;
         --border-input: #3f4d61;   /* a hair lighter than --bg-input so input/neutral-control borders read (STYLE-AUDIT #3); cards keep --border-color for soft edges */
@@ -931,17 +932,18 @@
         border-top: 1px solid var(--surface-inset-02); font-size: var(--fs-sm);
       }
       .pp-fact:first-child { border-top: 0; }
-      .pp-fact-k { color: var(--text-muted); }
-      .pp-fact-v { color: var(--text-main); overflow-wrap: anywhere; }
-      .pp-fact.pp-fact-prose .pp-fact-v { color: var(--text-muted); }
+      /* One consistent treatment (owner, 17/07): the KEY is the quiet label (muted, slightly dimmed),
+         the VALUE reads a touch brighter but is NOT stark white — the old white Sun/Height values popped
+         for no reason. Every value the same tone; hierarchy comes from key-vs-value, not from colour. */
+      .pp-fact-k { color: var(--text-muted); opacity: 0.8; }
+      .pp-fact-v { color: var(--text-soft); overflow-wrap: anywhere; }
       /* Botanical name under the plant name — quiet italic (captured LabelLatin, or species reference). */
       .pp-latin { color: var(--text-muted); font-size: var(--fs-xs); font-style: italic; margin-top: 2px; opacity: 0.85; }
-      /* Reference filler box — species knowledge, NOT this garden's measurements. NO header word (the
-         "Typical <crop>" eyebrow was dropped 17/07 — owner: "much gentler"); the colour carries it now:
-         a faint sage wash + dashed border + muted italic values keep filler visually apart from captured
-         label facts (provenance rule — a reference row must never pass as a capture). */
-      .pp-facts-ref { border-style: dashed; border-color: rgba(125, 160, 135, 0.28); background: rgba(94, 140, 110, 0.08); }
-      .pp-fact-ref .pp-fact-v { color: var(--text-muted); font-style: italic; }
+      /* Reference filler — species knowledge, NOT this garden's measurements. Shares the ONE facts box
+         (same border, same background, same value tone); the sole tell that a row is borrowed-not-captured
+         is its value being *italic* (owner, 17/07: "italicised only"). Provenance by one typographic
+         signal, nothing louder — no dashed border, no wash, no header. */
+      .pp-fact-ref .pp-fact-v { font-style: italic; }
       /* Story milestones + photo rows: the Recent-row register (mark · text · short date). */
       .pp-ms-row {
         display: flex; gap: 10px; padding: 7px 2px; align-items: baseline;
@@ -1567,7 +1569,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.18</span>
+        <span class="header-version">v7.19</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1841,7 +1843,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.18 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.19 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9513,10 +9515,8 @@ if (typeof module !== 'undefined' && module.exports) {
         const storyEl = ppStoryEl(p, story, pending);
         if (storyEl) body.appendChild(storyEl);
 
-        const facts = ppFactsEl(p);
+        const facts = ppFactsEl(p, null, true);   // captured + species-reference filler, one box
         if (facts) body.appendChild(facts);
-        const ref = ppReferenceEl(p);
-        if (ref) body.appendChild(ref);
 
         const photos = ppPhotosEl(story);
         if (photos) body.appendChild(photos);
@@ -9623,59 +9623,46 @@ if (typeof module !== 'undefined' && module.exports) {
         return '';
       }
 
-      // "From the label" — the packet's own words, descriptive tier only. The section header IS the
-      // provenance: everything in this box was literally printed on the user's packet/tag.
-      function ppFactsEl(p, displaySpec) {
-        const f = p.labelFacts;
-        if (!f) return null;
-        const rows = (displaySpec || PP_FACT_DISPLAY).filter(function (spec) { return String(f[spec[0]] || '').trim(); });
-        if (!rows.length) return null;
+      // The facts box — ONE consistent surface (owner, 17/07: "consistency in approach"). Captured
+      // packet facts and species-reference filler live in the SAME box, same border, same background,
+      // same muted values; the ONLY thing that marks a fact as borrowed-not-captured is that its value
+      // is *italic* (`.pp-fact-ref`). No "From the label" / "Typical <crop>" headers — the provenance
+      // is carried by that one typographic tell, nothing louder. `includeReference` is the plant card
+      // (species fallback fills the gaps a label left); the shed card passes its own fuller spec and no
+      // reference. Renders if EITHER captured or filler rows exist (a label-less plant is reference-only).
+      function ppFactRow(label, value, isRef) {
+        const row = document.createElement('div');
+        row.className = 'pp-fact' + (isRef ? ' pp-fact-ref' : '');
+        const k = document.createElement('div'); k.className = 'pp-fact-k'; k.textContent = label;
+        const v = document.createElement('div'); v.className = 'pp-fact-v'; v.textContent = String(value == null ? '' : value).trim();
+        row.appendChild(k); row.appendChild(v);
+        return row;
+      }
+      function ppFactsEl(p, displaySpec, includeReference) {
+        const f = p.labelFacts || {};
+        const captured = (displaySpec || PP_FACT_DISPLAY).filter(function (spec) { return String(f[spec[0]] || '').trim(); });
+        // Reference filler (plant card only, Filler toggle on): species values for the keys NO label
+        // captured — never overrides a real capture; its rows render italic to stay honestly borrowed.
+        let refRows = [];
+        if (includeReference && fillerEnabled() && p.reference) {
+          refRows = PP_REF_DISPLAY.filter(function (spec) {
+            return p.reference[spec[0]] && !String(f[spec[0]] || '').trim();
+          });
+        }
+        if (!captured.length && !refRows.length) return null;
         const sec = document.createElement('div');
-        const h = document.createElement('div'); h.className = 'pp-sec-h'; h.textContent = 'From the label';
-        sec.appendChild(h);
         const box = document.createElement('div'); box.className = 'pp-facts';
-        rows.forEach(function (spec) {
-          const row = document.createElement('div');
-          row.className = 'pp-fact' + (spec[2] ? ' pp-fact-prose' : '');
-          const k = document.createElement('div'); k.className = 'pp-fact-k'; k.textContent = spec[1];
-          const v = document.createElement('div'); v.className = 'pp-fact-v'; v.textContent = String(f[spec[0]]).trim();
-          row.appendChild(k); row.appendChild(v);
-          box.appendChild(row);
-        });
+        captured.forEach(function (spec) { box.appendChild(ppFactRow(spec[1], f[spec[0]], false)); });
+        refRows.forEach(function (spec) { box.appendChild(ppFactRow(spec[1], p.reference[spec[0]], true)); });
         sec.appendChild(box);
         return sec;
       }
 
-      // Reference filler — species-level values (CROP_REFERENCE) for the facts NO label ever captured,
-      // so a gifted cutting isn't a bare card. Deliberately a SEPARATE, visually distinct box (dashed
-      // border, softer background, muted italic values): this is what the species is like, NOT a
-      // measurement of this garden — provenance stays structural, a reference row can never pass as a
-      // capture (owner, 15/07). NO header word: the "Typical <crop>" eyebrow was dropped 17/07 (owner —
-      // "much gentler"); the box's colour/texture carries the filler-ness alone. A captured label fact
-      // always wins; its key simply doesn't appear here.
+      // The reference filler tier: species-level values (CROP_REFERENCE) for the facts NO label captured,
+      // so a gifted cutting isn't a bare card. Folded into ppFactsEl above (one shared box), gap-fill only
+      // (a captured fact always wins), gated by the Filler toggle, and marked as borrowed by italic value
+      // alone (`.pp-fact-ref`) — no separate box, no header (owner, 17/07: "consistency in approach").
       const PP_REF_DISPLAY = [['sun', 'Sun'], ['spacing', 'Spacing'], ['height', 'Height'], ['harvest', 'Harvest']];
-      function ppReferenceEl(p) {
-        if (!fillerEnabled()) return null;   // the reference box is filler overlay — hidden when Filler is off
-        const ref = p.reference;
-        if (!ref) return null;
-        const f = p.labelFacts || {};
-        const rows = PP_REF_DISPLAY.filter(function (spec) {
-          return ref[spec[0]] && !String(f[spec[0]] || '').trim();   // reference fills only the gaps
-        });
-        if (!rows.length) return null;
-        const sec = document.createElement('div');
-        const box = document.createElement('div'); box.className = 'pp-facts pp-facts-ref';
-        rows.forEach(function (spec) {
-          const row = document.createElement('div');
-          row.className = 'pp-fact pp-fact-ref';
-          const k = document.createElement('div'); k.className = 'pp-fact-k'; k.textContent = spec[1];
-          const v = document.createElement('div'); v.className = 'pp-fact-v'; v.textContent = ref[spec[0]];
-          row.appendChild(k); row.appendChild(v);
-          box.appendChild(row);
-        });
-        sec.appendChild(box);
-        return sec;
-      }
 
       // Story — lifecycle turns + harvests only, in the Recent-row register. Marks reuse the feed's
       // two-tier icon grammar (seeds/sprout for plantings, mono #ui-* for the rest).
