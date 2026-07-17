@@ -226,13 +226,18 @@
         background: none; border: none; color: var(--text-main); }
       .header-log-btn svg { width: 22px; height: 22px; }
       .log-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex;
-        align-items: flex-start; justify-content: center; z-index: 1001; }
-      /* Drops down from the very top (over the header) with rounded BOTTOM corners, like a pulled-down shade;
-         padding-top clears the notch/status bar so content isn't under it. */
-      .log-sheet { width: 100%; max-width: 480px; background: var(--bg-card);
-        border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 18px 18px;
-        padding: calc(12px + var(--safe-area-inset-top)) 16px 16px; box-shadow: 0 14px 40px rgba(0,0,0,0.5);
-        max-height: 88vh; overflow-y: auto; transform: translateY(-100%); transition: transform 0.22s ease; }
+        align-items: flex-start; justify-content: center; z-index: 999; }
+      /* Hangs flush BELOW the header (margin-top = header height) with rounded BOTTOM corners, like a shade
+         pulled down out of the header bar. z-index 999 keeps it UNDER the lit header (z 1000), so the header +
+         its ✎ stay bright above the dim and the panel visibly emerges from behind the pencil; tapping the
+         dimmed area below closes it (owner pref, 17/07). max-height tracks the space below the header and
+         shrinks with the keyboard (interactive-widget=resizes-content), so the rounded bottom stays visible
+         above the keyboard instead of being clipped. */
+      .log-sheet { width: 100%; max-width: 480px; margin-top: calc(70px + var(--safe-area-inset-top));
+        background: var(--bg-card); border: 1px solid var(--border-color); border-top: none;
+        border-radius: 0 0 18px 18px; padding: 14px 16px 16px; box-shadow: 0 14px 40px rgba(0,0,0,0.5);
+        max-height: calc(100vh - 70px - var(--safe-area-inset-top)); overflow-y: auto;
+        transform: translateY(-100%); transition: transform 0.22s ease; }
       .log-sheet-overlay.open .log-sheet { transform: translateY(0); }
       .log-sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
       .log-sheet-title { font-size: var(--fs-md); font-weight: 700; color: var(--text-main); }
@@ -242,6 +247,9 @@
       /* Flatten the borrowed card in the sheet: #logPanel's card-strip overrides (#logPanel .input-container)
          no longer apply once reparented, so restate them here — otherwise it reads as a card-in-a-sheet. */
       .log-sheet-slot .input-container { padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+      /* Shorter textarea inside the sheet (Dashboard keeps its taller 150px) so the whole card — incl. the
+         Camera/Upload row — fits above the keyboard and the panel's rounded bottom stays visible, not clipped. */
+      .log-sheet-slot textarea { min-height: 96px; }
       .login-error { margin-top: 10px; font-size: var(--fs-sm); color: var(--red-500); }
       .rbtn-full { flex-basis: 100%; }
 
@@ -1616,7 +1624,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.35</span>
+        <span class="header-version">v7.36</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -1700,7 +1708,7 @@
             </button>
             <button id="addPhotoBtn" class="photo-btn" onclick="document.getElementById('photoInput').click()">
               <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M4 4h3l2-2h6l2 2h3c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zm8 3c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3z"/></svg>
-              Photo
+              Camera
             </button>
             <button id="uploadPhotoBtn" class="photo-btn" onclick="document.getElementById('photoUploadInput').click()">
               <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
@@ -1900,7 +1908,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.35 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.36 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -8374,9 +8382,9 @@ if (typeof module !== 'undefined' && module.exports) {
         if (logSheetReturnTimer) { clearTimeout(logSheetReturnTimer); logSheetReturnTimer = null; }
         slot.appendChild(input);                 // borrow the one input into the sheet
         overlay.style.display = 'flex';
-        requestAnimationFrame(() => overlay.classList.add('open'));  // trigger the slide-up transition
-        const ta = document.getElementById('logTextarea');
-        if (ta) setTimeout(() => ta.focus(), 80);  // after the transition starts, so the keyboard reflow is clean
+        requestAnimationFrame(() => overlay.classList.add('open'));  // trigger the slide-down transition
+        // No auto-focus: opening WITHOUT slamming the keyboard up keeps the whole card visible and leaves the
+        // dimmed area tappable, so "tap outside to close" works (owner pref, 17/07). Tap the box to start typing.
       }
       function closeLogSheet() {
         const overlay = document.getElementById('logSheetOverlay');
