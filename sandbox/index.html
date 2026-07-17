@@ -906,6 +906,36 @@
         border-radius: var(--r-xs);
       }
 
+      /* === In-season pane (docs/SCOPE-IN-SEASON.md) — the reconciliation finale ==========================
+         Whole classified catalogue × the live forecast, grouped Ready now / Coming soon / Out of season.
+         Reuses the .pp-fs overlay shell; these style only the body content. Quiet by design (a possibility
+         view, not a chore): green is reserved for a real GO (Ready now), everything else is muted chrome. */
+      .is-intro { display: flex; flex-direction: column; gap: 4px; }
+      .is-lede { margin: 0; font-size: var(--fs-base); color: var(--text-main); }
+      .is-soil { font-size: var(--fs-xs); color: var(--text-muted); letter-spacing: var(--ls-wide); text-transform: uppercase; }
+      .is-soil-cal { color: var(--amber-400); }
+      .is-section { display: flex; flex-direction: column; gap: 8px; }
+      .is-sec-head { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 2px; border-bottom: 1px solid var(--border-color); }
+      .is-sec-title { font-size: var(--fs-sm); font-weight: 600; color: var(--text-main); letter-spacing: var(--ls-wide); text-transform: uppercase; }
+      .is-ready .is-sec-title { color: var(--color-go); }
+      .is-sec-sub { font-size: var(--fs-xs); color: var(--text-muted); }
+      .is-collapsible { cursor: pointer; }
+      .is-caret { display: inline-block; transition: transform 0.15s ease; }
+      .is-collapsible.is-open .is-caret { transform: rotate(180deg); }
+      .is-list { display: flex; flex-direction: column; gap: 2px; }
+      .is-row { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-radius: var(--r-sm); }
+      .is-row-owned { background: var(--surface-inset-01); }
+      .is-ic { width: 30px; height: 30px; flex: 0 0 30px; display: flex; align-items: center; justify-content: center; }
+      .is-ic .plant-ic { width: 26px; height: 26px; margin: 0; vertical-align: unset; }
+      .is-name { flex: 1 1 auto; font-size: var(--fs-base); color: var(--text-main); display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+      .is-owned { font-size: var(--fs-xs); color: var(--color-sage); white-space: nowrap; }
+      .is-line { font-size: var(--fs-sm); font-weight: 500; text-align: right; white-space: nowrap; flex: 0 0 auto; }
+      .is-go   { color: var(--color-go); font-weight: 600; }   /* the sanctioned GO green — only in Ready now */
+      .is-soon { color: var(--blue-400); }                     /* in-window but soil not there yet — blue/frost, matches the soil-panel cold gap */
+      .is-far  { color: var(--text-muted); }                   /* out of the window — quiet "Sow from Sep" */
+      .is-none, .is-empty { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.5; padding: 6px 2px; }
+      .is-empty { text-align: center; padding-top: 40px; }
+
       /* === Plant passport (docs/SCOPE-PLANT-HISTORY.md) ==================================================
          Tap a plant row → a full-screen overlay: identity + a dead-quiet 4-stop lifecycle ribbon + the
          packet facts + the plant's story + photo links. Mechanics mirror .plot-fs (fixed inset:0, scroll
@@ -1507,6 +1537,21 @@
       <path fill="#6cc260" d="M12 13Q18 11 16 5.5Q11 8.5 12 13Z"/>
     </symbol>
 
+    <!-- card-inseason — In-season pane (docs/SCOPE-IN-SEASON.md): a green sprout with a low amber sun —
+         "the season is right to sow". Deliberately distinct from card-care (sprout in a brown SOIL mound =
+         tending) and card-soiltemp (thermometer): the sun, not soil, carries the "right TIME" meaning. -->
+    <symbol id="card-inseason" viewBox="0 0 24 24">
+      <rect x="11.2" y="8.5" width="1.6" height="10" rx="0.8" fill="#3f8f3a"/>
+      <path fill="#5cb254" d="M12 12.5Q6.5 10.5 8.2 5.2Q12.8 7.4 12 12.5Z"/>
+      <path fill="#6cc260" d="M12 12.5Q17.5 10.5 15.8 5.2Q11.2 7.4 12 12.5Z"/>
+      <g fill="#fbbf24">
+        <circle cx="18.3" cy="17.2" r="2.5"/>
+        <rect x="17.5" y="11.9" width="1.6" height="2.1" rx="0.8"/>
+        <rect x="22.1" y="16.4" width="2.1" height="1.6" rx="0.8"/>
+        <rect x="20.7" y="13.4" width="2.1" height="1.6" rx="0.8" transform="rotate(45 21.75 14.2)"/>
+      </g>
+    </symbol>
+
     <!-- card-weather — Weather, the DEFAULT / mild condition (replaces 🌤️): amber sun peeking behind a
          soft grey cloud. Reactive siblings below (card-wx-*) swap in by the day's headline reading. -->
     <symbol id="card-weather" viewBox="0 0 24 24">
@@ -1630,7 +1675,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.49</span>
+        <span class="header-version">v7.51</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -1873,6 +1918,20 @@
           </div>
         </div>
 
+        <!-- "In season" — the reconciliation finale (docs/SCOPE-IN-SEASON.md). A PULL surface: a quiet launcher
+             (never a banner/count) that opens the full-screen In-season pane, answering "what could I sow now?"
+             across the whole catalogue by reading the sow calendar against today's cached forecast. Sits right
+             under Soil temperature — the live-forecast half of the magic lives here. Same .insights-panel launcher
+             card shape as the Garden Map below (a button, not a collapsible), so the dashboard reads as one column. -->
+        <div class="insights-panel plot-openmap-card" role="button" tabindex="0" aria-label="Open the In-season pane"
+             onclick="openInSeason()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openInSeason();}">
+          <div class="insights-header">
+            <span class="insights-title"><span class="title-icon"><svg class="title-ic" viewBox="0 0 24 24"><use href="#card-inseason" xlink:href="#card-inseason"></use></svg></span> In season</span>
+            <span class="insights-end"><span class="insights-arrow plot-openmap-arrow">⤢</span></span>
+          </div>
+        </div>
+        <button type="button" class="ui-hint" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">What the planting calendar and today's soil say you could sow right now — the whole catalogue, ranked. Crops you already have seeds for are marked. A view you open, never a to-do.</span></button>
+
         <!-- Spatial lens on the same state: opens the full-screen garden map (Project Plot). It's not its own
              tab — the map IS the garden seen from above — and it sits at the BOTTOM of the Dashboard (below the
              daily panels, above the discreet App Settings link) as a reference lens. Styled as an .insights-panel
@@ -1914,7 +1973,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.49 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.51 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2890,6 +2949,19 @@
         <button type="button" class="pp-close" onclick="closePassport()" aria-label="Close passport">✕</button>
       </div>
       <div id="passportBody" class="pp-body" role="dialog" aria-modal="true"></div>
+    </div>
+
+    <!-- In-season pane (docs/SCOPE-IN-SEASON.md) — the reconciliation finale. A full-screen PULL surface,
+         summoned from the Dashboard "In season" launcher. Reuses the passport's .pp-fs shell (bar + scrolling
+         body + tap-outside/Esc/back to dismiss). Body is built in Js-InSeason.html (renderInSeason): the whole
+         classified catalogue read against the cached forecast, grouped Ready now / Coming soon / Out of season,
+         with the crops you already own seeds for marked. Pull, not push: nothing loads until it's opened. -->
+    <div id="inSeasonOverlay" class="pp-fs" style="display:none;">
+      <div class="pp-bar">
+        <span class="pp-crumb">In season</span>
+        <button type="button" class="pp-close" onclick="closeInSeason()" aria-label="Close In-season pane">✕</button>
+      </div>
+      <div id="inSeasonBody" class="pp-body" role="dialog" aria-modal="true"></div>
     </div>
 
     <!-- Shared resolve dialog: ONE modal frame for confirming a garden "⚠ to confirm" card (tap a banner
@@ -10234,6 +10306,216 @@ if (typeof module !== 'undefined' && module.exports) {
             if (out) out.textContent = 'Error: ' + (err && err.message ? err.message : err);
           })
           .processClientRequest(JSON.stringify({ action: action, token: token, pin: pin }));
+      }
+</script>
+
+    <script>
+      // ============================================================================
+      // In-season pane — the sow/plant-out reconciliation FINALE (docs/SCOPE-IN-SEASON.md).
+      //
+      // Where the passport answers "when can I sow the seeds I OWN?", this answers the whole-catalogue
+      // question: "what could I sow NOW?" — every classified crop ranked against today's conditions. Its
+      // magic (no paper calendar can do it): calendar × the LIVE cached forecast — "the calendar says beans,
+      // and your soil agrees today."
+      //
+      // ON-THESIS: a PULL surface, not a push one. Nothing loads until openInSeason(); it's a view you open,
+      // never a banner or a count or a chore ("vibes, not commands"). Reuses the passport's .pp-fs shell
+      // (bar + scroll body + tap-outside / Esc / back-button to dismiss) and its data plumbing pattern
+      // (render from cache instantly, refresh in the background). ALL the decision maths is shared, tested
+      // code: ForecastMath.computeSowReadiness × computeSowContext, the same functions the passport lines use.
+      // The server ships the lean catalogue (getSowCatalogue → buildSowCatalogue), incl. which crops you
+      // already have seeds for. This file is presentation only.
+      // ============================================================================
+
+      let _isOpen = false, _isPushed = false, _isBackdropBound = false;
+      const IS_CACHE_KEY = 'garden_log_sow_catalogue';
+
+      function openInSeason() {
+        const overlay = document.getElementById('inSeasonOverlay');
+        if (!overlay || _isOpen) return;
+        _isOpen = true;
+        isBindBackdrop(overlay);
+        document.body.style.overflow = 'hidden';
+        overlay.style.display = 'flex';
+        try { history.pushState({ is: 1 }, ''); _isPushed = true; } catch (e) { _isPushed = false; }
+        renderInSeason(isReadCache());   // instant from cache (or a loading state on first ever open)
+        isFetchCatalogue();              // then refresh in the background so the list stays fresh
+      }
+
+      function closeInSeason(fromPop) {
+        const overlay = document.getElementById('inSeasonOverlay');
+        if (!overlay || !_isOpen) return;
+        if (!fromPop && _isPushed) { history.back(); return; }   // the popstate re-enters as fromPop
+        _isPushed = false;
+        overlay.style.display = 'none';
+        _isOpen = false;
+        document.body.style.overflow = '';
+      }
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && _isOpen) closeInSeason(); });
+      window.addEventListener('popstate', function () { if (_isOpen) closeInSeason(true); });
+
+      // Tap OUTSIDE the content dismisses (parity with the passport / capture sheet): a tap that lands on the
+      // overlay, the bar's empty space, or the body container itself — never on an actual crop row. Bound once.
+      function isBindBackdrop(overlay) {
+        if (_isBackdropBound || !overlay) return;
+        _isBackdropBound = true;
+        overlay.addEventListener('click', function (e) {
+          if (!_isOpen) return;
+          const t = e.target;
+          if (t === overlay || t.id === 'inSeasonBody' || (t.classList && t.classList.contains('pp-bar'))) closeInSeason();
+        });
+      }
+
+      function isReadCache() {
+        try { const t = localStorage.getItem(IS_CACHE_KEY); const a = t ? JSON.parse(t) : null; return Array.isArray(a) ? a : null; }
+        catch (e) { return null; }
+      }
+
+      // Fetch the lean catalogue and cache it. Degrade-safe: offline / no PIN → keep whatever's cached (the
+      // render already ran from cache). A successful read repaints IF the pane is still open.
+      function isFetchCatalogue() {
+        if (typeof isOnline !== 'undefined' && !isOnline) return;
+        const pin = localStorage.getItem('garden_log_pin');
+        const token = localStorage.getItem('garden_log_token');
+        if (!pin && !token) return;
+        google.script.run
+          .withSuccessHandler(function (resStr) {
+            try {
+              const res = JSON.parse(resStr);
+              if (res.status === 'success' && res.data && Array.isArray(res.data.catalogue)) {
+                localStorage.setItem(IS_CACHE_KEY, JSON.stringify(res.data.catalogue));
+                if (_isOpen) renderInSeason(res.data.catalogue);
+              }
+            } catch (e) {}
+          })
+          .processClientRequest(JSON.stringify({ action: 'getSowCatalogue', token: token, pin: pin }));
+      }
+
+      // The readiness context. Prefer the full forecast-backed one (soil + upcoming nights) the passport uses,
+      // so the pane can split "ready now" from "coming soon" by the live soil reading. If no forecast is cached
+      // (first run / offline before a fetch), fall back to a CALENDAR-ONLY context — monthIdx from today — so
+      // the pane still groups in-season vs out; it just can't confirm the soil (no "ready now" split then).
+      function isBuildCtx() {
+        let ctx = (typeof ppSowContext === 'function') ? ppSowContext() : null;
+        if (ctx && ctx.hasData) return ctx;
+        const todayIso = (typeof todayAdelaide === 'function') ? todayAdelaide() : '';
+        const m = String(todayIso || '').match(/^\d{4}-(\d{2})/);
+        return {
+          soilTemp: (ctx && ctx.soilTemp != null) ? ctx.soilTemp : null,
+          nightMinC: (ctx && ctx.nightMinC != null) ? ctx.nightMinC : null,
+          monthIdx: m ? parseInt(m[1], 10) : null,
+          hasData: false
+        };
+      }
+
+      // One catalogue row → its bucket + line. Buckets (the design's three tiers): 'ready' = sow it now (green
+      // ✓ — direct-sow soil is in band, or start-indoors while the soil catches up); 'soon' = the calendar
+      // window is open but the soil isn't there yet (a degree gap, or no live reading); 'later' = out of the
+      // window ("Sow from Sep"). Reuses computeSowReadiness verbatim — the SAME verdict the passport shows.
+      function isReadinessFor(row, ctx) {
+        const r = (typeof computeSowReadiness === 'function') ? computeSowReadiness(row, row.sowMonths, ctx) : null;
+        if (!r) return { bucket: 'later', line: '' };
+        if (r.canDirectSow || r.canStartIndoors) return { bucket: 'ready', line: r.sowLine || '✓ Ready to sow' };
+        if (r.inWindow) return { bucket: 'soon', line: r.sowLine || 'In season' };
+        return { bucket: 'later', line: r.sowLine || '' };
+      }
+
+      // One crop row's HTML: icon · name (+ "seeds in shed" when owned) · the readiness line.
+      function isRowHtml(row, line, cls) {
+        const icon = (typeof plantIconSvgHtml === 'function') ? plantIconSvgHtml(row.crop) : '';
+        const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+        const owned = row.owned
+          ? '<span class="is-owned" title="You have seeds for this in the shed">seeds in shed</span>'
+          : '';
+        const lineHtml = line ? '<span class="is-line ' + cls + '">' + esc(line) + '</span>' : '';
+        return '<div class="is-row' + (row.owned ? ' is-row-owned' : '') + '">' +
+                 '<span class="is-ic">' + icon + '</span>' +
+                 '<span class="is-name">' + esc(row.crop) + owned + '</span>' +
+                 lineHtml +
+               '</div>';
+      }
+
+      function isSectionHtml(title, sub, rowsHtml, extraClass) {
+        if (!rowsHtml) return '';
+        return '<div class="is-section ' + (extraClass || '') + '">' +
+                 '<div class="is-sec-head"><span class="is-sec-title">' + title + '</span>' +
+                   (sub ? '<span class="is-sec-sub">' + sub + '</span>' : '') + '</div>' +
+                 '<div class="is-list">' + rowsHtml + '</div>' +
+               '</div>';
+      }
+
+      function renderInSeason(catalogue) {
+        const body = document.getElementById('inSeasonBody');
+        if (!body) return;
+
+        // No catalogue yet: either the book isn't set up on this instance, or the first fetch hasn't landed.
+        if (!Array.isArray(catalogue)) {
+          body.innerHTML = '<div class="is-empty">Reading the planting calendar…</div>';
+          return;
+        }
+        if (!catalogue.length) {
+          body.innerHTML = '<div class="is-empty">The In-season pane needs your Crop Reference book. ' +
+            'Set it up from App Settings → Dev → Crop Reference.</div>';
+          return;
+        }
+
+        const ctx = isBuildCtx();
+        const groups = { ready: [], soon: [], later: [] };
+        catalogue.forEach(function (row) {
+          const v = isReadinessFor(row, ctx);
+          groups[v.bucket].push({ row: row, line: v.line });
+        });
+        // Within a group: owned crops first (the gentle nudge — you have these), then A→Z. The server already
+        // sorts A→Z, so a stable owned-first partition preserves that.
+        const orderGroup = function (arr) {
+          return arr.filter(function (e) { return e.row.owned; })
+            .concat(arr.filter(function (e) { return !e.row.owned; }));
+        };
+        const rowsOf = function (arr, cls) {
+          return orderGroup(arr).map(function (e) { return isRowHtml(e.row, e.line, cls); }).join('');
+        };
+
+        // Intro: the one-line "what this is" + the live soil reading when we have it (the honesty of the signal).
+        let soilNote = '';
+        if (ctx && ctx.soilTemp != null) {
+          const t = Math.round(ctx.soilTemp * 10) / 10;
+          soilNote = '<span class="is-soil">Soil ~' + (String(t).replace(/\.0$/, '')) + '°C today</span>';
+        } else {
+          soilNote = '<span class="is-soil is-soil-cal">Calendar only — no live soil reading yet</span>';
+        }
+        const intro = '<div class="is-intro">' +
+            '<p class="is-lede">What the planting calendar and today\'s soil say you could sow.</p>' +
+            soilNote + '</div>';
+
+        const readySub = groups.ready.length ? groups.ready.length + '' : '';
+        let html = intro;
+        if (groups.ready.length) {
+          html += isSectionHtml('Ready now', readySub, rowsOf(groups.ready, 'is-go'), 'is-ready');
+        } else {
+          html += '<div class="is-section is-ready"><div class="is-sec-head"><span class="is-sec-title">Ready now</span></div>' +
+            '<div class="is-none">Nothing\'s calling to be sown today — the soil\'s still catching up. Have a look at what\'s coming.</div></div>';
+        }
+        html += isSectionHtml('Coming soon', groups.soon.length ? groups.soon.length + '' : '',
+          rowsOf(groups.soon, 'is-soon'), 'is-comingsoon');
+        // "Out of season" can be long — collapse it behind a tap so the pane stays quiet (possibility, not a wall).
+        if (groups.later.length) {
+          html += '<div class="is-section is-later">' +
+            '<div class="is-sec-head is-collapsible" role="button" tabindex="0" onclick="isToggleLater(this)" ' +
+              'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();isToggleLater(this);}">' +
+              '<span class="is-sec-title">Out of season</span>' +
+              '<span class="is-sec-sub">' + groups.later.length + ' <span class="is-caret">⌄</span></span></div>' +
+            '<div class="is-list is-later-list" style="display:none;">' + rowsOf(groups.later, 'is-far') + '</div></div>';
+        }
+
+        body.innerHTML = html;
+      }
+
+      function isToggleLater(head) {
+        const list = head.parentNode.querySelector('.is-later-list');
+        if (!list) return;
+        const open = list.style.display !== 'none';
+        list.style.display = open ? 'none' : '';
+        head.classList.toggle('is-open', !open);
       }
 </script>
 
