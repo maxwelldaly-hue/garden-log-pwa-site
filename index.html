@@ -337,6 +337,11 @@
       .hiw-step p { font-size: var(--fs-base); color: var(--text-muted); line-height: 1.6; margin: 0; }
       .hiw-step p + p { margin-top: 9px; }
       .hiw-step em { color: var(--text-main); font-style: italic; }
+
+      /* Foot-of-Info ⓘ-hints master switch (twin of the Dev-drawer toggle) — one quiet, card-less line. */
+      .hiw-hints { padding: 0 4px; }
+      .hiw-hints-label { display: flex; align-items: center; gap: 9px; font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.5; cursor: pointer; }
+      .hiw-hints-label input { flex: none; accent-color: var(--color-sage); width: 16px; height: 16px; }
       .hiw-step strong { color: var(--text-main); font-weight: 600; }
 
       .input-container { background-color: var(--bg-card); border-radius: var(--r-2xl); padding: 20px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; gap: 15px; }
@@ -364,12 +369,12 @@
          The single 'Log entry' primary action (the two-button Garden/Shed destinations were retired in the
          cutover — the AI routes each note). NEUTRAL slate, deliberately not sage/terracotta (also retires the
          "green = foliage only" tension). CSS `order` floats the row ABOVE the controls-row (owner's layout)
-         without reordering the DOM; scoped to body.one-button (the permanent capture-layout class) so the
-         `order` never leaks onto other .ui-hint elements. --color-log is tweakable for a different neutral. */
+         without reordering the DOM; scoped to body.one-button (the permanent capture-layout class).
+         --color-log is tweakable for a different neutral. (The old `.ui-hint { order:3 }` leg is gone —
+         the capture hint now anchors in the panel header, not inside this card.) */
       .log-row { display: none; margin-top: 5px; align-items: stretch; }
       body.one-button .log-row { display: flex; order: 1; }
       body.one-button .controls-row { order: 2; }
-      body.one-button .ui-hint { order: 3; }
       .save-log { flex: 1; background-color: var(--color-log); color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.28); }
       .save-log:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
       .save-log:disabled:active { transform: none; }
@@ -764,20 +769,49 @@
       .weather-hint { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.4; min-height: 16px; }
       /* Desktop-only paste hint, injected after .controls-row by JS (see Js-State.html paste wiring). */
       .paste-tip { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.3; margin-top: 8px; }
-      /* In-UI hints: quiet point-of-use explanations of a control, tap-to-reveal. Hidden ENTIRELY by default
-         so the owner's daily surface stays clean; the Dev-drawer master switch (body.hints-on, applyHints —
-         auto-ON on beta, off on prod) reveals a discreet ⓘ beside each hinted control. Tapping it (toggleHint,
-         Js-Core.html) expands just that one caption — never a wall of captions. Authored as
-         <button class="ui-hint" onclick="toggleHint(this)"><span class="ui-hint-text">…</span></button>. */
-      .ui-hint { display: none; }
+      /* In-UI hints: quiet point-of-use explanations, tap-to-reveal. Hidden ENTIRELY by default so the
+         owner's daily surface stays clean; the master switch (body.hints-on, applyHints — auto-ON on beta,
+         toggles in Info tab + Dev drawer) reveals them. Two shapes (both driven by toggleHint, Js-Core.html):
+         — DEFAULT: an icon-only ⓘ button sitting inline in a card header, right after the title
+             <button class="ui-hint" onclick="event.stopPropagation();toggleHint(this)" aria-label="…"></button>
+           paired with a sibling caption inside the same card, revealed on tap:
+             <div class="ui-hint-caption">…</div>
+           (toggleHint finds the caption via the shared .insights-panel / .tidy-banner ancestor).
+         — .ui-hint--tab: a whole-tab hint with no header to anchor to (Garden / Shed / Log tabs). One slim
+           full-width bar at the top of the tab; closed it shows the short data-q lead-in, open it swaps in
+           the full .ui-hint-text caption (single-element, same as the old model).
+         ⓘ is --blue-400 — the info/link colour (§3.3) — not sage, which reads as an action. */
+      .ui-hint, .ui-hint-caption { display: none; }
       body.hints-on .ui-hint {
-        display: inline-flex; align-items: baseline; gap: 5px; margin: 4px 0 0; padding: 0;
-        border: 0; background: none; cursor: pointer; text-align: left;
-        font: inherit; font-size: var(--fs-xs); line-height: 1.35; color: var(--text-muted);
+        display: inline-flex; align-items: center; justify-content: center;
+        border: 0; background: none; cursor: pointer;
+        padding: 8px 6px; margin: -8px 0; /* fat tap target without growing the 24px header row */
+        font: inherit; font-size: var(--fs-md); line-height: 1; color: var(--blue-400); opacity: 0.8;
       }
-      body.hints-on .ui-hint::before { content: 'ⓘ'; color: var(--color-sage); font-size: var(--fs-sm); line-height: 1; }
+      body.hints-on .ui-hint::before { content: 'ⓘ'; }
+      body.hints-on .ui-hint.open { opacity: 1; }
       .ui-hint .ui-hint-text { display: none; }
-      .ui-hint.open .ui-hint-text { display: inline; }
+      /* The revealed caption: an inset note inside the card (flex-gap of .insights-body spaces it). */
+      body.hints-on .ui-hint-caption.open {
+        display: block; padding: 9px 12px; border-radius: var(--r-sm);
+        background: var(--surface-inset-02); border: 1px solid var(--surface-inset-03);
+        font-size: var(--fs-sm); line-height: 1.5; color: var(--text-muted); text-align: left;
+      }
+      /* Caption margins where there's no padded .insights-body to sit in. */
+      .plot-openmap-card .ui-hint-caption.open { margin: 12px 16px 16px; cursor: default; }
+      #logPanel .ui-hint-caption.open { margin: 12px 14px 0; }
+      .tidy-banner .ui-hint-caption.open { margin-top: 8px; }
+      /* Whole-tab bar shape: ⓘ + lead-in question when closed, ⓘ + full caption when open. */
+      body.hints-on .ui-hint--tab {
+        display: flex; align-items: baseline; justify-content: flex-start; gap: 7px; width: 100%;
+        padding: 8px 12px; margin: 0 0 10px; border-radius: var(--r-sm);
+        background: var(--surface-inset-02); border: 1px solid var(--surface-inset-03);
+        text-align: left; font-size: var(--fs-sm); line-height: 1.5; color: var(--text-muted); opacity: 1;
+      }
+      body.hints-on .ui-hint--tab::before { flex: none; font-size: var(--fs-md); color: var(--blue-400); }
+      body.hints-on .ui-hint--tab::after { content: attr(data-q); }
+      body.hints-on .ui-hint--tab.open::after { content: none; }
+      .ui-hint--tab.open .ui-hint-text { display: inline; }
       /* Per-plant latest-photo 📷 in the Garden tab: a quiet tap-target that opens the stored Drive image.
          Only rendered when the plant has a photo (renderLayoutModel), so it's never a dead end. */
       .plant-photo-link { margin-left: 6px; font-size: var(--fs-sm); text-decoration: none; opacity: 0.75; line-height: 1; }
@@ -1675,7 +1709,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.55</span>
+        <span class="header-version">v7.56</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -1704,9 +1738,9 @@
       <!-- No inline colours: inherits .queue-banner's amber (245,158,11 / --amber-400) so the two banners
            share ONE amber (was a near-duplicate #eab308 here). Shown/hidden via JS style.display. -->
       <div id="tidyBanner" class="queue-banner tidy-banner">
-        <div class="tidy-banner-head"><strong>⚠️ <span id="tidyCount">0</span> <span id="tidyNoun">things</span> to confirm</strong> — tap one to verify</div>
+        <div class="tidy-banner-head"><strong>⚠️ <span id="tidyCount">0</span> <span id="tidyNoun">things</span> to confirm</strong> — tap one to verify <button type="button" class="ui-hint" onclick="event.stopPropagation();toggleHint(this)" aria-expanded="false" aria-label="About the to-confirm tray"></button></div>
         <div id="tidyChips" class="tidy-chips"></div>
-        <button type="button" class="ui-hint" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">The scribe only files what it's sure of; anything uncertain waits here instead of being guessed into your garden. Tap a chip to set it right.</span></button>
+        <div class="ui-hint-caption">The scribe only files what it's sure of; anything uncertain waits here instead of being guessed into your garden. Tap a chip to set it right.</div>
       </div>
 
       <div class="tabs-header">
@@ -1725,10 +1759,14 @@
              the "Log" tab (history). #logPanel CSS strips the inner card so it isn't a card-in-a-card. -->
         <div id="logPanel" class="insights-panel">
           <div class="insights-header" onclick="togglePanel('logPanel','log_collapsed')">
-            <span class="insights-title"><span class="title-icon"><svg class="title-ic" viewBox="0 0 24 24"><use href="#card-log" xlink:href="#card-log"></use></svg></span> Log activity</span>
+            <span class="insights-title"><span class="title-icon"><svg class="title-ic" viewBox="0 0 24 24"><use href="#card-log" xlink:href="#card-log"></use></svg></span> Log activity <button type="button" class="ui-hint" onclick="event.stopPropagation();toggleHint(this)" aria-expanded="false" aria-label="About logging"></button></span>
             <span class="insights-end"><span class="insights-meta"></span><span class="insights-arrow">⌄</span></span>
           </div>
           <div class="insights-body" id="logPanelBody">
+        <!-- ONE consolidated capture-card hint caption (owner 12/07: per-control ⓘ stacked). The ⓘ itself
+             anchors in the header title; this caption reveals here, above the input. Copy is neutral in
+             one-button mode (there's no Garden/Shed choice to explain — the app routes it). -->
+        <div class="ui-hint-caption">Jot a few words or dictate, and add a photo if you like — the app reads them and files what happened, whether it's the garden or the shed.</div>
         <div class="input-container" id="logInputContainer">
           <!-- No capture-mode toggle: since the v7.15 one-button cutover the destination is chosen by the
                SERVER router (partitionForRouting, GardenDoc.js) — one ➤ Log entry button, no sticky hidden
@@ -1779,11 +1817,6 @@
             </button>
             <div id="logChip" class="log-chip" style="display:none"></div>
           </div>
-          <!-- ONE consolidated capture-card hint (owner 12/07: the per-control ⓘ stacked, each adding a row of
-               vertical space). Merges the old form / controls-row / save-row hints into a single ⓘ at the card
-               foot — still point-of-use for the CARD, just not one ⓘ per control. Copy is neutral in one-button
-               mode (there's no Garden/Shed choice to explain — the app routes it). -->
-          <button type="button" class="ui-hint" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">Jot a few words or dictate, and add a photo if you like — the app reads them and files what happened, whether it's the garden or the shed.</span></button>
         </div>
           </div>
         </div>
@@ -1799,10 +1832,11 @@
              shows a feed due-count when Food/Seasol are due. See docs/archive/CARE-RINGS-BRIEF.md. -->
         <div id="carePanel" class="insights-panel">
           <div class="insights-header" onclick="togglePanel('carePanel','care_collapsed')">
-            <span class="insights-title"><span class="title-icon"><svg class="title-ic" viewBox="0 0 24 24"><use href="#card-care" xlink:href="#card-care"></use></svg></span> Care</span>
+            <span class="insights-title"><span class="title-icon"><svg class="title-ic" viewBox="0 0 24 24"><use href="#card-care" xlink:href="#card-care"></use></svg></span> Care <button type="button" class="ui-hint" onclick="event.stopPropagation();toggleHint(this)" aria-expanded="false" aria-label="About the care rings"></button></span>
             <span class="insights-end"><span id="careHeaderGlance" class="insights-meta"></span><span class="insights-arrow">⌄</span></span>
           </div>
           <div class="insights-body">
+            <div class="ui-hint-caption">Tap a ring when you've done that job across the whole garden; the colour shows how due it is. Water is different — a live balance of rain against evaporation (blue = beds gaining, amber = drying out).</div>
             <div class="care-tile-row">
               <!-- Water: tap = mark watered today (replaced the old toggle). BALANCE ring (computeWaterRing);
                    ids preserved so renderForecast paints it unchanged. -->
@@ -1851,7 +1885,6 @@
                 <div class="care-tile-label"><span class="care-tile-ic" aria-hidden="true"><svg viewBox="0 0 160 340" width="20" height="20" style="display:block"><path d="M80 320 C76 290 80 255 74 220 C68 185 76 150 70 120 C66 98 68 78 70 62" fill="none" stroke="#2d6a4f" stroke-width="28" stroke-linecap="round"/><path d="M80 320 C76 290 80 255 74 220 C68 185 76 150 70 120 C66 98 68 78 70 62" fill="none" stroke="#40916c" stroke-width="16" stroke-linecap="round"/><path d="M72 240 C52 232 30 216 18 194 C6 170 8 146 22 140 C36 134 52 150 62 168 C72 186 74 210 74 232Z" fill="#2d6a4f"/><path d="M72 240 C54 232 34 215 22 194 C11 172 13 151 24 144 C30 166 44 182 58 196 C68 208 73 222 72 240Z" fill="#52b788"/><path d="M72 172 C90 162 114 144 124 120 C134 96 130 72 116 68 C102 64 88 82 80 102 C72 122 72 148 72 168Z" fill="#2d6a4f"/><path d="M72 172 C88 162 110 145 120 122 C130 100 127 78 115 72 C110 94 96 110 84 126 C76 140 72 158 72 168Z" fill="#52b788"/><path d="M70 130 C52 122 30 106 18 82 C6 58 10 34 24 30 C38 26 52 44 60 64 C68 84 70 108 70 126Z" fill="#40916c"/><path d="M70 130 C54 122 34 106 22 84 C11 62 14 40 25 34 C30 56 44 72 56 88 C66 102 70 116 70 130Z" fill="#74c69d"/></svg></span>Seasol</div>
               </div>
             </div>
-            <button type="button" class="ui-hint" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">Tap a ring when you've done that job across the whole garden; the colour shows how due it is. Water is different — a live balance of rain against evaporation (blue = beds gaining, amber = drying out).</span></button>
           </div>
         </div>
 
@@ -1862,10 +1895,11 @@
         <!-- WEATHER: today + tomorrow at a glance, with the atmospheric-stress badge in the header -->
         <div id="weatherPanel" class="insights-panel">
           <div class="insights-header" onclick="togglePanel('weatherPanel','weather_collapsed')">
-            <span class="insights-title"><span class="title-icon" id="weatherTitleIcon"><svg class="title-ic" viewBox="0 0 24 24"><use href="#card-weather" xlink:href="#card-weather"></use></svg></span> Weather</span>
+            <span class="insights-title"><span class="title-icon" id="weatherTitleIcon"><svg class="title-ic" viewBox="0 0 24 24"><use href="#card-weather" xlink:href="#card-weather"></use></svg></span> Weather <button type="button" class="ui-hint" onclick="event.stopPropagation();toggleHint(this)" aria-expanded="false" aria-label="About the weather card"></button></span>
             <span class="insights-end"><span id="weatherHeaderGlance" class="insights-meta"></span><span class="insights-arrow">⌄</span></span>
           </div>
           <div class="insights-body">
+            <div class="ui-hint-caption">Today and tomorrow for your exact patch. The header shows today's range and conditions at a glance; any heat, wind or dry-spell alert appears as a line here. This part needs no logging.</div>
             <!-- Intervention alerts (deficit / heat / blossom / scorch / bolting) — condition-derived, so they
                  live with Weather now (moved out of the retired Water card). renderForecast writes #alertStack;
                  silent (display:none) when nothing's active. -->
@@ -1902,19 +1936,18 @@
                  in the grid row above (owner, 07/07 — "like it used to"); the accumulated fall is a different
                  kind of number (what's hit the beds), so it stays a separate drop. -->
             <div class="rain-line rain-fallen-line"><svg class="ui-ic" viewBox="0 0 24 24"><use href="#ui-wx-droplet" xlink:href="#ui-wx-droplet"></use></svg> <span id="rain7dValue">–</span> — fallen in the past week</div>
-            <button type="button" class="ui-hint" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">Today and tomorrow for your exact patch. The header shows today's range and conditions at a glance; any heat, wind or dry-spell alert appears as a line here. This part needs no logging.</span></button>
           </div>
         </div>
 
         <!-- SOIL TEMPERATURE: crop bands (defaults closed) -->
         <div id="soilPanel" class="insights-panel collapsed">
           <div class="insights-header" onclick="togglePanel('soilPanel','soil_collapsed')">
-            <span class="insights-title"><span class="title-icon"><svg class="title-ic" viewBox="0 0 24 24"><use href="#card-soiltemp" xlink:href="#card-soiltemp"></use></svg></span> Soil temperature</span>
+            <span class="insights-title"><span class="title-icon"><svg class="title-ic" viewBox="0 0 24 24"><use href="#card-soiltemp" xlink:href="#card-soiltemp"></use></svg></span> Soil temperature <button type="button" class="ui-hint" onclick="event.stopPropagation();toggleHint(this)" aria-expanded="false" aria-label="About soil temperature"></button></span>
             <span class="insights-end"><span id="soilHeaderReading" class="insights-meta"></span><span class="insights-arrow">⌄</span></span>
           </div>
           <div class="insights-body">
+            <div class="ui-hint-caption">A rolling 3-day average — steadier than a single forecast point — so you can see which crops the soil is warm enough for right now.</div>
             <div id="soilBellwethers"></div>
-            <button type="button" class="ui-hint" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">A rolling 3-day average — steadier than a single forecast point — so you can see which crops the soil is warm enough for right now.</span></button>
           </div>
         </div>
 
@@ -1926,11 +1959,11 @@
         <div class="insights-panel plot-openmap-card" role="button" tabindex="0" aria-label="Open the In-season pane"
              onclick="openInSeason()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openInSeason();}">
           <div class="insights-header">
-            <span class="insights-title"><span class="title-icon"><svg class="title-ic" viewBox="0 0 24 24"><use href="#card-inseason" xlink:href="#card-inseason"></use></svg></span> In season</span>
+            <span class="insights-title"><span class="title-icon"><svg class="title-ic" viewBox="0 0 24 24"><use href="#card-inseason" xlink:href="#card-inseason"></use></svg></span> In season <button type="button" class="ui-hint" onclick="event.stopPropagation();toggleHint(this)" aria-expanded="false" aria-label="About In season"></button></span>
             <span class="insights-end"><span class="insights-arrow plot-openmap-arrow">⤢</span></span>
           </div>
+          <div class="ui-hint-caption" onclick="event.stopPropagation()">What the planting calendar and today's soil say you could sow right now — the whole catalogue, ranked. Crops you already have seeds for are marked. A view you open, never a to-do.</div>
         </div>
-        <button type="button" class="ui-hint" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">What the planting calendar and today's soil say you could sow right now — the whole catalogue, ranked. Crops you already have seeds for are marked. A view you open, never a to-do.</span></button>
 
         <!-- Spatial lens on the same state: opens the full-screen garden map (Project Plot). It's not its own
              tab — the map IS the garden seen from above — and it sits at the BOTTOM of the Dashboard (below the
@@ -1940,13 +1973,13 @@
         <div class="insights-panel plot-openmap-card" role="button" tabindex="0" aria-label="Open the garden map"
              onclick="openPlotFullscreen()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPlotFullscreen();}">
           <div class="insights-header">
-            <span class="insights-title"><span class="title-icon"><svg class="title-ic" viewBox="0 0 24 24"><use href="#card-map" xlink:href="#card-map"></use></svg></span> Garden Map</span>
+            <span class="insights-title"><span class="title-icon"><svg class="title-ic" viewBox="0 0 24 24"><use href="#card-map" xlink:href="#card-map"></use></svg></span> Garden Map <button type="button" class="ui-hint" onclick="event.stopPropagation();toggleHint(this)" aria-expanded="false" aria-label="About the garden map"></button></span>
             <!-- ⤢ (fullscreen-expand, matching the map's own "⤢ Fit" button), NOT the ⌄ collapse chevron the
                  sibling cards use — this card OPENS the full-screen map, it doesn't expand inline. -->
             <span class="insights-end"><span class="insights-arrow plot-openmap-arrow">⤢</span></span>
           </div>
+          <div class="ui-hint-caption" onclick="event.stopPropagation()">A bird's-eye plan of the garden — an N arrow marks north (the house side). Tap a bed to see or arrange what's in it; turn on ☀️ sun or images; pinch to zoom.</div>
         </div>
-        <button type="button" class="ui-hint" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">A bird's-eye plan of the garden — an N arrow marks north (the house side). Tap a bed to see or arrange what's in it; turn on ☀️ sun or images; pinch to zoom.</span></button>
 
         <button id="toggleSettingsBtn" class="settings-toggle-btn" onclick="toggleSettings()">App Settings</button>
         <!-- App Settings holds ONLY the PIN — the everyday, user-relevant control. The backend plumbing
@@ -1973,7 +2006,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.55 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.56 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2088,7 +2121,7 @@
                the ⓘ; toggleHint expands one). Once flipped here, the stored choice wins. -->
           <div class="dev-section">
             <h4 class="dev-h">Show hints</h4>
-            <p class="dev-note">Adds a small ⓘ beside key controls; tap one to see what it does. Handy when showing someone the app. Off by default on your phone (auto-on in the Playground).</p>
+            <p class="dev-note">Adds a ⓘ in each card's header; tap one to see what that part does. Handy when showing someone the app. Off by default on your phone (auto-on in the Playground); same switch as the one on the Info tab.</p>
             <label class="dev-toggle"><input type="checkbox" id="devHintsToggle" onchange="toggleHints(this)"> Show helper hints</label>
           </div>
 
@@ -2216,7 +2249,7 @@
       <div id="tab-state" class="tab-content">
         <!-- The garden map (a spatial lens on this same state) is launched from the "Garden Map" card at
              the BOTTOM of the Dashboard tab, not from here — it's reference, not part of the beds list. -->
-        <button type="button" class="ui-hint" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">The live state of every bed — rebuilt from your Log, never typed, so it always matches what you've recorded. The number on each bed is how many plants it holds. Tap the camera beside a plant to open its latest photo. Sown seeds show a seed icon with a sprout-by date (amber = past due, check the tray), then a sprout once you say they're up.</span></button>
+        <button type="button" class="ui-hint ui-hint--tab" data-q="How does this stay up to date?" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">The live state of every bed — rebuilt from your Log, never typed, so it always matches what you've recorded. The number on each bed is how many plants it holds. Tap a plant to open its passport — its whole story, photos and all. Sown seeds show a seed icon with a sprout-by date (amber = past due, check the tray), then a sprout once you say they're up.</span></button>
         <div class="state-container" id="stateContainer">
           Loading garden state...
         </div>
@@ -2736,13 +2769,13 @@
            a read-only view (you log changes from the Dashboard, not by editing here). Collapsible category
            cards reuse the Current Layout bed-card pattern; categories sorted by the Order column. -->
       <div id="tab-inventory" class="tab-content">
-        <button type="button" class="ui-hint" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">Tools, fertilisers, treatments and seeds, grouped by type. A read-only view — you add things just by logging them from the Dashboard (the app files a supply to the Shed on its own), by voice or a product photo. Uncertain reads wait as a ⚠ To confirm draft.</span></button>
+        <button type="button" class="ui-hint ui-hint--tab" data-q="How do things get in here?" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">Tools, fertilisers, treatments and seeds, grouped by type. A read-only view — you add things just by logging them from the Dashboard (the app files a supply to the Shed on its own), by voice or a product photo. Tap a captured seed packet for its sowing facts. Uncertain reads wait as a ⚠ To confirm draft.</span></button>
         <div class="state-container" id="inventoryContainer">Loading inventory…</div>
       </div>
 
       <!-- Recent: the last ~30 logs, newest-first. Loaded when the tab is opened. -->
       <div id="tab-recent" class="tab-content">
-        <button type="button" class="ui-hint" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">Every note ever made, newest first — the permanent record everything else is built from. The ↩ on a row takes back anything logged by mistake, and the Garden re-settles to match.</span></button>
+        <button type="button" class="ui-hint ui-hint--tab" data-q="What is this list?" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">Every note ever made, newest first — the permanent record everything else is built from. The ↩ on a row takes back anything logged by mistake, and the Garden re-settles to match.</span></button>
         <!-- Optimistic Log-feed echo (latency Option 1): notes still in the offline queue (not yet parsed by
              the scribe) show here at the top as your own words + "saving…", so the tab acknowledges the note
              immediately instead of waiting on the Gemini round-trip. Reconciles for free — a synced log leaves
@@ -2753,11 +2786,13 @@
 
       <!-- Info: a static, warm explainer for friends/family. No backend calls. Two tiers of depth:
            (1) Nutshell — the 10-second pitch, always visible.
-           (2) How it works — the journey of a single note, the conceptual walkthrough, visible.
+           (2) How it works — the journey of a single note, the conceptual walkthrough (12 steps), visible.
+           Plus the user-visible ⓘ-hints master switch at the foot (twin of the Dev-drawer toggle).
            The old TIER 3 "Under the hood" per-screen manual was DISSOLVED into point-of-use ⓘ hints at each
-           control (`.ui-hint`, Dev-drawer master switch, auto-on on beta) — that killed the "keep the manual
-           in step with the real UI" maintenance tax, since each explanation now lives beside the thing it
-           explains. Don't reintroduce a per-screen manual here; add a `.ui-hint` at the control instead. -->
+           control (`.ui-hint`, header-anchored since the hint redesign; auto-on on beta) — that killed the
+           "keep the manual in step with the real UI" maintenance tax, since each explanation now lives beside
+           the thing it explains. Don't reintroduce a per-screen manual here; add a `.ui-hint` at the control
+           instead. -->
       <div id="tab-howitworks" class="tab-content">
         <div class="hiw">
 
@@ -2779,8 +2814,9 @@
               So this app does one thing first: it records.
             </p>
             <p class="hiw-pitch">
-              Buy lettuce. Plant lettuce. Snap a photo of the lettuce and the label. The app knows what
-              you planted, when it's due, and where it's growing — and remembers it for you.
+              Buy lettuce. Plant lettuce. Snap a photo of the packet. The app reads the fine print —
+              variety, days to harvest — and from then on it knows what you planted, where it's growing
+              and when it's due. You didn't type a thing.
             </p>
             <p class="hiw-pitch">
               That's enough. It's also just the start.
@@ -2837,7 +2873,26 @@
               </div>
 
               <div class="hiw-step">
-                <h4 class="hiw-step-head">5. Oh — there's also a Shed</h4>
+                <h4 class="hiw-step-head">5. It reads the fine print</h4>
+                <p>
+                  Show it a seed packet or a plant tag and it reads what's printed — the variety, the days
+                  to harvest, the sowing depth — and files the facts against the right plant. Photograph
+                  the back of the packet later and it reunites the two. A fertiliser label works the same
+                  way: the feeding and dilution notes end up on the bottle in your Shed.
+                </p>
+              </div>
+
+              <div class="hiw-step">
+                <h4 class="hiw-step-head">6. Every plant carries a passport</h4>
+                <p>
+                  Tap any plant in the Garden and its passport opens: when it was sown, when it sprouted,
+                  how long it's been producing, what the label said, every note and every photo in one
+                  place. Nobody wrote that page — it assembles itself from the Log.
+                </p>
+              </div>
+
+              <div class="hiw-step">
+                <h4 class="hiw-step-head">7. Oh — there's also a Shed</h4>
                 <p>
                   It just holds your stuff: tape measure, spades, fertiliser. Same deal — take a photo, it
                   records it. Buy something, or use up the last of it, and the <strong>Shed</strong> counts
@@ -2846,7 +2901,7 @@
               </div>
 
               <div class="hiw-step">
-                <h4 class="hiw-step-head">6. And you own all of it</h4>
+                <h4 class="hiw-step-head">8. And you own all of it</h4>
                 <p>
                   Let's be clear: this is all just a handful of tabs on a Google Sheet. Any time you like, open the
                   guts — delete a line, type a thought, see the whole thing in black and white. Nothing's
@@ -2855,7 +2910,7 @@
               </div>
 
               <div class="hiw-step">
-                <h4 class="hiw-step-head">7. Then there's the fun stuff</h4>
+                <h4 class="hiw-step-head">9. Then there's the fun stuff</h4>
                 <p>
                   The map is that same record, drawn: a bird's-eye plot with every bed in its place, what's
                   growing where, and the sun's path across it through the seasons. It'll even tell you how
@@ -2865,7 +2920,7 @@
               </div>
 
               <div class="hiw-step">
-                <h4 class="hiw-step-head">8. It keeps an eye on the weather</h4>
+                <h4 class="hiw-step-head">10. It keeps an eye on the weather</h4>
                 <p>
                   For your exact patch, every day — today and tomorrow, rain against evaporation, how warm
                   the soil is, and a nudge when heat, wind or a dry spell is coming. This part needs no
@@ -2874,7 +2929,7 @@
               </div>
 
               <div class="hiw-step">
-                <h4 class="hiw-step-head">9. And it knows when to sow</h4>
+                <h4 class="hiw-step-head">11. And it knows when to sow</h4>
                 <p>
                   Three temperatures decide a crop's timing: how warm the <strong>soil</strong> must be for a
                   seed to sprout, how warm it likes to grow, and how mild the <strong>nights</strong> must be
@@ -2884,12 +2939,13 @@
                   short; a seedling on the windowsill says when the nights are finally safe to plant it out; and
                   the soil panel shows which crops the ground suits today. It's the same sum wherever you see it
                   — the plant's number against today's reading — which is why a green tick means one thing
-                  everywhere: go.
+                  everywhere: go. The In season card on the Dashboard runs that sum across the whole
+                  catalogue — everything you could sow today, ranked, with the packets you already own marked.
                 </p>
               </div>
 
               <div class="hiw-step">
-                <h4 class="hiw-step-head">10. Or just ask</h4>
+                <h4 class="hiw-step-head">12. Or just ask</h4>
                 <p>
                   Hand the whole record to an AI companion — a Gemini "gem", set up outside the app — and
                   ask in plain words: what's overdue, what to sow next, what ate the seedlings. Because it
@@ -2902,6 +2958,13 @@
           <!-- (The old TIER 3 "Under the hood" per-screen manual lived here; it was dissolved into
                point-of-use `.ui-hint` ⓘ hints beside each real control — see the Info header comment
                above. The per-screen manual's content now lives at each screen, not in this page.) -->
+
+          <!-- The user-visible master switch for those ⓘ hints — the bridge from this page to the
+               point-of-use layer. Twin of the Dev-drawer toggle (one stored choice; toggleHints keeps
+               both checkboxes in step). Auto-on in the Playground. -->
+          <section class="hiw-hints">
+            <label class="hiw-hints-label"><input type="checkbox" id="infoHintsToggle" onchange="toggleHints(this)"> Show a ⓘ beside each part of the app — tap one for what it does</label>
+          </section>
 
         </div>
       </div>
@@ -4692,31 +4755,46 @@ if (typeof module !== 'undefined' && module.exports) {
         if (opening) populateDev();
       }
 
-      // In-UI hints master switch. Each explanatory caption is a hidden `.ui-hint`; `hints-on` on <body>
-      // reveals a discreet ⓘ beside every hinted control (CSS in Stylesheet.html), and toggleHint expands
-      // one at a time. DEFAULT: off on prod (the owner's daily surface stays clean), ON on beta so
-      // Playground visitors get the point-of-use help that used to live in the Info tab's "Under the hood"
-      // manual. Beta is detected by the server-gated #playgroundWelcome element ("element present ⇒ beta").
-      // Once the owner flips the switch, the stored choice wins on both.
+      // In-UI hints master switch. `hints-on` on <body> reveals a ⓘ in each hinted card's header (plus the
+      // whole-tab hint bars — CSS in Stylesheet.html), and toggleHint expands one caption at a time.
+      // DEFAULT: off on prod (the owner's daily surface stays clean), ON on beta so Playground visitors get
+      // the point-of-use help that used to live in the Info tab's "Under the hood" manual. Beta is detected
+      // by the server-gated #playgroundWelcome element ("element present ⇒ beta"). Once the owner flips the
+      // switch — Info tab or Dev drawer, same stored choice — it wins on both.
       // Persisted like every other client toggle (localStorage); applied on boot from Js-UI init.
+      const HINT_TOGGLE_IDS = ['devHintsToggle', 'infoHintsToggle'];
       function applyHints() {
         const stored = localStorage.getItem('garden_show_hints');
         const isBeta = !!document.getElementById('playgroundWelcome');
         const on = stored === null ? isBeta : stored === 'true';
         document.body.classList.toggle('hints-on', on);
-        const cb = document.getElementById('devHintsToggle');
-        if (cb) cb.checked = on;
+        HINT_TOGGLE_IDS.forEach(function (id) {
+          const cb = document.getElementById(id);
+          if (cb) cb.checked = on;
+        });
       }
       function toggleHints(cb) {
         const on = !!(cb && cb.checked);
         localStorage.setItem('garden_show_hints', on ? 'true' : 'false');
         document.body.classList.toggle('hints-on', on);
+        HINT_TOGGLE_IDS.forEach(function (id) {   // keep the twin checkbox in step
+          const other = document.getElementById(id);
+          if (other && other !== cb) other.checked = on;
+        });
       }
       // One hint's tap-to-reveal (see .ui-hint in Stylesheet.html). The master switch shows the ⓘ; tapping
-      // expands just that caption. aria-expanded kept honest for screen readers.
+      // expands just that caption. Two shapes: a header ⓘ pairs with the sibling .ui-hint-caption inside
+      // the same card/banner (found via the shared ancestor); a .ui-hint--tab bar carries its own inline
+      // text. aria-expanded kept honest for screen readers.
       function toggleHint(btn) {
         const open = btn.classList.toggle('open');
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        const host = btn.closest('.insights-panel, .tidy-banner');
+        if (host) {
+          const cap = host.querySelector('.ui-hint-caption');
+          if (cap) cap.classList.toggle('open', open);
+          if (open) host.classList.remove('collapsed');   // a collapsed panel opens so the caption shows
+        }
       }
 
       // Dev-drawer maintenance: ensure every in-use shed category has a row on the 'Shed Categories' order
