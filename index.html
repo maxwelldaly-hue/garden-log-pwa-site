@@ -963,10 +963,14 @@
       .is-ic .plant-ic { width: 26px; height: 26px; margin: 0; vertical-align: unset; }
       .is-name { flex: 1 1 auto; font-size: var(--fs-base); color: var(--text-main); display: flex; align-items: baseline; gap: 8px; min-width: 0; }
       .is-owned { font-size: var(--fs-xs); color: var(--color-sage); white-space: nowrap; }
+      .is-lines { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex: 0 0 auto; min-width: 0; }
       .is-line { font-size: var(--fs-sm); font-weight: 500; text-align: right; white-space: nowrap; flex: 0 0 auto; }
+      .is-note { font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; font-weight: 500; }   /* quiet secondary under the go line: deadline / "or under cover" */
       .is-go   { color: var(--color-go); font-weight: 600; }   /* the sanctioned GO green — only in Ready now */
       .is-indoors { opacity: 0.68; font-weight: 500; }         /* start-indoors: still a ✓ go, but a quieter/less-green cue than direct-sow (raise inside, soil not there yet) */
       .is-soon { color: var(--blue-400); }                     /* in-window but soil not there yet — blue/frost, matches the soil-panel cold gap */
+      .is-leave-cold { color: var(--blue-400); font-weight: 600; }   /* "Plant only" tail heading into COLD (warm-lane crop) — blue tick */
+      .is-leave-warm { color: var(--amber-400); font-weight: 600; }  /* "Plant only" tail heading into HEAT (cool-lane crop) — amber tick */
       .is-far  { color: var(--text-muted); }                   /* out of the window — quiet "Sow from Sep" */
       .is-none, .is-empty { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.5; padding: 6px 2px; }
       .is-empty { text-align: center; padding-top: 40px; }
@@ -982,7 +986,15 @@
         display: flex; flex-direction: column;
         animation: ppFsIn 0.22s ease-out;
         padding-top: var(--safe-area-inset-top, 0);
-        padding-bottom: var(--safe-area-inset-bottom, 0);
+        /* A persistent bottom strip that is NOT the scrolling body — always tappable to dismiss (tap-outside
+           closes both overlays), so a long list (In-season) or a long passport still has a thumb-reachable exit
+           without scrolling to the end. The body caps against it; the strip is the same opaque ground. */
+        padding-bottom: calc(var(--safe-area-inset-bottom, 0) + 13vh);
+      }
+      .pp-fs::after {   /* quiet "tap below to close" cue sitting at the card's bottom edge, above the strip */
+        content: '⌄'; flex: 0 0 auto; text-align: center;
+        color: var(--text-muted); font-size: var(--fs-md); line-height: 1; opacity: 0.5;
+        padding: 6px 0 2px; pointer-events: none;
       }
       @keyframes ppFsIn { from { transform: scale(0.97); opacity: 0; } to { transform: scale(1); opacity: 1; } }
       .pp-bar {
@@ -1013,7 +1025,9 @@
         display: flex; align-items: center; justify-content: center;
       }
       .pp-id-ic .plant-ic { width: 30px; height: 30px; vertical-align: unset; margin: 0; }
+      .pp-id-ic .bed-ic { width: 30px; height: 30px; }
       .pp-id-ic .plant-ic-emoji { width: auto; font-size: 1.4rem; }
+      .pp-id-status { margin-left: auto; }   /* the right-hand lifecycle/place tile pushes to the far right, name in the middle */
       .pp-id h2 { margin: 0; font-size: var(--fs-lg); font-weight: 600; line-height: 1.25; color: var(--text-main); }
       .pp-id h2 .pp-variety { color: var(--text-muted); font-weight: 400; }
       .pp-id-sub { color: var(--text-muted); font-size: var(--fs-sm); margin-top: 2px; }
@@ -1710,7 +1724,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.59</span>
+        <span class="header-version">v7.60</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2007,7 +2021,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.59 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.60 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3578,34 +3592,96 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
   const soilOk = soilKnown && hasSoilGate && !soilTooCold && !soilTooWarm;
 
   const canDirectSow = inWindow && soilOk;
-  // Start indoors: in the pre-window lead runway (ahead of the season, the head-start the lead weeks buy), OR
-  // already in-window but the soil's still too cold to direct-sow. Either way — raise it inside now. NOT
-  // soil-gated (the house is warm); a direct-sow-only crop (lead 0) never gets here.
-  const canStartIndoors = lead > 0 && (inLeadRunway || (inWindow && soilTooCold));
-  const canPlantOut = (night !== null && tNight !== null) ? night >= tNight : false;
+  // Transplant tolerance — can this crop be raised in a tray/module and moved? The sheet's TransplantOK wins;
+  // a blank cell (older book, not yet migrated) falls back to the old proxy "has indoor lead weeks". This is
+  // the gate that decouples raise-inside from the cold-soil head-start (docs/SCOPE-SOW-INDOORS-AUDIT.md).
+  const transplantOk = (model.transplantOk === true) || (model.transplantOk == null && lead > 0);
+  // Start indoors is a STANDING option for a transplant-tolerant crop: through the whole sow window (raise
+  // inside for protection/space, not only when the soil's too cold), AND in the pre-window lead runway (the
+  // warmth head-start the lead weeks buy). NOT soil-gated for warmth, but we only assert it in-window once we
+  // actually have a soil reading (so "no reading" still degrades to the neutral static window, not an indoors
+  // nudge in the dark), and never as the answer to too-HOT soil (the house won't fix an Adelaide heat-fail —
+  // you'd plant out into the same heat). A direct-sow-only crop (TransplantOK=no, e.g. a root) never gets here.
+  const canStartIndoors = transplantOk && (inLeadRunway || (inWindow && soilKnown && !soilTooWarm));
+  // Both paths open at once (warm soil + tray-tolerant): direct-sow leads, indoors is the quiet alternative.
+  const indoorAlso = canDirectSow && canStartIndoors;
+  // Plant-OUT readiness (LIVE "can I plant a seedling out today"): the soil must be warm enough for roots to
+  // ESTABLISH — the crop's GROWING floor (soilCold), NOT the germination floor (a tomato germinates at 10° but
+  // sulks below ~16°) — AND the nights frost-free. Soil + frost, per owner. This is DELIBERATELY separate from
+  // the calendar "Leaving soon / Plant only" tail, which is a time-to-maturity deadline (you skip planting a
+  // tomato in late autumn because there's no season left to fruit, even if today's soil is fine) — so that tail
+  // stays forecast/calendar-based and is NEVER gated on this. (docs/SCOPE-SOW-INDOORS-AUDIT.md)
+  const growFloor = (model.soilCold != null) ? Number(model.soilCold) : germMin;
+  const soilPlantGap = (soil !== null && growFloor !== null) ? Math.round((growFloor - soil) * 10) / 10 : null;
+  const nightPlantGap = (night !== null && tNight !== null) ? Math.round((tNight - night) * 10) / 10 : null;
+  const soilPlantOk = soilPlantGap === null ? true : soilPlantGap <= 0;      // unknown soil → don't block on it
+  const nightPlantOk = nightPlantGap === null ? false : nightPlantGap <= 0;  // need a night reading to say "go"
+  const canPlantOut = soilPlantOk && nightPlantOk;
+
+  // --- SOW-vs-PLANT model (the pane's richer calendar; the passport keeps the single sowLine above) ---------
+  // The pane distinguishes SOWING (seed) from PLANTING-OUT (a raised seedling). Flags below feed its labels:
+  //  · anywhere      = you can sow direct OR start inside right now (both viable) → "Sow or plant · anywhere"
+  //  · startInsideNow= indoor sowing is the PRIMARY action now — a lead-weeks crop pre-season / soil still cold
+  //                    (a head-start crop; distinct from a lead-0 tray crop that's merely cold) → green "indoor sowing"
+  //  · indoorAside   = a lead-0 tray-tolerant crop that's just too cold to direct-sow — indoors is a grey aside on a
+  //                    blue "N° too cold", not a green go (owner: keep those in "coming soon")
+  // Guards mirror canStartIndoors: transplantOk (never nudge a TransplantOK=no crop indoors — the guardrail)
+  // and, in-window, soilKnown (no forecast → degrade to the neutral state, not a green "indoors" nudge in the
+  // dark). lead>0 keeps it distinct from the lead-0 indoorAside path; !soilOk marks "wouldn't direct-sow now".
+  const startInsideNow = transplantOk && lead > 0 && (inLeadRunway || (inWindow && soilKnown && !soilOk && !soilTooWarm));
+  const indoorAside = transplantOk && lead === 0 && inWindow && soilTooCold;
+  const anywhere = canDirectSow && transplantOk;
+
+  // PLANT-OUT window (derived, docs/SCOPE-SOW-INDOORS-AUDIT.md): a raised seedling goes out ~leadMonths after
+  // you'd sow, so the plant window is the sow window shifted later by the lead (a lead-0 tray crop = the sow
+  // window itself). "Plant only" = past the sow window but the plant tail is still open — sowing now won't
+  // finish, but a seedling still goes in. Direction of the season we're leaving into is first-order by lane: a
+  // warm-lane crop leaves into the COLD (blue), a cool-lane crop into the HEAT (amber). Approximate at the edges.
+  let plantWindowEnd = null, canPlantOnly = false, leavingDir = null;
+  if (!win.allYear && win.months && transplantOk) {
+    const plantSet = {};
+    win.months.forEach(function (m) { plantSet[((m - 1 + leadMonths) % 12) + 1] = 1; });
+    if (plantSet[monthIdx] && !inWindow) {
+      canPlantOnly = true;
+      let end = monthIdx;
+      for (let k = 1; k < 12; k++) { const m = ((monthIdx - 1 + k) % 12) + 1; if (plantSet[m]) end = m; else break; }
+      plantWindowEnd = end;
+      // Direction by the calendar turn at the tail's END, not the crop's lane: rolling into autumn/winter
+      // (tail ends Feb–Jul) = COLD coming (blue); into spring/summer (ends Aug–Jan) = HEAT coming (amber). Month-
+      // based so a cool crop's winter tail (e.g. cauliflower ending Jul) reads "cold coming", not a false "heat".
+      leavingDir = (plantWindowEnd >= 2 && plantWindowEnd <= 7) ? 'cold' : 'warm';
+    }
+  }
   // A not-ready reading always carries a NUMBER so "at the margin" (late Sep, 2° short) reads differently from
   // "months away" (June). Two label TYPES encode near-vs-far: a degree gap = temperature-gated + close; a
   // month name ("from Sep") = calendar-gated + far. fmtDeg trims the trailing .0. (design: sow-line-with-numbers)
   const fmtDeg = function (n) { return (Math.round(n * 10) / 10).toString().replace(/\.0$/, ''); };
+  // Sow line names the LOCATION on every go-state ("Sow outdoors" / "Sow indoors"), so the in-ground-vs-inside
+  // choice is legible in the copy — the same words on every surface (docs/SCOPE-SOW-INDOORS-AUDIT.md). Direct-
+  // sow leads when the soil's in band; a tray-tolerant crop whose soil is still too cold reads "Sow indoors"
+  // (you CAN start it now) rather than a bare cold gap; a direct-only crop that's too cold keeps the number.
   let sowLine = null;
   if (inWindow) {
     // No soil gate on this crop (unclassified / soil-only entry) → we can't give a live reading; keep static.
     if (!hasSoilGate) sowLine = null;
-    else if (canDirectSow) sowLine = '✓ Ready to sow';
-    else if (canStartIndoors) sowLine = 'Start indoors now';                  // house is warm — a calendar cue, no soil number
-    else if (soilTooCold) sowLine = fmtDeg(germMin - soil) + '° too cold';    // soil gap: how far the SOIL is below the germ floor
+    else if (canDirectSow) sowLine = '✓ Sow outdoors';
+    else if (canStartIndoors) sowLine = '✓ Sow indoors';                      // soil not ready outside, but the house is — start it inside
+    else if (soilTooCold) sowLine = fmtDeg(germMin - soil) + '° too cold';    // direct-only crop: how far the SOIL is below the germ floor
     else if (soilTooWarm) sowLine = fmtDeg(soil - germMax) + '° too warm';    // soil above the germ ceiling (Adelaide hot-fail)
     // soil unknown → leave null so the caller keeps the static window text.
   } else if (inLeadRunway) {
-    sowLine = 'Start indoors now';   // ahead of the window — the head-start the lead weeks are FOR (no soil gate)
+    sowLine = '✓ Sow indoors';   // ahead of the window — the head-start the lead weeks are FOR (no soil gate)
   } else if (win.months) {
     sowLine = 'Sow from ' + SOW_MONDISP[nextSowMonth(win.months, monthIdx) - 1];
   }
-  // Plant-out gap = how many degrees the coldest upcoming NIGHT is below the crop's transplant floor (>0 = not
-  // safe yet; ≤0 = ready). Separate reading from the sow line (night AIR, not soil) — the window→outside gate.
-  const plantOutGap = (night !== null && tNight !== null) ? (Math.round((tNight - night) * 10) / 10) : null;
+  // Plant-out gap = the coldest upcoming NIGHT below the crop's transplant floor (>0 = not safe; ≤0 = ready).
+  // soilPlantGap = the SOIL below the growing floor. The passport shows whichever is the binding blocker.
+  const plantOutGap = nightPlantGap;
   return { sowLine: sowLine, canDirectSow: canDirectSow, canStartIndoors: canStartIndoors,
-           canPlantOut: canPlantOut, plantOutGap: plantOutGap, inWindow: inWindow };
+           indoorAlso: indoorAlso, canPlantOut: canPlantOut, plantOutGap: plantOutGap, soilPlantGap: soilPlantGap,
+           inWindow: inWindow, transplantOk: transplantOk, startInsideNow: startInsideNow, indoorAside: indoorAside,
+           anywhere: anywhere, canPlantOnly: canPlantOnly, plantWindowEnd: plantWindowEnd, leavingDir: leavingDir,
+           soilTooCold: soilTooCold, soilTooWarm: soilTooWarm };
 }
 
 // Build the readiness context from the SAME cached forecast the weather card uses. PURE (today is passed
@@ -9682,10 +9758,15 @@ if (typeof module !== 'undefined' && module.exports) {
         if (!ctx || !ctx.hasData) return null;
         const r = computeSowReadiness(p.sowModel, p.sowMonths, ctx);
         if (!r) return null;
-        if (r.canPlantOut) return { cls: 'pl-ready', txt: '✓ Ready to plant' };   // green go — the sanctioned green
-        // Not warm enough yet: blue + frost mark, same language as the dashboard soil panel's cold gap. "to
-        // plant" names the gate (this is the window→outside decision, not sowing/growing).
-        if (r.plantOutGap != null && r.plantOutGap > 0) return { cls: 'pl-cold', mark: 'ui-wx-frost', txt: 'Nights ' + r.plantOutGap + '° too cold to plant' };
+        if (r.canPlantOut) return { cls: 'pl-ready', txt: '✓ Plant out' };   // green go — the sanctioned green
+        // Not ready yet: show whichever gate is the BINDING blocker — the SOIL below the growing floor (roots
+        // won't establish) or the NIGHTS below the frost floor. Blue + frost mark, same language as the soil
+        // panel's cold gap. "to plant" names the gate (window→outside, not sowing/growing).
+        const sg = (r.soilPlantGap != null && r.soilPlantGap > 0) ? r.soilPlantGap : 0;
+        const ng = (r.plantOutGap != null && r.plantOutGap > 0) ? r.plantOutGap : 0;
+        if (sg > 0 || ng > 0) {
+          return { cls: 'pl-cold', mark: 'ui-wx-frost', txt: (sg >= ng ? 'Soil ' + sg : 'Nights ' + ng) + '° too cold to plant' };
+        }
         return null;
       }
 
@@ -9869,11 +9950,19 @@ if (typeof module !== 'undefined' && module.exports) {
         wrap.className = 'pp-id';
         const ic = document.createElement('div');
         ic.className = 'pp-id-ic';
-        // A shed item is a SUPPLY, not a plant — show its TYPE glyph (the seed-packet icon for a seed packet,
-        // the nutrition sack for a feed, etc.), the SAME shedCategoryIconId the shed list draws, so the card
-        // reads as "a packet" not "a plant" (owner: the packet looked identical to a garden crop card).
+        // A shed item is a SUPPLY. A SEED packet now reads like the plant card (owner's "missing piece"): the
+        // crop fruit on the LEFT (identity), the seed-bag on the RIGHT (it's a packet, in the shed). Any OTHER
+        // supply (feed, tool…) isn't a crop, so it keeps its single TYPE glyph — the shedCategoryIconId the list draws.
         const catId = (typeof shedCategoryIconId === 'function') ? shedCategoryIconId(category || item.category) : null;
-        if (catId && typeof spriteIconHtml === 'function') {
+        const isSeed = /seed|seedling/i.test(String(category || item.category || ''));
+        let bagTile = null;
+        if (isSeed && catId && typeof spriteIconHtml === 'function') {
+          ic.appendChild(plantIconSvgEl(item.item));
+          bagTile = document.createElement('div');
+          bagTile.className = 'pp-id-ic pp-id-status';
+          bagTile.innerHTML = spriteIconHtml(catId);
+          bagTile.title = 'Seeds in the shed';
+        } else if (catId && typeof spriteIconHtml === 'function') {
           ic.innerHTML = spriteIconHtml(catId);
         } else {
           ic.appendChild(plantIconSvgEl(item.item));
@@ -9910,6 +9999,7 @@ if (typeof module !== 'undefined' && module.exports) {
           txt.appendChild(li);
         }
         wrap.appendChild(txt);
+        if (bagTile) wrap.appendChild(bagTile);   // RIGHT: the seed-bag — it's a packet in the shed
         body.appendChild(wrap);
 
         // "From the label" — the whole point. Same renderer as the plant card, but the SHED's fuller tier
@@ -9928,8 +10018,8 @@ if (typeof module !== 'undefined' && module.exports) {
         // outranks the label AND the filler toggle; the packet's own sow text is only the fallback when we have
         // no Adelaide window for that crop (e.g. a generic unnamed seed with no crop match).
         // The Sow line goes LIVE when we have the crop's threshold model AND a cached forecast: the static
-        // Adelaide window ("Sep–Feb (Adelaide)") becomes a reading of right-now ("✓ Ready to sow" /
-        // "Start indoors now" / "2° too cold" / "Sow from Sep"). It quietly falls back to the
+        // Adelaide window ("Sep–Feb (Adelaide)") becomes a reading of right-now ("✓ Sow outdoors" /
+        // "✓ Sow indoors" / "2° too cold" / "Sow from Sep"). It quietly falls back to the
         // static window whenever the model or forecast is missing — a state, never a nag (reconciliation end goal).
         let sowWhen;
         if (item.sowMonths) {
@@ -10024,21 +10114,42 @@ if (typeof module !== 'undefined' && module.exports) {
         if (photos) body.appendChild(photos);
       }
 
+      // RIGHT-hand status tile (owner: "the missing visual piece") — reads a plant's stage/place at a glance,
+      // paired with the crop sprite on the left. seed → drawn seed glyph, sprout → drawn sprout (the SAME
+      // #plot-ic-seed / #plot-ic-sprout the row + map draw, one classifier plantNurseryPhase, no drift), then
+      // once growing/planted → the CONTAINER icon of the bed it lives in (getBedIconSpec, same as the row lead
+      // icon). Returns null when there's nothing sensible to show (unspecified bed, no phase) → left tile alone.
+      function ppStatusTileEl(p, bedName) {
+        const tile = document.createElement('div');
+        tile.className = 'pp-id-ic pp-id-status';
+        const phase = (typeof plantNurseryPhase === 'function') ? plantNurseryPhase(p) : '';
+        if (phase === 'seed' || phase === 'sprout') {
+          tile.innerHTML = '<svg class="plant-ic" viewBox="0 0 40 40" aria-hidden="true"><use href="#plot-ic-' + phase + '" xlink:href="#plot-ic-' + phase + '"></use></svg>';
+          tile.title = (phase === 'seed') ? 'Sown seed' : 'Sprouted seedling';
+          return tile;
+        }
+        const spec = (typeof getBedIconSpec === 'function') ? getBedIconSpec(bedName) : null;
+        if (spec) {
+          tile.innerHTML = '<svg class="bed-ic" viewBox="' + spec.vb + '" preserveAspectRatio="' + (spec.par || 'xMidYMid meet') + '" aria-hidden="true"><use href="' + spec.href + '" xlink:href="' + spec.href + '"></use></svg>';
+          tile.title = (typeof bedDisplayName === 'function') ? bedDisplayName(bedName) : (bedName || 'Planted');
+          return tile;
+        }
+        if (typeof getBedEmoji === 'function' && bedName) {
+          tile.innerHTML = '<span class="plant-ic-emoji">' + getBedEmoji(bedName) + '</span>';
+          tile.title = bedName;
+          return tile;
+        }
+        return null;   // nothing meaningful → single (crop-only) header
+      }
+
       function ppIdentityEl(p, bedName) {
         const wrap = document.createElement('div');
         wrap.className = 'pp-id';
+        // LEFT: the crop itself — always the fruit sprite (identity). Its lifecycle/place now lives in the
+        // right-hand status tile (ppStatusTileEl), so the header reads "what it is" + "where it's at" at a glance.
         const ic = document.createElement('div');
         ic.className = 'pp-id-ic';
-        // Mirror the Garden row's nursery-icon lifecycle so the card reads its stage at a glance (owner: a sown
-        // seed, a sprouted seedling and an established plant were indistinguishable). A Sown plant shows the
-        // drawn seed glyph, a Sprouted one the drawn sprout, then the crop sprite once growing — the SAME
-        // #plot-ic-seed / #plot-ic-sprout the row + map draw, one classifier (plantNurseryPhase), no drift.
-        const nursery = (typeof plantNurseryPhase === 'function') ? plantNurseryPhase(p) : '';
-        if (nursery === 'seed' || nursery === 'sprout') {
-          ic.innerHTML = '<svg class="plant-ic" viewBox="0 0 40 40" aria-hidden="true"><use href="#plot-ic-' + nursery + '" xlink:href="#plot-ic-' + nursery + '"></use></svg>';
-        } else {
-          ic.appendChild(plantIconSvgEl(p.name));
-        }
+        ic.appendChild(plantIconSvgEl(p.name));
         wrap.appendChild(ic);
         const txt = document.createElement('div');
         const h = document.createElement('h2');
@@ -10072,6 +10183,9 @@ if (typeof module !== 'undefined' && module.exports) {
           txt.appendChild(li);
         }
         wrap.appendChild(txt);
+        // RIGHT: the lifecycle/location status tile (seed · sprout · the bed it's planted in).
+        const status = ppStatusTileEl(p, bedName);
+        if (status) wrap.appendChild(status);
         return wrap;
       }
 
@@ -10491,34 +10605,63 @@ if (typeof module !== 'undefined' && module.exports) {
         return end;
       }
 
-      // One catalogue row → { bucket, line, cls }. Ready splits two ways: direct-sow shows how long the window
-      // stays open ("✓ until May"); start-indoors is a quieter, less-green go ("✓ Indoors only" — a tick, but
-      // the muted-green .is-indoors, since it's a raise-inside cue, not soil-ready). Both still land in 'ready'.
+      // One catalogue row → { bucket, line, cls, note }. The pane models SOWING (seed) AND PLANTING-OUT
+      // (a raised seedling). Four buckets (SCOPE-SOW-INDOORS-AUDIT.md):
+      //  · ready   (green)      — act today: "✓ Sow or plant" (tray-tolerant) / "✓ Sow" (direct-only), the grey
+      //                           note carries the deadline + method ("until May · anywhere / outdoor / indoor sowing").
+      //  · soon    (blue)       — in the window but the soil isn't there yet ("2° too cold"); a lead-0 tray crop
+      //                           adds "indoor sowing" as a grey aside (you could start it inside meanwhile).
+      //  · leaving (blue/amber) — sowing's done for this run, but a seedling still goes in: "✓ Plant only". Blue
+      //                           when we're heading into COLD (a warm-lane crop), amber into HEAT (a cool-lane crop).
+      //  · later   (grey)       — out of season ("Sow from Sep").
+      // Verb is "Sow or plant" only when the crop is tray-tolerant — you can't transplant a carrot.
       function isReadinessFor(row, ctx) {
         const r = (typeof computeSowReadiness === 'function') ? computeSowReadiness(row, row.sowMonths, ctx) : null;
         if (!r) return { bucket: 'later', line: '', cls: 'is-far' };
+        const mon = (typeof SOW_MONDISP !== 'undefined') ? SOW_MONDISP : null;
+        const join = function (a, b) { return [a, b].filter(function (x) { return x; }).join(' · '); };
+        const sowEnd = isWindowEndMonth(row.sowMonths, ctx && ctx.monthIdx);
+        const untilSow = (sowEnd && mon) ? ('until ' + mon[sowEnd - 1]) : '';
+        // "or plant" only when it's genuinely plantable-out TODAY — soil warm enough for roots + frost-free
+        // nights (r.canPlantOut). A cold-soil head-start crop reads just "Sow" (you can start seed, not plant
+        // out yet). The calendar "Plant only" tail below is separate and NOT gated on this.
+        const verb = (r.transplantOk && r.canPlantOut) ? '✓ Sow or plant' : '✓ Sow';
+        // READY (green) — direct-sow, or indoor sowing as the primary action for a head-start crop.
         if (r.canDirectSow) {
-          const end = isWindowEndMonth(row.sowMonths, ctx && ctx.monthIdx);
-          const line = (end && typeof SOW_MONDISP !== 'undefined') ? ('✓ until ' + SOW_MONDISP[end - 1]) : (r.sowLine || '✓ Ready to sow');
-          return { bucket: 'ready', line: line, cls: 'is-go' };
+          return { bucket: 'ready', line: verb, cls: 'is-go', note: join(untilSow, r.anywhere ? 'anywhere' : 'outdoor sowing') };
         }
-        if (r.canStartIndoors) return { bucket: 'ready', line: '✓ Indoors only', cls: 'is-go is-indoors' };
+        if (r.startInsideNow) {
+          return { bucket: 'ready', line: verb, cls: 'is-go', note: join(untilSow, 'indoor sowing') };
+        }
+        // COMING SOON (blue) — in window, soil not there yet; lead-0 tray crop notes the indoor fallback.
+        if (r.inWindow && (r.soilTooCold || r.soilTooWarm)) {
+          return { bucket: 'soon', line: r.sowLine || 'In season', cls: 'is-soon', note: r.indoorAside ? 'indoor sowing' : '' };
+        }
+        // LEAVING SOON — plant-out tail past the sow window (blue = cold coming, amber = heat coming).
+        if (r.canPlantOnly) {
+          const untilPlant = (r.plantWindowEnd && mon) ? ('until ' + mon[r.plantWindowEnd - 1]) : '';
+          const cls = (r.leavingDir === 'warm') ? 'is-leave-warm' : 'is-leave-cold';
+          return { bucket: 'leaving', line: '✓ Plant only', cls: cls, note: untilPlant };
+        }
         if (r.inWindow) return { bucket: 'soon', line: r.sowLine || 'In season', cls: 'is-soon' };
         return { bucket: 'later', line: r.sowLine || '', cls: 'is-far' };
       }
 
-      // One crop row's HTML: icon · name (+ "seeds in shed" when owned) · the readiness line.
-      function isRowHtml(row, line, cls) {
+      // One crop row's HTML: icon · name (+ "seeds in shed" when owned) · the readiness line, with an optional
+      // muted note stacked under it (deadline / "or under cover" — the quiet secondary, right-aligned).
+      function isRowHtml(row, line, cls, note) {
         const icon = (typeof plantIconSvgHtml === 'function') ? plantIconSvgHtml(row.crop) : '';
         const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
         const owned = row.owned
           ? '<span class="is-owned" title="You have seeds for this in the shed">seeds in shed</span>'
           : '';
         const lineHtml = line ? '<span class="is-line ' + cls + '">' + esc(line) + '</span>' : '';
+        const noteHtml = note ? '<span class="is-note">' + esc(note) + '</span>' : '';
+        const linesHtml = (line || note) ? '<span class="is-lines">' + lineHtml + noteHtml + '</span>' : '';
         return '<div class="is-row' + (row.owned ? ' is-row-owned' : '') + '">' +
                  '<span class="is-ic">' + icon + '</span>' +
                  '<span class="is-name">' + esc(row.crop) + owned + '</span>' +
-                 lineHtml +
+                 linesHtml +
                '</div>';
       }
 
@@ -10547,10 +10690,10 @@ if (typeof module !== 'undefined' && module.exports) {
         }
 
         const ctx = isBuildCtx();
-        const groups = { ready: [], soon: [], later: [] };
+        const groups = { ready: [], soon: [], leaving: [], later: [] };
         catalogue.forEach(function (row) {
           const v = isReadinessFor(row, ctx);
-          groups[v.bucket].push({ row: row, line: v.line, cls: v.cls });
+          groups[v.bucket].push({ row: row, line: v.line, cls: v.cls, note: v.note });
         });
         // Within a group: owned crops first (the gentle nudge — you have these), then A→Z. The server already
         // sorts A→Z, so a stable owned-first partition preserves that.
@@ -10559,7 +10702,7 @@ if (typeof module !== 'undefined' && module.exports) {
             .concat(arr.filter(function (e) { return !e.row.owned; }));
         };
         const rowsOf = function (arr) {
-          return orderGroup(arr).map(function (e) { return isRowHtml(e.row, e.line, e.cls); }).join('');
+          return orderGroup(arr).map(function (e) { return isRowHtml(e.row, e.line, e.cls, e.note); }).join('');
         };
 
         // Intro: the one-line "what this is" + the live soil reading when we have it (the honesty of the signal).
@@ -10584,6 +10727,9 @@ if (typeof module !== 'undefined' && module.exports) {
         }
         html += isSectionHtml('Coming soon', groups.soon.length ? groups.soon.length + '' : '',
           rowsOf(groups.soon), 'is-comingsoon');
+        // "Leaving soon": the plant-out tail — the sow window's shut but a seedling still goes in for a while.
+        html += isSectionHtml('Leaving soon', groups.leaving.length ? groups.leaving.length + '' : '',
+          rowsOf(groups.leaving), 'is-leaving');
         // "Out of season" can be long — collapse it behind a tap so the pane stays quiet (possibility, not a wall).
         if (groups.later.length) {
           html += '<div class="is-section is-later">' +
