@@ -603,6 +603,8 @@
       .pl-countdown { color: var(--text-muted); }                    /* growing — muted, never green */
       .pl-harvest-check { color: var(--text-muted); font-weight: 600; } /* estimate reached — a quiet "go look" nudge, muted (no green) */
       .pl-ready { color: var(--color-go); font-weight: 600; }         /* "✓ Ready to plant" — the sanctioned green: an actionable GO, not a nudge */
+      .pl-cold  { color: var(--blue-400); }                           /* "❄ N° too cold to plant" — same blue+frost language as the dashboard soil panel's cold gap */
+      .pl-line-ic { width: 1em; height: 1em; fill: currentColor; vertical-align: -0.12em; }  /* inline weather-mark in a ledger line (mirrors .soil-go-ic) */
       /* Optimistic Garden-tab row (latency Slice A, docs/SCOPE-LATENCY-SLICES.md): the confident-match case
          dims the row + adds a quiet "saving…" line while the real write is still in flight. .plant-row-spin
          reuses the SAME pulse language as the Log-feed echo (.pending-spin, Option 1), so "in progress" reads
@@ -1628,7 +1630,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.46</span>
+        <span class="header-version">v7.50</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -1912,7 +1914,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.46 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.50 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9495,7 +9497,9 @@ if (typeof module !== 'undefined' && module.exports) {
         const r = computeSowReadiness(p.sowModel, p.sowMonths, ctx);
         if (!r) return null;
         if (r.canPlantOut) return { cls: 'pl-ready', txt: '✓ Ready to plant' };   // green go — the sanctioned green
-        if (r.plantOutGap != null && r.plantOutGap > 0) return { cls: 'pl-countdown', txt: 'Nights ' + r.plantOutGap + '° too cold' };
+        // Not warm enough yet: blue + frost mark, same language as the dashboard soil panel's cold gap. "to
+        // plant" names the gate (this is the window→outside decision, not sowing/growing).
+        if (r.plantOutGap != null && r.plantOutGap > 0) return { cls: 'pl-cold', mark: 'ui-wx-frost', txt: 'Nights ' + r.plantOutGap + '° too cold to plant' };
         return null;
       }
 
@@ -9604,6 +9608,7 @@ if (typeof module !== 'undefined' && module.exports) {
         ppOpen = true;
         ppCurrentKey = ppKeyFor(p, bedName);
         _ppLast = { p: p, bed: bedName };
+        ppBindBackdrop(overlay);
         document.body.style.overflow = 'hidden';
         overlay.style.display = 'flex';
         try { history.pushState({ pp: 1 }, ''); _ppPushed = true; } catch (e) { _ppPushed = false; }
@@ -9626,6 +9631,20 @@ if (typeof module !== 'undefined' && module.exports) {
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && ppOpen) closePassport();
       });
+      // Tap OUTSIDE the content to dismiss (parity with the capture sheet's tap-to-close). The passport is a
+      // full-screen surface, so "outside" = the top bar's empty space, the empty area below the content, or
+      // the side margins on a wide screen — i.e. a tap that lands on the overlay/bar/body container itself,
+      // never on an actual content element (facts, story rows, photos stay tappable). Bound once, lazily.
+      let _ppBackdropBound = false;
+      function ppBindBackdrop(overlay) {
+        if (_ppBackdropBound || !overlay) return;
+        _ppBackdropBound = true;
+        overlay.addEventListener('click', function (e) {
+          if (!ppOpen) return;
+          const t = e.target;
+          if (t === overlay || (t.id === 'passportBody') || (t.classList && t.classList.contains('pp-bar'))) closePassport();
+        });
+      }
 
       // === Shed passport (docs/SCOPE-SHED-PASSPORT.md) — tap a seed packet / plant label → its captured
       // packet facts. A supply has no lifecycle and no meaningful event story (restock events are noise by
@@ -9640,6 +9659,7 @@ if (typeof module !== 'undefined' && module.exports) {
         ppOpen = true;
         ppCurrentKey = 'shed:' + String(item.item || '');
         _ppLast = null;   // no async story to re-render into
+        ppBindBackdrop(overlay);
         document.body.style.overflow = 'hidden';
         overlay.style.display = 'flex';
         try { history.pushState({ pp: 1 }, ''); _ppPushed = true; } catch (e) { _ppPushed = false; }
@@ -9663,7 +9683,15 @@ if (typeof module !== 'undefined' && module.exports) {
         wrap.className = 'pp-id';
         const ic = document.createElement('div');
         ic.className = 'pp-id-ic';
-        ic.appendChild(plantIconSvgEl(item.item));
+        // A shed item is a SUPPLY, not a plant — show its TYPE glyph (the seed-packet icon for a seed packet,
+        // the nutrition sack for a feed, etc.), the SAME shedCategoryIconId the shed list draws, so the card
+        // reads as "a packet" not "a plant" (owner: the packet looked identical to a garden crop card).
+        const catId = (typeof shedCategoryIconId === 'function') ? shedCategoryIconId(category || item.category) : null;
+        if (catId && typeof spriteIconHtml === 'function') {
+          ic.innerHTML = spriteIconHtml(catId);
+        } else {
+          ic.appendChild(plantIconSvgEl(item.item));
+        }
         wrap.appendChild(ic);
         const txt = document.createElement('div');
         const h = document.createElement('h2');
@@ -9815,7 +9843,16 @@ if (typeof module !== 'undefined' && module.exports) {
         wrap.className = 'pp-id';
         const ic = document.createElement('div');
         ic.className = 'pp-id-ic';
-        ic.appendChild(plantIconSvgEl(p.name));
+        // Mirror the Garden row's nursery-icon lifecycle so the card reads its stage at a glance (owner: a sown
+        // seed, a sprouted seedling and an established plant were indistinguishable). A Sown plant shows the
+        // drawn seed glyph, a Sprouted one the drawn sprout, then the crop sprite once growing — the SAME
+        // #plot-ic-seed / #plot-ic-sprout the row + map draw, one classifier (plantNurseryPhase), no drift.
+        const nursery = (typeof plantNurseryPhase === 'function') ? plantNurseryPhase(p) : '';
+        if (nursery === 'seed' || nursery === 'sprout') {
+          ic.innerHTML = '<svg class="plant-ic" viewBox="0 0 40 40" aria-hidden="true"><use href="#plot-ic-' + nursery + '" xlink:href="#plot-ic-' + nursery + '"></use></svg>';
+        } else {
+          ic.appendChild(plantIconSvgEl(p.name));
+        }
         wrap.appendChild(ic);
         const txt = document.createElement('div');
         const h = document.createElement('h2');
@@ -9876,6 +9913,8 @@ if (typeof module !== 'undefined' && module.exports) {
         if (p.planted) {
           if (seedOrigin && p.transplanted) {
             line('pl-planted', 'Planted ' + ppWhen(p.transplanted));
+          } else if (seedOrigin && p.sprouted) {
+            line('pl-planted', 'Sprouted ' + ppWhen(p.sprouted));   // up, not yet planted out — distinguishes a seedling from a still-under-soil sow
           } else if (seedOrigin) {
             line('pl-planted', 'Sown ' + ppWhen(p.planted));
           } else {
@@ -9896,7 +9935,17 @@ if (typeof module !== 'undefined' && module.exports) {
         } else if (st === 'Fruiting' || st === 'Flowering') {
           line('', st + since(ppStageSince(story, st)));
         } else if ((po = ppPlantOutLine(p))) {
-          line(po.cls, po.txt);   // under-cover seedling: "✓ Ready to plant" (go) or "Nights N° too cold" (surface 2)
+          // under-cover seedling (surface 2): "✓ Ready to plant" (green go) or "❄ N° too cold to plant" (blue,
+          // with the dashboard's frost mark). The mark case builds the span directly so it can carry the SVG.
+          if (po.mark) {
+            const s = document.createElement('span');
+            s.className = 'pl-line ' + po.cls;
+            s.innerHTML = '<svg class="pl-line-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#' + po.mark + '" xlink:href="#' + po.mark + '"></use></svg> ';
+            s.appendChild(document.createTextNode(po.txt));
+            wrap.appendChild(s);
+          } else {
+            line(po.cls, po.txt);
+          }
         } else if (estDate && !established) {
           const days = daysUntil(estDate);
           if (days !== null && days <= 0) line('pl-harvest-check', 'Check for harvest');
