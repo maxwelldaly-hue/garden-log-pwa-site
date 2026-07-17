@@ -965,6 +965,7 @@
       .is-owned { font-size: var(--fs-xs); color: var(--color-sage); white-space: nowrap; }
       .is-line { font-size: var(--fs-sm); font-weight: 500; text-align: right; white-space: nowrap; flex: 0 0 auto; }
       .is-go   { color: var(--color-go); font-weight: 600; }   /* the sanctioned GO green — only in Ready now */
+      .is-indoors { opacity: 0.68; font-weight: 500; }         /* start-indoors: still a ✓ go, but a quieter/less-green cue than direct-sow (raise inside, soil not there yet) */
       .is-soon { color: var(--blue-400); }                     /* in-window but soil not there yet — blue/frost, matches the soil-panel cold gap */
       .is-far  { color: var(--text-muted); }                   /* out of the window — quiet "Sow from Sep" */
       .is-none, .is-empty { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.5; padding: 6px 2px; }
@@ -1709,7 +1710,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.56</span>
+        <span class="header-version">v7.57</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2006,7 +2007,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.56 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.57 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3206,7 +3207,7 @@ const CROP_ICON_SYNONYMS = [
   [/garlic ?chives?/, 'garlic-chive'],
   [/\bchives?\b/, 'onion-chive'],
   [/spearmint|peppermint/, 'mint'],
-  [/spring onion|scallion/, 'spring-onion'],
+  [/spring onion|scallion|salad ?onions?/, 'spring-onion'],   // salad/bunching onions ~ spring onion (green bunching top)
   [/coriander|cilantro/, 'cilantro'],
   [/beetroot|\bbeet\b/, 'beet'],
   [/courgette/, 'zucchini'],
@@ -3259,7 +3260,7 @@ const CROP_ICON_DEFAULTS = [
   [/\bpotato\b/, 'russet-potato'],
   [/\bcabbage\b/, 'green-cabbage'],
   [/\bkale\b/, 'curly-kale'],
-  [/\bonion\b/, 'yellow-onion'],
+  [/\bonions?\b/, 'yellow-onion'],   // bare/plural onion ("Onions, Storage") -> representative bulb
   [/\blettuce\b/, 'loose-leaf-lettuce'],
   [/\bpepper\b/, 'green-bell-pepper']
 ];
@@ -9153,7 +9154,7 @@ if (typeof module !== 'undefined' && module.exports) {
         // Header glance = just the current soil temperature. The "3-day average" provenance moved to a
         // gentle caption under the chart (below), so the header stays a clean number.
         const headerReading = document.getElementById('soilHeaderReading');
-        if (headerReading) headerReading.textContent = `${soilTemp.toFixed(1)}°C`;
+        if (headerReading) headerReading.textContent = `${soilTemp.toFixed(1)}°`;   // ° only, no C — consistent with the weather temps
 
         const container = document.getElementById('soilBellwethers');
         if (container) {
@@ -10522,12 +10523,34 @@ if (typeof module !== 'undefined' && module.exports) {
       // ✓ — direct-sow soil is in band, or start-indoors while the soil catches up); 'soon' = the calendar
       // window is open but the soil isn't there yet (a degree gap, or no live reading); 'later' = out of the
       // window ("Sow from Sep"). Reuses computeSowReadiness verbatim — the SAME verdict the passport shows.
+      // The LAST month of the sow window's current run (the contiguous stretch containing this month), so a
+      // ready-now crop can read "✓ until May" instead of a bare "Ready to sow" — the useful fact is how long
+      // the window stays open. Walks forward from the current month while months stay in the set (wraps the
+      // year for windows like Sep–Feb). Returns null if we can't map it (all-year / unparseable / not in window).
+      function isWindowEndMonth(sowMonths, monthIdx) {
+        const win = (typeof parseSowWindow === 'function') ? parseSowWindow(sowMonths) : null;
+        if (!win || win.allYear || !win.months || !monthIdx) return null;
+        const set = {}; win.months.forEach(function (m) { set[m] = 1; });
+        if (!set[monthIdx]) return null;
+        let end = monthIdx;
+        for (let k = 1; k < 12; k++) { const m = ((monthIdx - 1 + k) % 12) + 1; if (set[m]) end = m; else break; }
+        return end;
+      }
+
+      // One catalogue row → { bucket, line, cls }. Ready splits two ways: direct-sow shows how long the window
+      // stays open ("✓ until May"); start-indoors is a quieter, less-green go ("✓ Indoors only" — a tick, but
+      // the muted-green .is-indoors, since it's a raise-inside cue, not soil-ready). Both still land in 'ready'.
       function isReadinessFor(row, ctx) {
         const r = (typeof computeSowReadiness === 'function') ? computeSowReadiness(row, row.sowMonths, ctx) : null;
-        if (!r) return { bucket: 'later', line: '' };
-        if (r.canDirectSow || r.canStartIndoors) return { bucket: 'ready', line: r.sowLine || '✓ Ready to sow' };
-        if (r.inWindow) return { bucket: 'soon', line: r.sowLine || 'In season' };
-        return { bucket: 'later', line: r.sowLine || '' };
+        if (!r) return { bucket: 'later', line: '', cls: 'is-far' };
+        if (r.canDirectSow) {
+          const end = isWindowEndMonth(row.sowMonths, ctx && ctx.monthIdx);
+          const line = (end && typeof SOW_MONDISP !== 'undefined') ? ('✓ until ' + SOW_MONDISP[end - 1]) : (r.sowLine || '✓ Ready to sow');
+          return { bucket: 'ready', line: line, cls: 'is-go' };
+        }
+        if (r.canStartIndoors) return { bucket: 'ready', line: '✓ Indoors only', cls: 'is-go is-indoors' };
+        if (r.inWindow) return { bucket: 'soon', line: r.sowLine || 'In season', cls: 'is-soon' };
+        return { bucket: 'later', line: r.sowLine || '', cls: 'is-far' };
       }
 
       // One crop row's HTML: icon · name (+ "seeds in shed" when owned) · the readiness line.
@@ -10573,7 +10596,7 @@ if (typeof module !== 'undefined' && module.exports) {
         const groups = { ready: [], soon: [], later: [] };
         catalogue.forEach(function (row) {
           const v = isReadinessFor(row, ctx);
-          groups[v.bucket].push({ row: row, line: v.line });
+          groups[v.bucket].push({ row: row, line: v.line, cls: v.cls });
         });
         // Within a group: owned crops first (the gentle nudge — you have these), then A→Z. The server already
         // sorts A→Z, so a stable owned-first partition preserves that.
@@ -10581,8 +10604,8 @@ if (typeof module !== 'undefined' && module.exports) {
           return arr.filter(function (e) { return e.row.owned; })
             .concat(arr.filter(function (e) { return !e.row.owned; }));
         };
-        const rowsOf = function (arr, cls) {
-          return orderGroup(arr).map(function (e) { return isRowHtml(e.row, e.line, cls); }).join('');
+        const rowsOf = function (arr) {
+          return orderGroup(arr).map(function (e) { return isRowHtml(e.row, e.line, e.cls); }).join('');
         };
 
         // Intro: the one-line "what this is" + the live soil reading when we have it (the honesty of the signal).
@@ -10600,13 +10623,13 @@ if (typeof module !== 'undefined' && module.exports) {
         const readySub = groups.ready.length ? groups.ready.length + '' : '';
         let html = intro;
         if (groups.ready.length) {
-          html += isSectionHtml('Ready now', readySub, rowsOf(groups.ready, 'is-go'), 'is-ready');
+          html += isSectionHtml('Ready now', readySub, rowsOf(groups.ready), 'is-ready');
         } else {
           html += '<div class="is-section is-ready"><div class="is-sec-head"><span class="is-sec-title">Ready now</span></div>' +
             '<div class="is-none">Nothing\'s calling to be sown today — the soil\'s still catching up. Have a look at what\'s coming.</div></div>';
         }
         html += isSectionHtml('Coming soon', groups.soon.length ? groups.soon.length + '' : '',
-          rowsOf(groups.soon, 'is-soon'), 'is-comingsoon');
+          rowsOf(groups.soon), 'is-comingsoon');
         // "Out of season" can be long — collapse it behind a tap so the pane stays quiet (possibility, not a wall).
         if (groups.later.length) {
           html += '<div class="is-section is-later">' +
@@ -10614,7 +10637,7 @@ if (typeof module !== 'undefined' && module.exports) {
               'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();isToggleLater(this);}">' +
               '<span class="is-sec-title">Out of season</span>' +
               '<span class="is-sec-sub">' + groups.later.length + ' <span class="is-caret">⌄</span></span></div>' +
-            '<div class="is-list is-later-list" style="display:none;">' + rowsOf(groups.later, 'is-far') + '</div></div>';
+            '<div class="is-list is-later-list" style="display:none;">' + rowsOf(groups.later) + '</div></div>';
         }
 
         body.innerHTML = html;
