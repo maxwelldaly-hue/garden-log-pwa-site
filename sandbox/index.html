@@ -1630,7 +1630,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.47</span>
+        <span class="header-version">v7.48</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -1914,7 +1914,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.47 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.48 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9548,7 +9548,7 @@ if (typeof module !== 'undefined' && module.exports) {
         if (r.canPlantOut) return { cls: 'pl-ready', txt: '✓ Ready to plant' };   // green go — the sanctioned green
         // Not warm enough yet: blue + frost mark, same language as the dashboard soil panel's cold gap. "to
         // plant" names the gate (this is the window→outside decision, not sowing/growing).
-        if (r.plantOutGap != null && r.plantOutGap > 0) return { cls: 'pl-cold', mark: 'ui-wx-frost', txt: r.plantOutGap + '° too cold to plant' };
+        if (r.plantOutGap != null && r.plantOutGap > 0) return { cls: 'pl-cold', mark: 'ui-wx-frost', txt: 'Nights ' + r.plantOutGap + '° too cold to plant' };
         return null;
       }
 
@@ -9657,6 +9657,7 @@ if (typeof module !== 'undefined' && module.exports) {
         ppOpen = true;
         ppCurrentKey = ppKeyFor(p, bedName);
         _ppLast = { p: p, bed: bedName };
+        ppBindBackdrop(overlay);
         document.body.style.overflow = 'hidden';
         overlay.style.display = 'flex';
         try { history.pushState({ pp: 1 }, ''); _ppPushed = true; } catch (e) { _ppPushed = false; }
@@ -9679,6 +9680,20 @@ if (typeof module !== 'undefined' && module.exports) {
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && ppOpen) closePassport();
       });
+      // Tap OUTSIDE the content to dismiss (parity with the capture sheet's tap-to-close). The passport is a
+      // full-screen surface, so "outside" = the top bar's empty space, the empty area below the content, or
+      // the side margins on a wide screen — i.e. a tap that lands on the overlay/bar/body container itself,
+      // never on an actual content element (facts, story rows, photos stay tappable). Bound once, lazily.
+      let _ppBackdropBound = false;
+      function ppBindBackdrop(overlay) {
+        if (_ppBackdropBound || !overlay) return;
+        _ppBackdropBound = true;
+        overlay.addEventListener('click', function (e) {
+          if (!ppOpen) return;
+          const t = e.target;
+          if (t === overlay || (t.id === 'passportBody') || (t.classList && t.classList.contains('pp-bar'))) closePassport();
+        });
+      }
 
       // === Shed passport (docs/SCOPE-SHED-PASSPORT.md) — tap a seed packet / plant label → its captured
       // packet facts. A supply has no lifecycle and no meaningful event story (restock events are noise by
@@ -9693,6 +9708,7 @@ if (typeof module !== 'undefined' && module.exports) {
         ppOpen = true;
         ppCurrentKey = 'shed:' + String(item.item || '');
         _ppLast = null;   // no async story to re-render into
+        ppBindBackdrop(overlay);
         document.body.style.overflow = 'hidden';
         overlay.style.display = 'flex';
         try { history.pushState({ pp: 1 }, ''); _ppPushed = true; } catch (e) { _ppPushed = false; }
