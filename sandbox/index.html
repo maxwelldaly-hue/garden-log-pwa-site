@@ -214,6 +214,32 @@
       .login-body p { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.5; margin: 8px 0 14px; }
       .login-pin { width: 100%; padding: 13px 14px; border-radius: var(--r-sm); border: 1px solid var(--border-input); background: var(--bg-input); color: var(--text-main); font-size: var(--fs-lg); letter-spacing: 0.3em; text-align: center; box-sizing: border-box; }
       .login-pin:focus { outline: none; border-color: var(--color-sage); }
+
+      /* Summoned capture sheet (Slice: log-in-header). A quiet header ✎ trigger + a bottom sheet that
+         BORROWS the Dashboard's single #logInputContainer (reparented in/out), so there is no duplicate
+         input and no change to submitLog. Scrim reuses the resolve-overlay idiom; the sheet frame mirrors
+         plot-fs-sheet (safe-area padding + top radius). align-items:flex-end anchors it to the bottom. */
+      .header-log-btn { flex: none; width: 40px; height: 40px; min-width: 40px; padding: 0; cursor: pointer;
+        display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-md);
+        background: var(--surface-inset-05); border: 1px solid var(--border-color); color: var(--text-main); }
+      .header-log-btn svg { width: 20px; height: 20px; }
+      .log-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex;
+        align-items: flex-end; justify-content: center; z-index: 1001; }
+      .log-sheet { width: 100%; max-width: 480px; background: var(--bg-card);
+        border: 1px solid var(--border-color); border-bottom: none; border-radius: 18px 18px 0 0;
+        padding: 8px 16px calc(16px + var(--safe-area-inset-bottom)); box-shadow: 0 -12px 40px rgba(0,0,0,0.5);
+        max-height: 88vh; overflow-y: auto; transform: translateY(100%); transition: transform 0.22s ease; }
+      .log-sheet-overlay.open .log-sheet { transform: translateY(0); }
+      .log-sheet-grip { display: block; width: 40px; height: 5px; padding: 0; margin: 4px auto 10px;
+        border: none; border-radius: var(--r-pill); background: var(--border-input); cursor: pointer; }
+      .log-sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+      .log-sheet-title { font-size: var(--fs-md); font-weight: 700; color: var(--text-main); }
+      .log-sheet-close { background: none; border: none; color: var(--text-muted); font-size: var(--fs-lg);
+        line-height: 1; cursor: pointer; min-width: 44px; min-height: 44px; display: inline-flex;
+        align-items: center; justify-content: center; }
+      /* Flatten the borrowed card in the sheet: #logPanel's card-strip overrides (#logPanel .input-container)
+         no longer apply once reparented, so restate them here — otherwise it reads as a card-in-a-sheet. */
+      .log-sheet-slot .input-container { padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
       .login-error { margin-top: 10px; font-size: var(--fs-sm); color: var(--red-500); }
       .rbtn-full { flex-basis: 100%; }
 
@@ -1588,10 +1614,19 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.33</span>
+        <span class="header-version">v7.34</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
+        <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as
+             generic "create record"); opens the summoned log sheet from ANY tab. Opens only; the sheet is
+             dismissed via its ✕ / scrim / grip / Esc (openLogSheet in Js-UI.html). ADDITIVE by design — it
+             BORROWS the one #logInputContainer, so the Dashboard #logPanel path still works unchanged (no
+             flag needed; the two entry points share a single input instance). Removing the Dashboard panel
+             is a later "replace" slice, not this one. -->
+        <button type="button" class="header-log-btn" onclick="openLogSheet()" aria-label="Log activity" title="Log activity">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        </button>
       </div>
     </header>
 
@@ -1631,8 +1666,8 @@
             <span class="insights-title"><span class="title-icon"><svg class="title-ic" viewBox="0 0 24 24"><use href="#card-log" xlink:href="#card-log"></use></svg></span> Log activity</span>
             <span class="insights-end"><span class="insights-meta"></span><span class="insights-arrow">⌄</span></span>
           </div>
-          <div class="insights-body">
-        <div class="input-container">
+          <div class="insights-body" id="logPanelBody">
+        <div class="input-container" id="logInputContainer">
           <!-- No capture-mode toggle: since the v7.15 one-button cutover the destination is chosen by the
                SERVER router (partitionForRouting, GardenDoc.js) — one ➤ Log entry button, no sticky hidden
                mode to leave set wrong (the class of error that filed "purchased celery seeds" as a planting).
@@ -1862,7 +1897,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.33 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.34 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2880,6 +2915,22 @@
         <div class="resolve-actions">
           <button type="button" class="rbtn-primary" onclick="submitLogin()">Unlock</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Summoned capture sheet (Slice: log-in-header). The header ✎ REPARENTS the single #logInputContainer
+         into #logSheetSlot on open and returns it to #logPanelBody on close — ONE input instance, so all
+         submitLog / photo / mic / syncLogEntryState wiring stays intact and the Dashboard #logPanel keeps
+         working unchanged when the sheet is closed. Anchored to the bottom (CSS align-items:flex-end).
+         Dismiss: ✕ / grip / scrim / Esc. openLogSheet() / closeLogSheet() in Js-UI.html. -->
+    <div id="logSheetOverlay" class="log-sheet-overlay" style="display:none;" onclick="if(event.target===this)closeLogSheet()">
+      <div class="log-sheet" role="dialog" aria-modal="true" aria-label="Log activity">
+        <button type="button" class="log-sheet-grip" onclick="closeLogSheet()" aria-label="Close"></button>
+        <div class="log-sheet-head">
+          <span class="log-sheet-title">Log</span>
+          <button type="button" class="log-sheet-close" onclick="closeLogSheet()" aria-label="Close">✕</button>
+        </div>
+        <div id="logSheetSlot" class="log-sheet-slot"></div>
       </div>
     </div>
 
@@ -8305,6 +8356,46 @@ if (typeof module !== 'undefined' && module.exports) {
         const isCollapsed = panel.classList.toggle('collapsed');
         localStorage.setItem(storageKey, isCollapsed ? 'true' : 'false');
       }
+
+      // Summoned capture sheet (Slice: log-in-header). The header ✎ borrows the SINGLE #logInputContainer
+      // rather than cloning it — so submitLog and the photo/mic/syncLogEntryState wiring (bound to
+      // #logTextarea / #photoInput / #logEntryBtn by id) keep working untouched, and the Dashboard #logPanel
+      // still has the input whenever the sheet is closed. Reparent is idempotent (appendChild MOVES the
+      // node), so double-taps can't duplicate it. Additive: the existing Dashboard path is unchanged.
+      let logSheetReturnTimer = null;
+      function openLogSheet() {
+        const overlay = document.getElementById('logSheetOverlay');
+        const slot = document.getElementById('logSheetSlot');
+        const input = document.getElementById('logInputContainer');
+        if (!overlay || !slot || !input) return;
+        if (logSheetReturnTimer) { clearTimeout(logSheetReturnTimer); logSheetReturnTimer = null; }
+        slot.appendChild(input);                 // borrow the one input into the sheet
+        overlay.style.display = 'flex';
+        requestAnimationFrame(() => overlay.classList.add('open'));  // trigger the slide-up transition
+        const ta = document.getElementById('logTextarea');
+        if (ta) setTimeout(() => ta.focus(), 80);  // after the transition starts, so the keyboard reflow is clean
+      }
+      function closeLogSheet() {
+        const overlay = document.getElementById('logSheetOverlay');
+        if (!overlay || overlay.style.display === 'none') return;
+        overlay.classList.remove('open');
+        // Return the borrowed input to the Dashboard panel AFTER the slide-out, so it doesn't flash back
+        // into view behind the closing sheet when the Dashboard tab is the active one.
+        logSheetReturnTimer = setTimeout(() => {
+          overlay.style.display = 'none';
+          const input = document.getElementById('logInputContainer');
+          const home = document.getElementById('logPanelBody');
+          if (input && home) home.appendChild(input);
+          logSheetReturnTimer = null;
+        }, 240);
+      }
+      // Esc closes the sheet (parity with a dismissable modal; #resolveModal isn't Esc-closable yet, ROADMAP).
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          const ov = document.getElementById('logSheetOverlay');
+          if (ov && ov.style.display !== 'none') closeLogSheet();
+        }
+      });
 
       // Restore a card's collapse state on load (defaultCollapsed used when nothing stored yet).
       function restorePanel(panelId, storageKey, defaultCollapsed) {
