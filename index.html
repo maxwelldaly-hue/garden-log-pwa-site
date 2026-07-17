@@ -954,9 +954,28 @@
       .pp-ms-t { flex: 1 1 auto; color: var(--text-main); min-width: 0; overflow-wrap: anywhere; }
       .pp-ms-t small { display: block; color: var(--text-muted); font-size: var(--fs-xs); }
       .pp-ms-when { color: var(--text-muted); font-size: var(--fs-xs); white-space: nowrap; }
-      .pp-photo-desc { color: var(--text-muted); }
-      .pp-photo-link { color: var(--text-main); text-decoration: none; white-space: nowrap; }
-      .pp-photo-link:hover { text-decoration: underline; }
+      /* Photo journey: an inline thumbnail (base64 from the authenticated backend) + a one-line caption +
+         date. The thumbnail is a soft rounded square that links out to the full Drive photo; while its
+         base64 loads it shimmers, and if it never arrives the square stays (still tappable) and the
+         caption/date carry the entry. */
+      .pp-photo {
+        display: flex; gap: 12px; padding: 9px 2px; align-items: flex-start;
+        border-top: 1px solid var(--surface-inset-02);
+      }
+      .pp-photo:first-child { border-top: 0; }
+      .pp-photo-a {
+        flex: 0 0 auto; display: block; width: 60px; height: 60px; border-radius: var(--r-sm);
+        overflow: hidden; background: var(--surface-inset-02); border: 1px solid var(--surface-inset-03);
+        position: relative;
+      }
+      .pp-photo-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .pp-photo-loading .pp-photo-a::after {
+        content: ""; position: absolute; inset: 0;
+        background: linear-gradient(90deg, transparent, var(--surface-inset-04), transparent);
+        animation: ppShimmer 1.4s infinite;
+      }
+      .pp-photo-meta { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding-top: 1px; }
+      .pp-photo-cap { font-size: var(--fs-sm); color: var(--text-muted); overflow-wrap: anywhere; line-height: 1.35; }
       .pp-quiet { color: var(--text-muted); font-size: var(--fs-xs); opacity: 0.85; }
       /* Loading shimmer for the async story/photos half (mirrors .pending-spin's quiet pulse). */
       .pp-skel {
@@ -1569,7 +1588,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.21</span>
+        <span class="header-version">v7.22</span>
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -1843,7 +1862,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.21 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.22 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9709,33 +9728,109 @@ if (typeof module !== 'undefined' && module.exports) {
         return sec;
       }
 
-      // Photos — every photo of this plant over time: date + what it shows + the Drive link. Links until
-      // the inline-thumbnail spike lands (prerequisite 2 in the scope doc); the DESCRIPTION carries the
-      // journey in words meanwhile.
+      // Photos — the plant's journey as inline THUMBNAILS (owner, 17/07 — the base64 path). Each photo
+      // stays private in Drive; the authenticated backend returns its thumbnail as a base64 data URI
+      // (getPhotoThumbs), which renders as an <img>. Thumbs are cached per fileId FOREVER (a photo's bytes
+      // never change), so a device fetches each once. The card paints instantly with the caption/date; the
+      // image pops in when its thumb arrives (skeleton meanwhile); a thumb that never comes leaves the
+      // still-tappable soft square linking out. With the picture doing the work, the AI description
+      // collapses to a one-line caption (its first sentence) — the "description walls" the scoping pass
+      // flagged are gone.
+      const PP_THUMB_LS = 'garden_pp_thumbs';
+      const PP_THUMB_CAP = 120;    // ~2-3MB of cached base64 thumbs; immutable, so eviction just means a re-fetch
+      let _ppThumbs = {};
+      try { _ppThumbs = JSON.parse(localStorage.getItem(PP_THUMB_LS) || '{}') || {}; } catch (e) { _ppThumbs = {}; }
+      function ppThumbsSave() {
+        try {
+          const keys = Object.keys(_ppThumbs);
+          if (keys.length > PP_THUMB_CAP) {   // keep the most-recently-inserted (object key order)
+            const trimmed = {};
+            keys.slice(keys.length - PP_THUMB_CAP).forEach(function (k) { trimmed[k] = _ppThumbs[k]; });
+            _ppThumbs = trimmed;
+          }
+          localStorage.setItem(PP_THUMB_LS, JSON.stringify(_ppThumbs));
+        } catch (e) {   // quota — halve and retry once, then give up quietly (thumbs re-fetch on demand)
+          try {
+            const ks = Object.keys(_ppThumbs); const half = {};
+            ks.slice(ks.length >> 1).forEach(function (k) { half[k] = _ppThumbs[k]; });
+            _ppThumbs = half; localStorage.setItem(PP_THUMB_LS, JSON.stringify(_ppThumbs));
+          } catch (e2) {}
+        }
+      }
+      // The Drive FILE id out of the stored `/file/d/<id>/view` (or `?id=`) photo URL — the key both the
+      // thumb cache and getPhotoThumbs use.
+      function ppExtractFileId(url) {
+        const m = String(url || '').match(/\/d\/([^/?]+)/) || String(url || '').match(/[?&]id=([^&]+)/);
+        return m ? m[1] : '';
+      }
+      // The caption: the vision description's FIRST sentence only (the thumbnail shows the rest), capped.
+      function ppTrimCaption(desc) {
+        const s = String(desc || '').trim();
+        if (!s) return '';
+        const m = s.match(/^.*?[.!?](\s|$)/);
+        const first = (m ? m[0] : s).trim();
+        return first.length > 96 ? first.slice(0, 94).trim() + '…' : first;
+      }
+
       function ppPhotosEl(story) {
         const ph = (story && story.photos) || [];
         if (!ph.length) return null;
         const sec = document.createElement('div');
         const h = document.createElement('div'); h.className = 'pp-sec-h'; h.textContent = 'Photos';
         sec.appendChild(h);
+        const need = [];
         ph.forEach(function (x) {
-          const row = document.createElement('div');
-          row.className = 'pp-ms-row';
+          const fid = ppExtractFileId(x.photoUrl);
+          const row = document.createElement('div'); row.className = 'pp-photo';
           const a = document.createElement('a');
-          a.className = 'pp-photo-link';
-          a.href = x.photoUrl; a.target = '_blank'; a.rel = 'noopener noreferrer';
-          a.innerHTML = uiMarkSvg('ui-camera', 13) + ' ↗';
-          row.appendChild(a);
-          const d = document.createElement('span');
-          d.className = 'pp-ms-t pp-photo-desc';
-          d.textContent = x.photoDesc || 'Photo';
-          row.appendChild(d);
-          const when = document.createElement('span'); when.className = 'pp-ms-when';
-          when.textContent = ppShortDate(x.date) || x.date || '';
-          row.appendChild(when);
+          a.className = 'pp-photo-a'; a.href = x.photoUrl; a.target = '_blank'; a.rel = 'noopener noreferrer';
+          a.title = 'Open the full photo';
+          const img = document.createElement('img');
+          img.className = 'pp-photo-img'; img.alt = ''; img.loading = 'lazy';
+          if (fid) img.setAttribute('data-fid', fid);
+          const cached = fid && _ppThumbs[fid];
+          if (cached) { img.src = cached; }
+          else { row.classList.add('pp-photo-loading'); if (fid) need.push(fid); }
+          img.onload = function () { row.classList.remove('pp-photo-loading'); };
+          img.onerror = function () { row.classList.remove('pp-photo-loading'); img.style.display = 'none'; };
+          a.appendChild(img); row.appendChild(a);
+          const meta = document.createElement('div'); meta.className = 'pp-photo-meta';
+          const cap = document.createElement('span'); cap.className = 'pp-photo-cap'; cap.textContent = ppTrimCaption(x.photoDesc);
+          const when = document.createElement('span'); when.className = 'pp-ms-when'; when.textContent = ppShortDate(x.date) || x.date || '';
+          meta.appendChild(cap); meta.appendChild(when); row.appendChild(meta);
           sec.appendChild(row);
         });
+        if (need.length) ppLoadThumbs(need);
         return sec;
+      }
+
+      // Fetch the missing thumbnails (base64) and paint them into the open card + cache them. One request
+      // for the whole set; guarded like every other passport read. A thumb that comes back empty leaves the
+      // soft square + its ↗ link.
+      function ppLoadThumbs(fileIds) {
+        if (typeof isOnline !== 'undefined' && !isOnline) return;
+        const pin = localStorage.getItem('garden_log_pin');
+        const token = localStorage.getItem('garden_log_token');
+        if (!pin && !token) return;
+        google.script.run
+          .withSuccessHandler(function (resStr) {
+            try {
+              const res = JSON.parse(resStr);
+              const thumbs = res && res.data && res.data.thumbs;
+              if (!thumbs) return;
+              let any = false;
+              Object.keys(thumbs).forEach(function (fid) {
+                const uri = thumbs[fid];
+                if (!uri) return;
+                _ppThumbs[fid] = uri; any = true;
+                const img = document.querySelector('#passportBody img.pp-photo-img[data-fid="' + fid + '"]');
+                if (img) img.src = uri;
+              });
+              if (any) ppThumbsSave();
+            } catch (e) {}
+          })
+          .withFailureHandler(function () {})
+          .processClientRequest(JSON.stringify({ action: 'getPhotoThumbs', fileIds: fileIds, token: token, pin: pin }));
       }
 
       // --- Dev drawer: passport test plants (SANDBOX-ONLY — the server refuses on prod) ----------------
