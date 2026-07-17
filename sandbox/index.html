@@ -974,6 +974,9 @@
          for no reason. Every value the same tone; hierarchy comes from key-vs-value, not from colour. */
       .pp-fact-k { color: var(--text-muted); opacity: 0.8; }
       .pp-fact-v { color: var(--text-soft); overflow-wrap: anywhere; }
+      /* The one LIVE "go" fact (✓ Ready to sow) earns the sanctioned green — so a green tick means the same
+         thing on the packet as on the seedling card + soil panel. Every not-ready/static value stays soft. */
+      .pp-fact-go { color: var(--color-go); }
       /* Botanical name under the plant name — quiet italic (captured LabelLatin, or species reference). */
       .pp-latin { color: var(--text-muted); font-size: var(--fs-xs); font-style: italic; margin-top: 2px; opacity: 0.85; }
       /* Reference filler — species knowledge, NOT this garden's measurements. Shares the ONE facts box
@@ -1625,7 +1628,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.41</span>
+        <span class="header-version">v7.43</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -1909,7 +1912,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.41 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.43 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9971,7 +9974,12 @@ if (typeof module !== 'undefined' && module.exports) {
         const row = document.createElement('div');
         row.className = 'pp-fact' + (isRef ? ' pp-fact-ref' : '');
         const k = document.createElement('div'); k.className = 'pp-fact-k'; k.textContent = label;
-        const v = document.createElement('div'); v.className = 'pp-fact-v'; v.textContent = String(value == null ? '' : value).trim();
+        const val = String(value == null ? '' : value).trim();
+        // A live "go" reading (the Sow line's "✓ Ready to sow") earns the one green — same signal as the
+        // seedling card + soil panel. Only a go-state starts with ✓, so every other fact stays uniform/soft.
+        const v = document.createElement('div');
+        v.className = 'pp-fact-v' + (val.charAt(0) === '✓' ? ' pp-fact-go' : '');
+        v.textContent = val;
         row.appendChild(k); row.appendChild(v);
         return row;
       }
