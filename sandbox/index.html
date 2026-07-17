@@ -1625,7 +1625,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.38</span>
+        <span class="header-version">v7.40</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -1909,7 +1909,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.38 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.40 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2842,7 +2842,22 @@
               </div>
 
               <div class="hiw-step">
-                <h4 class="hiw-step-head">9. Or just ask</h4>
+                <h4 class="hiw-step-head">9. And it knows when to sow</h4>
+                <p>
+                  Three temperatures decide a crop's timing: how warm the <strong>soil</strong> must be for a
+                  seed to sprout, how warm it likes to grow, and how mild the <strong>nights</strong> must be
+                  before a tender seedling can face the garden. The app keeps those figures for the whole seed
+                  catalogue and checks them against your patch — your real soil temperature and the coldest
+                  night ahead. So a seed packet tells you whether it's warm enough to sow, or how many degrees
+                  short; a seedling on the windowsill says when the nights are finally safe to plant it out; and
+                  the soil panel shows which crops the ground suits today. It's the same sum wherever you see it
+                  — the plant's number against today's reading — which is why a green tick means one thing
+                  everywhere: go.
+                </p>
+              </div>
+
+              <div class="hiw-step">
+                <h4 class="hiw-step-head">10. Or just ask</h4>
                 <p>
                   Hand the whole record to an AI companion — a Gemini "gem", set up outside the app — and
                   ask in plain words: what's overdue, what to sow next, what ate the seedlings. Because it
@@ -3443,19 +3458,27 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
   const canDirectSow = inWindow && soilOk;
   const canStartIndoors = inWindow && lead > 0 && soilTooCold;       // head-start while the soil catches up
   const canPlantOut = (night !== null && tNight !== null) ? night >= tNight : false;
+  // A not-ready reading always carries a NUMBER so "at the margin" (late Sep, 2° short) reads differently from
+  // "months away" (June). Two label TYPES encode near-vs-far: a degree gap = temperature-gated + close; a
+  // month name ("from Sep") = calendar-gated + far. fmtDeg trims the trailing .0. (design: sow-line-with-numbers)
+  const fmtDeg = function (n) { return (Math.round(n * 10) / 10).toString().replace(/\.0$/, ''); };
   let sowLine = null;
   if (inWindow) {
     // No soil gate on this crop (unclassified / soil-only entry) → we can't give a live reading; keep static.
     if (!hasSoilGate) sowLine = null;
-    else if (canDirectSow) sowLine = 'Sow now · direct';
-    else if (canStartIndoors) sowLine = 'Start indoors now';
-    else if (soilTooCold) sowLine = 'Soon — soil still cool';
-    else if (soilTooWarm) sowLine = 'Too warm to sow now';
+    else if (canDirectSow) sowLine = '✓ Ready to sow';
+    else if (canStartIndoors) sowLine = 'Start indoors now';                  // house is warm — a calendar cue, no soil number
+    else if (soilTooCold) sowLine = fmtDeg(germMin - soil) + '° too cold';    // soil gap: how far the SOIL is below the germ floor
+    else if (soilTooWarm) sowLine = fmtDeg(soil - germMax) + '° too warm';    // soil above the germ ceiling (Adelaide hot-fail)
     // soil unknown → leave null so the caller keeps the static window text.
   } else if (win.months) {
     sowLine = 'Sow from ' + SOW_MONDISP[nextSowMonth(win.months, monthIdx) - 1];
   }
-  return { sowLine: sowLine, canDirectSow: canDirectSow, canStartIndoors: canStartIndoors, canPlantOut: canPlantOut, inWindow: inWindow };
+  // Plant-out gap = how many degrees the coldest upcoming NIGHT is below the crop's transplant floor (>0 = not
+  // safe yet; ≤0 = ready). Separate reading from the sow line (night AIR, not soil) — the window→outside gate.
+  const plantOutGap = (night !== null && tNight !== null) ? (Math.round((tNight - night) * 10) / 10) : null;
+  return { sowLine: sowLine, canDirectSow: canDirectSow, canStartIndoors: canStartIndoors,
+           canPlantOut: canPlantOut, plantOutGap: plantOutGap, inWindow: inWindow };
 }
 
 // Build the readiness context from the SAME cached forecast the weather card uses. PURE (today is passed
@@ -9504,18 +9527,22 @@ if (typeof module !== 'undefined' && module.exports) {
         } catch (e) { return null; }
       }
 
-      // Surface 2: is this under-cover seedling ready to plant out RIGHT NOW? True only when the server flagged
-      // it raisingUnderCover (a sprouted, not-yet-transplanted nursery seedling) AND the cached forecast's
-      // coldest upcoming night has warmed past the crop's transplant floor (ForecastMath.computeSowReadiness →
-      // canPlantOut). Degrade-safe: no model / no cached forecast → false → the card shows no line (a state,
-      // never a nag). Green tick = "go" — the one sanctioned green, matching the row palette.
-      function ppReadyToPlant(p) {
-        if (!p || !p.raisingUnderCover || !p.sowModel) return false;
-        if (typeof computeSowReadiness !== 'function') return false;
+      // Surface 2: the plant-out line for an under-cover seedling. Returns {cls,txt} or null. Fires ONLY when
+      // the server flagged it raisingUnderCover (a sprouted, not-yet-transplanted nursery seedling) and we have
+      // a model + cached forecast. The gate is night AIR vs the crop's transplant floor (window→outside), NOT
+      // soil — a separate reading from the packet's sow line. Green "✓ Ready to plant" when the nights have
+      // warmed enough; otherwise a quiet magnitude ("Nights 9° too cold") so "almost" reads differently from
+      // "months of winter left". Degrade-safe: any missing input → null → the card shows no line (never a nag).
+      function ppPlantOutLine(p) {
+        if (!p || !p.raisingUnderCover || !p.sowModel) return null;
+        if (typeof computeSowReadiness !== 'function') return null;
         const ctx = ppSowContext();
-        if (!ctx || !ctx.hasData) return false;
+        if (!ctx || !ctx.hasData) return null;
         const r = computeSowReadiness(p.sowModel, p.sowMonths, ctx);
-        return !!(r && r.canPlantOut);
+        if (!r) return null;
+        if (r.canPlantOut) return { cls: 'pl-ready', txt: '✓ Ready to plant' };   // green go — the sanctioned green
+        if (r.plantOutGap != null && r.plantOutGap > 0) return { cls: 'pl-countdown', txt: 'Nights ' + r.plantOutGap + '° too cold' };
+        return null;
       }
 
       // Pull a value out of the LabelOther catch-all ("Key: value; Key: value") by a key regex — the home
@@ -9733,8 +9760,8 @@ if (typeof module !== 'undefined' && module.exports) {
         // outranks the label AND the filler toggle; the packet's own sow text is only the fallback when we have
         // no Adelaide window for that crop (e.g. a generic unnamed seed with no crop match).
         // The Sow line goes LIVE when we have the crop's threshold model AND a cached forecast: the static
-        // Adelaide window ("Sep–Feb (Adelaide)") becomes a reading of right-now ("Sow now · direct" /
-        // "Start indoors now" / "Soon — soil still cool" / "Sow from Sep"). It quietly falls back to the
+        // Adelaide window ("Sep–Feb (Adelaide)") becomes a reading of right-now ("✓ Ready to sow" /
+        // "Start indoors now" / "2° too cold" / "Sow from Sep"). It quietly falls back to the
         // static window whenever the model or forecast is missing — a state, never a nag (reconciliation end goal).
         let sowWhen;
         if (item.sowMonths) {
@@ -9905,6 +9932,7 @@ if (typeof module !== 'undefined' && module.exports) {
         const st = String(p.stage || '').trim();
         // "· since <date>" — the stamp's own log date, from the async story (absent until it lands).
         const since = function (dmy) { const d = ppShortDate(dmy); return d ? ' · since ' + d : ''; };
+        let po = null;   // plant-out line for an under-cover seedling (ppPlantOutLine), assigned in the cascade below
         if (p.isTombstone) {
           line('pl-done', '✓ Harvested — clears tonight');
         } else if (p.phase === 'Dormant') {
@@ -9913,8 +9941,8 @@ if (typeof module !== 'undefined' && module.exports) {
           line('pl-yield', 'Harvesting' + (p.yield ? ' · ' + p.yield : '') + since((story && story.firstYield) || ''));
         } else if (st === 'Fruiting' || st === 'Flowering') {
           line('', st + since(ppStageSince(story, st)));
-        } else if (ppReadyToPlant(p)) {
-          line('pl-ready', '✓ Ready to plant');   // under-cover seedling, nights now warm enough (surface 2)
+        } else if ((po = ppPlantOutLine(p))) {
+          line(po.cls, po.txt);   // under-cover seedling: "✓ Ready to plant" (go) or "Nights N° too cold" (surface 2)
         } else if (estDate && !established) {
           const days = daysUntil(estDate);
           if (days !== null && days <= 0) line('pl-harvest-check', 'Check for harvest');
