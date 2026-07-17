@@ -1630,7 +1630,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.48</span>
+        <span class="header-version">v7.49</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -1914,7 +1914,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.48 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.49 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9732,7 +9732,15 @@ if (typeof module !== 'undefined' && module.exports) {
         wrap.className = 'pp-id';
         const ic = document.createElement('div');
         ic.className = 'pp-id-ic';
-        ic.appendChild(plantIconSvgEl(item.item));
+        // A shed item is a SUPPLY, not a plant — show its TYPE glyph (the seed-packet icon for a seed packet,
+        // the nutrition sack for a feed, etc.), the SAME shedCategoryIconId the shed list draws, so the card
+        // reads as "a packet" not "a plant" (owner: the packet looked identical to a garden crop card).
+        const catId = (typeof shedCategoryIconId === 'function') ? shedCategoryIconId(category || item.category) : null;
+        if (catId && typeof spriteIconHtml === 'function') {
+          ic.innerHTML = spriteIconHtml(catId);
+        } else {
+          ic.appendChild(plantIconSvgEl(item.item));
+        }
         wrap.appendChild(ic);
         const txt = document.createElement('div');
         const h = document.createElement('h2');
@@ -9884,7 +9892,16 @@ if (typeof module !== 'undefined' && module.exports) {
         wrap.className = 'pp-id';
         const ic = document.createElement('div');
         ic.className = 'pp-id-ic';
-        ic.appendChild(plantIconSvgEl(p.name));
+        // Mirror the Garden row's nursery-icon lifecycle so the card reads its stage at a glance (owner: a sown
+        // seed, a sprouted seedling and an established plant were indistinguishable). A Sown plant shows the
+        // drawn seed glyph, a Sprouted one the drawn sprout, then the crop sprite once growing — the SAME
+        // #plot-ic-seed / #plot-ic-sprout the row + map draw, one classifier (plantNurseryPhase), no drift.
+        const nursery = (typeof plantNurseryPhase === 'function') ? plantNurseryPhase(p) : '';
+        if (nursery === 'seed' || nursery === 'sprout') {
+          ic.innerHTML = '<svg class="plant-ic" viewBox="0 0 40 40" aria-hidden="true"><use href="#plot-ic-' + nursery + '" xlink:href="#plot-ic-' + nursery + '"></use></svg>';
+        } else {
+          ic.appendChild(plantIconSvgEl(p.name));
+        }
         wrap.appendChild(ic);
         const txt = document.createElement('div');
         const h = document.createElement('h2');
@@ -9945,6 +9962,8 @@ if (typeof module !== 'undefined' && module.exports) {
         if (p.planted) {
           if (seedOrigin && p.transplanted) {
             line('pl-planted', 'Planted ' + ppWhen(p.transplanted));
+          } else if (seedOrigin && p.sprouted) {
+            line('pl-planted', 'Sprouted ' + ppWhen(p.sprouted));   // up, not yet planted out — distinguishes a seedling from a still-under-soil sow
           } else if (seedOrigin) {
             line('pl-planted', 'Sown ' + ppWhen(p.planted));
           } else {
