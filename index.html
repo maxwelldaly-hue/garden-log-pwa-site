@@ -1675,7 +1675,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.51</span>
+        <span class="header-version">v7.52</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -1973,7 +1973,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.51 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.52 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3442,9 +3442,12 @@ function buildAlerts(forecastData, todayIdx, today, tmrw, waterBalance, wateredT
 // 5. Sow / plant-out readiness (reconciliation end goal). PURE. Turns a crop's stored sow model +
 // the Adelaide sow-months window + the current conditions into the LIVE passport lines. The three
 // decisions come from three different variables (the reconciliation thesis): direct-sow = soil in the
-// germination band; start-indoors = in season but soil still too cold AND the crop wants a head-start;
-// plant-out = forecast night air above the transplant floor. Degrade-safe: an unparseable window or a
-// missing soil reading returns sowLine:null, and the caller keeps the static "Sep–Feb (Adelaide)" text.
+// germination band; start-indoors = a crop with an indoor lead, in the lead-week RUNWAY BEFORE the window
+// opens (or in-window but the soil's still too cold to direct-sow) — the house is warm, so it's a CALENDAR
+// cue, not soil-gated; plant-out = forecast night air above the transplant floor. The lead runway is the fix
+// to "the month is a hard barrier": indoorLeadWeeks exists precisely to start seedlings AHEAD of the season,
+// so a crop can read "Start indoors now" a lead's-worth of months before its outdoor window. Degrade-safe: an
+// unparseable window or a missing soil reading returns sowLine:null, and the caller keeps the static text.
 const SOW_MON3 = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 const SOW_MONDISP = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 function parseSowWindow(sowMonthsStr) {
@@ -3464,6 +3467,13 @@ function nextSowMonth(months, cur) {
   for (let k = 1; k <= 12; k++) { const m = ((cur - 1 + k) % 12) + 1; if (set[m]) return m; }
   return months[0];
 }
+// How many WHOLE months until the sow window next opens — 0 if the current month is already in it. Feeds the
+// indoor head-start: a crop with an indoor lead can be started inside this many months ahead of the window.
+function monthsUntilSowMonth(months, cur) {
+  const set = {}; months.forEach(function (m) { set[m] = 1; });
+  for (let k = 0; k < 12; k++) { const m = ((cur - 1 + k) % 12) + 1; if (set[m]) return k; }
+  return 99;
+}
 function computeSowReadiness(model, sowMonthsStr, ctx) {
   model = model || {}; ctx = ctx || {};
   const win = parseSowWindow(sowMonthsStr);
@@ -3475,16 +3485,24 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
   const soil = num(ctx.soilTemp), night = num(ctx.nightMinC);
   const germMin = num(model.germMinC), germMax = num(model.germMaxC), tNight = num(model.transplantNightMinC);
   const lead = Number(model.indoorLeadWeeks || 0);
+  const leadMonths = lead > 0 ? Math.ceil(lead / 4) : 0;   // weeks → whole months of head-start runway
 
   const hasSoilGate = germMin !== null || germMax !== null;
   const inWindow = !!win.allYear || win.months.indexOf(monthIdx) >= 0;
+  // Months until the OUTDOOR sow window opens (0 = already in it). The indoor head-start begins in the runway
+  // BEFORE the window — raising seedlings inside is exactly how you're ready to plant out when the season turns.
+  const monthsToWindow = win.allYear ? 0 : monthsUntilSowMonth(win.months, monthIdx);
+  const inLeadRunway = lead > 0 && monthsToWindow > 0 && monthsToWindow <= leadMonths;
   const soilKnown = soil !== null;
   const soilTooCold = soilKnown && germMin !== null && soil < germMin;
   const soilTooWarm = soilKnown && germMax !== null && soil > germMax;
   const soilOk = soilKnown && hasSoilGate && !soilTooCold && !soilTooWarm;
 
   const canDirectSow = inWindow && soilOk;
-  const canStartIndoors = inWindow && lead > 0 && soilTooCold;       // head-start while the soil catches up
+  // Start indoors: in the pre-window lead runway (ahead of the season, the head-start the lead weeks buy), OR
+  // already in-window but the soil's still too cold to direct-sow. Either way — raise it inside now. NOT
+  // soil-gated (the house is warm); a direct-sow-only crop (lead 0) never gets here.
+  const canStartIndoors = lead > 0 && (inLeadRunway || (inWindow && soilTooCold));
   const canPlantOut = (night !== null && tNight !== null) ? night >= tNight : false;
   // A not-ready reading always carries a NUMBER so "at the margin" (late Sep, 2° short) reads differently from
   // "months away" (June). Two label TYPES encode near-vs-far: a degree gap = temperature-gated + close; a
@@ -3499,6 +3517,8 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
     else if (soilTooCold) sowLine = fmtDeg(germMin - soil) + '° too cold';    // soil gap: how far the SOIL is below the germ floor
     else if (soilTooWarm) sowLine = fmtDeg(soil - germMax) + '° too warm';    // soil above the germ ceiling (Adelaide hot-fail)
     // soil unknown → leave null so the caller keeps the static window text.
+  } else if (inLeadRunway) {
+    sowLine = 'Start indoors now';   // ahead of the window — the head-start the lead weeks are FOR (no soil gate)
   } else if (win.months) {
     sowLine = 'Sow from ' + SOW_MONDISP[nextSowMonth(win.months, monthIdx) - 1];
   }
