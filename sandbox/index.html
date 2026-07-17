@@ -215,23 +215,25 @@
       .login-pin { width: 100%; padding: 13px 14px; border-radius: var(--r-sm); border: 1px solid var(--border-input); background: var(--bg-input); color: var(--text-main); font-size: var(--fs-lg); letter-spacing: 0.3em; text-align: center; box-sizing: border-box; }
       .login-pin:focus { outline: none; border-color: var(--color-sage); }
 
-      /* Summoned capture sheet (Slice: log-in-header). A quiet header ✎ trigger + a bottom sheet that
-         BORROWS the Dashboard's single #logInputContainer (reparented in/out), so there is no duplicate
-         input and no change to submitLog. Scrim reuses the resolve-overlay idiom; the sheet frame mirrors
-         plot-fs-sheet (safe-area padding + top radius). align-items:flex-end anchors it to the bottom. */
+      /* Summoned capture panel (Slice: log-in-header). A quiet header ✎ trigger + a panel that DROPS DOWN
+         from the top and BORROWS the Dashboard's single #logInputContainer (reparented in/out), so there is
+         no duplicate input and no change to submitLog. Scrim reuses the resolve-overlay idiom.
+         align-items:flex-start + translateY(-100%) makes it slide down from the header (where the pencil is)
+         rather than up from the opposite edge, which read as disconnected (owner, on-phone 17/07). */
+      /* Bare glyph, no button box — reads as part of the header, not a control parked in the corner. */
       .header-log-btn { flex: none; width: 40px; height: 40px; min-width: 40px; padding: 0; cursor: pointer;
-        display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-md);
-        background: var(--surface-inset-05); border: 1px solid var(--border-color); color: var(--text-main); }
-      .header-log-btn svg { width: 20px; height: 20px; }
+        display: inline-flex; align-items: center; justify-content: center;
+        background: none; border: none; color: var(--text-main); }
+      .header-log-btn svg { width: 22px; height: 22px; }
       .log-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex;
-        align-items: flex-end; justify-content: center; z-index: 1001; }
+        align-items: flex-start; justify-content: center; z-index: 1001; }
+      /* Drops down from the very top (over the header) with rounded BOTTOM corners, like a pulled-down shade;
+         padding-top clears the notch/status bar so content isn't under it. */
       .log-sheet { width: 100%; max-width: 480px; background: var(--bg-card);
-        border: 1px solid var(--border-color); border-bottom: none; border-radius: 18px 18px 0 0;
-        padding: 8px 16px calc(16px + var(--safe-area-inset-bottom)); box-shadow: 0 -12px 40px rgba(0,0,0,0.5);
-        max-height: 88vh; overflow-y: auto; transform: translateY(100%); transition: transform 0.22s ease; }
+        border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 18px 18px;
+        padding: calc(12px + var(--safe-area-inset-top)) 16px 16px; box-shadow: 0 14px 40px rgba(0,0,0,0.5);
+        max-height: 88vh; overflow-y: auto; transform: translateY(-100%); transition: transform 0.22s ease; }
       .log-sheet-overlay.open .log-sheet { transform: translateY(0); }
-      .log-sheet-grip { display: block; width: 40px; height: 5px; padding: 0; margin: 4px auto 10px;
-        border: none; border-radius: var(--r-pill); background: var(--border-input); cursor: pointer; }
       .log-sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
       .log-sheet-title { font-size: var(--fs-md); font-weight: 700; color: var(--text-main); }
       .log-sheet-close { background: none; border: none; color: var(--text-muted); font-size: var(--fs-lg);
@@ -1614,19 +1616,20 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.34</span>
-        <div class="status-container">
-          <div id="connectionIndicator" class="status-indicator" title="Online"></div>
-        </div>
-        <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as
-             generic "create record"); opens the summoned log sheet from ANY tab. Opens only; the sheet is
-             dismissed via its ✕ / scrim / grip / Esc (openLogSheet in Js-UI.html). ADDITIVE by design — it
-             BORROWS the one #logInputContainer, so the Dashboard #logPanel path still works unchanged (no
-             flag needed; the two entry points share a single input instance). Removing the Dashboard panel
-             is a later "replace" slice, not this one. -->
+        <span class="header-version">v7.35</span>
+        <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
+             "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
+             a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
+             corner. The panel DROPS DOWN from the top (CSS), so it emerges from up here where the pencil is —
+             not from the opposite edge. Opens only; dismiss via ✕ / scrim / Esc (openLogSheet in Js-UI.html).
+             ADDITIVE — it BORROWS the one #logInputContainer, so the Dashboard #logPanel path still works
+             unchanged. Removing the Dashboard panel is a later "replace" slice, not this one. -->
         <button type="button" class="header-log-btn" onclick="openLogSheet()" aria-label="Log activity" title="Log activity">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
         </button>
+        <div class="status-container">
+          <div id="connectionIndicator" class="status-indicator" title="Online"></div>
+        </div>
       </div>
     </header>
 
@@ -1897,7 +1900,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.34 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.35 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2918,14 +2921,14 @@
       </div>
     </div>
 
-    <!-- Summoned capture sheet (Slice: log-in-header). The header ✎ REPARENTS the single #logInputContainer
+    <!-- Summoned capture panel (Slice: log-in-header). The header ✎ REPARENTS the single #logInputContainer
          into #logSheetSlot on open and returns it to #logPanelBody on close — ONE input instance, so all
          submitLog / photo / mic / syncLogEntryState wiring stays intact and the Dashboard #logPanel keeps
-         working unchanged when the sheet is closed. Anchored to the bottom (CSS align-items:flex-end).
-         Dismiss: ✕ / grip / scrim / Esc. openLogSheet() / closeLogSheet() in Js-UI.html. -->
+         working unchanged when the panel is closed. DROPS DOWN from the top (CSS align-items:flex-start +
+         translateY), so it emerges from the header where the pencil lives — not from the opposite edge (which
+         read as disconnected). Dismiss: ✕ / scrim / Esc. openLogSheet() / closeLogSheet() in Js-UI.html. -->
     <div id="logSheetOverlay" class="log-sheet-overlay" style="display:none;" onclick="if(event.target===this)closeLogSheet()">
       <div class="log-sheet" role="dialog" aria-modal="true" aria-label="Log activity">
-        <button type="button" class="log-sheet-grip" onclick="closeLogSheet()" aria-label="Close"></button>
         <div class="log-sheet-head">
           <span class="log-sheet-title">Log</span>
           <button type="button" class="log-sheet-close" onclick="closeLogSheet()" aria-label="Close">✕</button>
