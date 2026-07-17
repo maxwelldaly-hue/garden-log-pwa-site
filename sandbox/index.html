@@ -603,6 +603,8 @@
       .pl-countdown { color: var(--text-muted); }                    /* growing — muted, never green */
       .pl-harvest-check { color: var(--text-muted); font-weight: 600; } /* estimate reached — a quiet "go look" nudge, muted (no green) */
       .pl-ready { color: var(--color-go); font-weight: 600; }         /* "✓ Ready to plant" — the sanctioned green: an actionable GO, not a nudge */
+      .pl-cold  { color: var(--blue-400); }                           /* "❄ N° too cold to plant" — same blue+frost language as the dashboard soil panel's cold gap */
+      .pl-line-ic { width: 1em; height: 1em; fill: currentColor; vertical-align: -0.12em; }  /* inline weather-mark in a ledger line (mirrors .soil-go-ic) */
       /* Optimistic Garden-tab row (latency Slice A, docs/SCOPE-LATENCY-SLICES.md): the confident-match case
          dims the row + adds a quiet "saving…" line while the real write is still in flight. .plant-row-spin
          reuses the SAME pulse language as the Log-feed echo (.pending-spin, Option 1), so "in progress" reads
@@ -1628,7 +1630,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.45</span>
+        <span class="header-version">v7.47</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -1912,7 +1914,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.45 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.47 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9544,7 +9546,9 @@ if (typeof module !== 'undefined' && module.exports) {
         const r = computeSowReadiness(p.sowModel, p.sowMonths, ctx);
         if (!r) return null;
         if (r.canPlantOut) return { cls: 'pl-ready', txt: '✓ Ready to plant' };   // green go — the sanctioned green
-        if (r.plantOutGap != null && r.plantOutGap > 0) return { cls: 'pl-countdown', txt: 'Nights ' + r.plantOutGap + '° too cold' };
+        // Not warm enough yet: blue + frost mark, same language as the dashboard soil panel's cold gap. "to
+        // plant" names the gate (this is the window→outside decision, not sowing/growing).
+        if (r.plantOutGap != null && r.plantOutGap > 0) return { cls: 'pl-cold', mark: 'ui-wx-frost', txt: r.plantOutGap + '° too cold to plant' };
         return null;
       }
 
@@ -9945,7 +9949,17 @@ if (typeof module !== 'undefined' && module.exports) {
         } else if (st === 'Fruiting' || st === 'Flowering') {
           line('', st + since(ppStageSince(story, st)));
         } else if ((po = ppPlantOutLine(p))) {
-          line(po.cls, po.txt);   // under-cover seedling: "✓ Ready to plant" (go) or "Nights N° too cold" (surface 2)
+          // under-cover seedling (surface 2): "✓ Ready to plant" (green go) or "❄ N° too cold to plant" (blue,
+          // with the dashboard's frost mark). The mark case builds the span directly so it can carry the SVG.
+          if (po.mark) {
+            const s = document.createElement('span');
+            s.className = 'pl-line ' + po.cls;
+            s.innerHTML = '<svg class="pl-line-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#' + po.mark + '" xlink:href="#' + po.mark + '"></use></svg> ';
+            s.appendChild(document.createTextNode(po.txt));
+            wrap.appendChild(s);
+          } else {
+            line(po.cls, po.txt);
+          }
         } else if (estDate && !established) {
           const days = daysUntil(estDate);
           if (days !== null && days <= 0) line('pl-harvest-check', 'Check for harvest');
