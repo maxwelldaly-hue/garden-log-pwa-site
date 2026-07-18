@@ -947,6 +947,11 @@
          (green — sow/plant outdoors) / Sow indoors (blue — start on the windowsill) / Plant only (orange —
          season ending) / Not in season (grey, silent). Line 1 carries the verdict + colour; line 2 is always
          quiet grey. Reuses the .pp-fs overlay shell; these style only the body content. */
+      /* Veg/Herbs/Flowers filter row (header, owner 18/07) — lives in .pp-bar's sibling, above the scrolling
+         body, so a background catalogue refresh (which rebuilds #inSeasonBody) never touches it. */
+      .is-filters { display: flex; gap: 14px; padding: 0 16px 8px; flex: 0 0 auto; }
+      .is-filter { display: flex; align-items: center; gap: 5px; font-size: var(--fs-xs); color: var(--text-muted); letter-spacing: var(--ls-wide); text-transform: uppercase; cursor: pointer; }
+      .is-filter input[type="checkbox"] { accent-color: var(--color-sage); width: 14px; height: 14px; margin: 0; cursor: pointer; }
       .is-intro { display: flex; flex-direction: column; gap: 4px; }
       .is-lede { margin: 0; font-size: var(--fs-base); color: var(--text-main); }
       .is-soil { font-size: var(--fs-xs); color: var(--text-muted); letter-spacing: var(--ls-wide); text-transform: uppercase; }
@@ -1732,7 +1737,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.73</span>
+        <span class="header-version">v7.74</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -1983,10 +1988,10 @@
              across the whole catalogue by reading the sow calendar against today's cached forecast. Sits right
              under Soil temperature — the live-forecast half of the magic lives here. Same .insights-panel launcher
              card shape as the Garden Map below (a button, not a collapsible), so the dashboard reads as one column. -->
-        <div class="insights-panel plot-openmap-card" role="button" tabindex="0" aria-label="Open the In-season pane"
+        <div class="insights-panel plot-openmap-card" role="button" tabindex="0" aria-label="Open the Seasonal Guide"
              onclick="openInSeason()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openInSeason();}">
           <div class="insights-header">
-            <span class="insights-title"><span class="title-icon"><svg class="title-ic" viewBox="0 0 24 24"><use href="#card-inseason" xlink:href="#card-inseason"></use></svg></span> In season <button type="button" class="ui-hint" onclick="event.stopPropagation();toggleHint(this)" aria-expanded="false" aria-label="About In season"></button></span>
+            <span class="insights-title"><span class="title-icon"><svg class="title-ic" viewBox="0 0 24 24"><use href="#card-inseason" xlink:href="#card-inseason"></use></svg></span> Seasonal Guide <button type="button" class="ui-hint" onclick="event.stopPropagation();toggleHint(this)" aria-expanded="false" aria-label="About the Seasonal Guide"></button></span>
             <span class="insights-end"><span class="insights-arrow plot-openmap-arrow">⤢</span></span>
           </div>
           <div class="ui-hint-caption" onclick="event.stopPropagation()">What the planting calendar and today's soil say you could sow right now — the whole catalogue, ranked. Crops you already have seeds for are marked. A view you open, never a to-do.</div>
@@ -2033,7 +2038,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.73 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.74 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3048,8 +3053,13 @@
          with the crops you already own seeds for marked. Pull, not push: nothing loads until it's opened. -->
     <div id="inSeasonOverlay" class="pp-fs" style="display:none;">
       <div class="pp-bar">
-        <span class="pp-crumb">Planting Guide</span>
-        <button type="button" class="pp-close" onclick="closeInSeason()" aria-label="Close In-season pane">✕</button>
+        <span class="pp-crumb">Seasonal Guide</span>
+        <button type="button" class="pp-close" onclick="closeInSeason()" aria-label="Close Seasonal Guide">✕</button>
+      </div>
+      <div id="inSeasonFilters" class="is-filters" role="group" aria-label="Filter by crop type">
+        <label class="is-filter"><input type="checkbox" class="is-filter-cb" data-cat="vegetable" checked onchange="isToggleFilter('vegetable', this.checked)"> Veg</label>
+        <label class="is-filter"><input type="checkbox" class="is-filter-cb" data-cat="herb" checked onchange="isToggleFilter('herb', this.checked)"> Herbs</label>
+        <label class="is-filter"><input type="checkbox" class="is-filter-cb" data-cat="flower" checked onchange="isToggleFilter('flower', this.checked)"> Flowers</label>
       </div>
       <div id="inSeasonBody" class="pp-body" role="dialog" aria-modal="true"></div>
     </div>
@@ -3274,7 +3284,13 @@ const CROP_ICON_SYNONYMS = [
   [/calendula/, 'california-poppy'],           // Open Crop stand-in (orange bloom)
   [/tansy/, 'dandelion'],                      // Open Crop stand-in (yellow button)
   [/alyssum/, 'generic-flower'],               // Open Crop stand-in
-  [/oregano/, 'oregano-sprig']                 // hand-drawn: a bushy olive posy, distinct from the mint-like OC icon
+  [/oregano/, 'oregano-sprig'],                // hand-drawn: a bushy olive posy, distinct from the mint-like OC icon
+  // Flower crops newly surfaced in the In-season pane (owner, 18/07 — the flowering-ornamental exclusion was
+  // lifted). None of these have dedicated art baked into the sprite yet; explicit stand-ins so the pane draws
+  // an intentional flower icon rather than falling through to the ungrouped 'generic-plant' leaf. Poppy gets
+  // the existing poppy art; everything else gets the generic bloom.
+  [/\bpoppy\b/, 'california-poppy'],
+  [/marigold|sunflower|nasturtium|petunia|\bpansy\b|\bviola\b|zinnia|cosmos|snapdragon/, 'generic-flower']
 ];
 // Custom (non-Open-Crop) icon ids that resolveCropIcon can return — drawn/ported in CropIconArt.html.
 const CROP_ICON_CUSTOM = ['blood-lily', 'salvia', 'jasmine', 'redbud', 'succulent', 'tree', 'lebanese-cucumber', 'oregano-sprig'];
@@ -10618,6 +10634,30 @@ if (typeof module !== 'undefined' && module.exports) {
       let _isOpen = false, _isPushed = false, _isBackdropBound = false;
       const IS_CACHE_KEY = 'garden_log_sow_catalogue';
 
+      // Veg/Herbs/Flowers filter (header checkboxes, owner 18/07) — which categories the pane shows.
+      // Persisted so it survives a reopen; lives OUTSIDE #inSeasonBody so a background-refresh re-render
+      // (isFetchCatalogue's success handler) never touches the checkboxes themselves.
+      const IS_FILTER_KEY = 'garden_log_is_filter';
+      function isReadFilter() {
+        try {
+          const t = localStorage.getItem(IS_FILTER_KEY);
+          const o = t ? JSON.parse(t) : null;
+          return { vegetable: !(o && o.vegetable === false), herb: !(o && o.herb === false), flower: !(o && o.flower === false) };
+        } catch (e) { return { vegetable: true, herb: true, flower: true }; }
+      }
+      function isWriteFilter(f) { try { localStorage.setItem(IS_FILTER_KEY, JSON.stringify(f)); } catch (e) {} }
+      function isSyncFilterCheckboxes() {
+        const f = isReadFilter();
+        const boxes = document.querySelectorAll('.is-filter-cb');
+        for (let i = 0; i < boxes.length; i++) boxes[i].checked = f[boxes[i].getAttribute('data-cat')] !== false;
+      }
+      function isToggleFilter(cat, checked) {
+        const f = isReadFilter();
+        f[cat] = !!checked;
+        isWriteFilter(f);
+        renderInSeason(isReadCache());
+      }
+
       function openInSeason() {
         const overlay = document.getElementById('inSeasonOverlay');
         if (!overlay || _isOpen) return;
@@ -10626,6 +10666,7 @@ if (typeof module !== 'undefined' && module.exports) {
         document.body.style.overflow = 'hidden';
         overlay.style.display = 'flex';
         try { history.pushState({ is: 1 }, ''); _isPushed = true; } catch (e) { _isPushed = false; }
+        isSyncFilterCheckboxes();        // reflect the persisted Veg/Herbs/Flowers filter on the header checkboxes
         renderInSeason(isReadCache());   // instant from cache (or a loading state on first ever open)
         isFetchCatalogue();              // then refresh in the background so the list stays fresh
       }
@@ -10821,9 +10862,25 @@ if (typeof module !== 'undefined' && module.exports) {
           return;
         }
 
+        // Bug fix (18/07): a background catalogue refresh (isFetchCatalogue) calls this same function while the
+        // pane is open, rebuilding #inSeasonBody from scratch — which silently re-collapsed an open "Not in
+        // season" tray a few seconds after the tap. Capture the tray's current open/closed state before the
+        // rebuild and re-apply it after, so a background refresh never undoes the user's tap.
+        const priorLaterList = body.querySelector('.is-later-list');
+        const wasLaterOpen = !!(priorLaterList && priorLaterList.style.display !== 'none');
+
+        // Veg/Herbs/Flowers filter (header checkboxes): which categories to show. A row with no category
+        // (older cache shape, pre-filter) defaults to 'vegetable' so nothing vanishes on first load post-update.
+        const filter = isReadFilter();
+        const filtered = catalogue.filter(function (row) { return filter[row.category || 'vegetable'] !== false; });
+        if (!filtered.length) {
+          body.innerHTML = '<div class="is-empty">No crops match the selected filters.</div>';
+          return;
+        }
+
         const ctx = isBuildCtx();
         const groups = { plantorsow: [], plantorsowdirect: [], sowdirect: [], sowindoors: [], plantonly: [], hidden: [] };
-        catalogue.forEach(function (row) {
+        filtered.forEach(function (row) {
           const v = isReadinessFor(row, ctx);
           (groups[v.bucket] || groups.hidden).push({ row: row, line: v.line, cls: v.cls, note: v.note });
         });
@@ -10876,6 +10933,13 @@ if (typeof module !== 'undefined' && module.exports) {
         }
 
         body.innerHTML = html;
+
+        if (wasLaterOpen) {
+          const list = body.querySelector('.is-later-list');
+          const head = body.querySelector('.is-collapsible');
+          if (list) list.style.display = '';
+          if (head) head.classList.add('is-open');
+        }
       }
 
       function isToggleLater(head) {
