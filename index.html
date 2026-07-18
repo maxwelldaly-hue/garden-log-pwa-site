@@ -1737,7 +1737,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.78</span>
+        <span class="header-version">v7.79</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2038,7 +2038,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.78 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.79 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3706,7 +3706,7 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
   // "months away" (June). Two label TYPES encode near-vs-far: a degree gap = temperature-gated + close; a
   // month name ("from Sep") = calendar-gated + far. fmtDeg trims the trailing .0. (design: sow-line-with-numbers)
   const fmtDeg = function (n) { return (Math.round(n * 10) / 10).toString().replace(/\.0$/, ''); };
-  // Sow line names the LOCATION on every go-state ("Sow outdoors" / "Sow indoors"), so the in-ground-vs-inside
+  // Sow line names the LOCATION on every go-state ("Sow direct" / "Sow indoors"), so the in-ground-vs-inside
   // choice is legible in the copy — the same words on every surface (docs/SCOPE-SOW-INDOORS-AUDIT.md). Direct-
   // sow leads when the soil's in band; a tray-tolerant crop whose soil is still too cold reads "Sow indoors"
   // (you CAN start it now) rather than a bare cold gap; a direct-only crop that's too cold keeps the number.
@@ -3715,7 +3715,7 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
     // No germination gate on this crop (clove/tuber/division/potted perennial) → the window alone is the
     // readiness, worded as PLANT (there's no seed step to sow at all), not "Sow outdoors".
     if (!hasGermGate) sowLine = '✓ Plant';
-    else if (canDirectSow) sowLine = '✓ Sow outdoors';
+    else if (canDirectSow) sowLine = '✓ Sow direct';
     else if (canStartIndoors) sowLine = '✓ Sow indoors';                      // soil not ready outside, but the house is — start it inside
     else if (soilTooCold) sowLine = fmtDeg(germMin - soil) + '° too cold';    // direct-only crop: how far the SOIL is below the germ floor
     else if (soilTooWarm) sowLine = fmtDeg(soil - germMax) + '° too warm';    // soil above the germ ceiling (Adelaide hot-fail)
@@ -9744,12 +9744,12 @@ if (typeof module !== 'undefined' && module.exports) {
       // The descriptive display tier, in LABEL_FACT_SPEC order. Everything captured stays stored; the card
       // shows only the facts that DESCRIBE the variety. One-line change if the owner moves the line.
       const PP_FACT_DISPLAY = [
-        ['description', 'About', true],
-        ['flavour', 'Flavour', true],
-        ['sun', 'Sun', false],
-        ['maturity', 'Maturity', false],
-        ['height', 'Height', false],
-        ['harvest', 'Harvest', false]
+        ['description', 'About'],
+        ['flavour', 'Flavour'],
+        ['sun', 'Sun'],
+        ['maturity', 'Maturity'],
+        ['height', 'Height'],
+        ['harvest', 'Harvest']
       ];
 
       // The SHED passport's fuller tier. A packet in the shed is UNSOWN, so its sowing instructions ARE its
@@ -9758,21 +9758,21 @@ if (typeof module !== 'undefined' && module.exports) {
       // Germination were captured but filtered out). Everything captured stays stored; empty facts drop out
       // in ppFactsEl. Order = packet-natural: identity → sowing → growing → harvest.
       const PP_SHED_FACT_DISPLAY = [
-        ['description', 'About', true],
-        ['flavour', 'Flavour', true],
-        ['sun', 'Sun', false],
-        ['sowWhen', 'Sow', false],     // synthetic: local Adelaide window wins, packet season is the fallback
-        ['depth', 'Depth', false],
-        ['spacing', 'Spacing', false],
-        ['germination', 'Germination', false],
-        ['maturity', 'Maturity', false],
-        ['height', 'Height', false],
-        ['water', 'Water', false],
-        ['feed', 'Feed', false],
-        ['companion', 'Companion', true],
-        ['harvest', 'Harvest', false],
-        ['seedcount', 'Seed count', false],
-        ['bestbefore', 'Best before', false]
+        ['description', 'About'],
+        ['flavour', 'Flavour'],
+        ['sun', 'Sun'],
+        ['sowWhen', 'Sow'],     // synthetic: local Adelaide window wins, packet season is the fallback
+        ['depth', 'Depth'],
+        ['spacing', 'Spacing'],
+        ['germination', 'Germination'],
+        ['maturity', 'Maturity'],
+        ['height', 'Height'],
+        ['water', 'Water'],
+        ['feed', 'Feed'],
+        ['companion', 'Companion'],
+        ['harvest', 'Harvest'],
+        ['seedcount', 'Seed count'],
+        ['bestbefore', 'Best before']
       ];
 
       const PP_MONTH_ABBR = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
