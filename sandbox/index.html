@@ -610,6 +610,7 @@
       .pl-harvest-check { color: var(--text-muted); font-weight: 600; } /* estimate reached — a quiet "go look" nudge, muted (no green) */
       .pl-ready { color: var(--color-go); font-weight: 600; }         /* "✓ Ready to plant" — the sanctioned green: an actionable GO, not a nudge */
       .pl-cold  { color: var(--blue-400); }                           /* "❄ N° too cold to plant" — same blue+frost language as the dashboard soil panel's cold gap */
+      .pl-hot   { color: var(--color-plant); }                        /* "N° too hot to plant" — heat spell ahead cooks a fresh transplant; warm amber, the heat side of the cold gap */
       .pl-line-ic { width: 1em; height: 1em; fill: currentColor; vertical-align: -0.12em; }  /* inline weather-mark in a ledger line (mirrors .soil-go-ic) */
       /* Optimistic Garden-tab row (latency Slice A, docs/SCOPE-LATENCY-SLICES.md): the confident-match case
          dims the row + adds a quiet "saving…" line while the real write is still in flight. .plant-row-spin
@@ -1731,7 +1732,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.67</span>
+        <span class="header-version">v7.73</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2032,7 +2033,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.67 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.73 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3047,7 +3048,7 @@
          with the crops you already own seeds for marked. Pull, not push: nothing loads until it's opened. -->
     <div id="inSeasonOverlay" class="pp-fs" style="display:none;">
       <div class="pp-bar">
-        <span class="pp-crumb">In season</span>
+        <span class="pp-crumb">Planting Guide</span>
         <button type="button" class="pp-close" onclick="closeInSeason()" aria-label="Close In-season pane">✕</button>
       </div>
       <div id="inSeasonBody" class="pp-body" role="dialog" aria-modal="true"></div>
@@ -3667,16 +3668,23 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
   const indoorAlso = canDirectSow && canStartIndoors;
   // Plant-OUT readiness (LIVE "can I plant a seedling out today"): the soil must be warm enough for roots to
   // ESTABLISH — the crop's GROWING floor (soilCold), NOT the germination floor (a tomato germinates at 10° but
-  // sulks below ~16°) — AND the nights frost-free. Soil + frost, per owner. This is DELIBERATELY separate from
-  // the calendar "Leaving soon / Plant only" tail, which is a time-to-maturity deadline (you skip planting a
-  // tomato in late autumn because there's no season left to fruit, even if today's soil is fine) — so that tail
-  // stays forecast/calendar-based and is NEVER gated on this. (docs/SCOPE-SOW-INDOORS-AUDIT.md)
+  // sulks below ~16°) — the nights frost-free, AND no heat spell ahead. Cold floor + hot ceiling + frost. This
+  // is DELIBERATELY separate from the calendar "Leaving soon / Plant only" tail, which is a time-to-maturity
+  // deadline (you skip planting a tomato in late autumn because there's no season left to fruit, even if today's
+  // soil is fine) — so that tail stays forecast/calendar-based and is NEVER gated on this. (docs/SCOPE-SOW-INDOORS-AUDIT.md)
   const growFloor = (model.soilCold != null) ? Number(model.soilCold) : germMin;
   const soilPlantGap = (soil !== null && growFloor !== null) ? Math.round((growFloor - soil) * 10) / 10 : null;
   const nightPlantGap = (night !== null && tNight !== null) ? Math.round((tNight - night) * 10) / 10 : null;
   const soilPlantOk = soilPlantGap === null ? true : soilPlantGap <= 0;      // unknown soil → don't block on it
   const nightPlantOk = nightPlantGap === null ? false : nightPlantGap <= 0;  // need a night reading to say "go"
-  const canPlantOut = soilPlantOk && nightPlantOk;
+  // HEAT ceiling on plant-out (universal, not per-crop): transplant shock + a heat spell kills nearly any fresh
+  // seedling, so a hot day in the forecast holds plant-out. Ceiling = the owner-tunable heatDayC (default 35°C,
+  // the same "heat day" the weather card's survival alert uses). Unknown forecast → don't block (degrade to safe).
+  const dayMax = num(ctx.dayMaxC);
+  const heatCeil = (ctx.heatDayC != null && ctx.heatDayC !== '') ? Number(ctx.heatDayC) : 35;
+  const heatPlantGap = (dayMax !== null) ? Math.round((dayMax - heatCeil) * 10) / 10 : null;  // >0 = a hot day ahead
+  const tooHotToPlant = heatPlantGap !== null && heatPlantGap > 0;
+  const canPlantOut = soilPlantOk && nightPlantOk && !tooHotToPlant;
 
   // --- SOW-vs-PLANT model (the pane's richer calendar; the passport keeps the single sowLine above) ---------
   // The pane distinguishes SOWING (seed) from PLANTING-OUT (a raised seedling). Flags below feed its labels:
@@ -3741,7 +3749,7 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
            indoorAlso: indoorAlso, canPlantOut: canPlantOut, plantOutGap: plantOutGap, soilPlantGap: soilPlantGap,
            inWindow: inWindow, transplantOk: transplantOk, startInsideNow: startInsideNow, indoorAside: indoorAside,
            anywhere: anywhere, canPlantOnly: canPlantOnly, plantWindowEnd: plantWindowEnd, leavingDir: leavingDir,
-           soilTooCold: soilTooCold, soilTooWarm: soilTooWarm };
+           soilTooCold: soilTooCold, soilTooWarm: soilTooWarm, tooHotToPlant: tooHotToPlant, heatPlantGap: heatPlantGap };
 }
 
 // Build the readiness context from the SAME cached forecast the weather card uses. PURE (today is passed
@@ -3762,10 +3770,16 @@ function computeSowContext(forecastData, todayIso, bedSoilOffset) {
   const fNights = arr.filter(function (d) { return d && d.type === 'Forecast' && d.minTemp !== null && d.minTemp !== undefined; })
     .map(function (d) { return Number(d.minTemp); }).filter(function (n) { return !isNaN(n); });
   const nightMinC = fNights.length ? Math.min.apply(null, fNights) : null;
+  // The HOTTEST upcoming forecast day — the mirror of nightMinC. Feeds the plant-out heat gate: transplanting
+  // seedlings into a heat spell cooks them, so a hot day ahead holds plant-out just as a cold night does.
+  // Conservative (the single hottest day), matching nightMinC's single-coldest-night reading.
+  const fDays = arr.filter(function (d) { return d && d.type === 'Forecast' && d.maxTemp !== null && d.maxTemp !== undefined; })
+    .map(function (d) { return Number(d.maxTemp); }).filter(function (n) { return !isNaN(n); });
+  const dayMaxC = fDays.length ? Math.max.apply(null, fDays) : null;
   let monthIdx = null;
   const m = String(todayIso || '').match(/^\d{4}-(\d{2})/);
   if (m) monthIdx = parseInt(m[1], 10);
-  return { soilTemp: soilTemp, nightMinC: nightMinC, monthIdx: monthIdx, hasData: soilTemp !== null && monthIdx !== null };
+  return { soilTemp: soilTemp, nightMinC: nightMinC, dayMaxC: dayMaxC, monthIdx: monthIdx, hasData: soilTemp !== null && monthIdx !== null };
 }
 
 // Node harness reaches these via the eval'd sandbox; the browser gets them as globals.
@@ -9806,13 +9820,16 @@ if (typeof module !== 'undefined' && module.exports) {
           if (typeof computeSowContext !== 'function') return null;
           const fc = JSON.parse(localStorage.getItem('garden_log_forecast'));
           if (!Array.isArray(fc) || !fc.length) return null;
-          let offset = 0;
+          let offset = 0, heatDayC = null;
           try {
             const a = JSON.parse(localStorage.getItem('garden_log_alert_thresholds'));
             if (a && a.bedSoilOffsetC != null) offset = Number(a.bedSoilOffsetC);
+            if (a && a.heatDayC != null) heatDayC = Number(a.heatDayC);   // plant-out heat ceiling = the same tunable the weather alert uses
           } catch (e) {}
           const todayIso = (typeof todayAdelaide === 'function') ? todayAdelaide() : '';
-          return computeSowContext(fc, todayIso, offset);
+          const ctx = computeSowContext(fc, todayIso, offset);
+          if (ctx && heatDayC != null) ctx.heatDayC = heatDayC;
+          return ctx;
         } catch (e) { return null; }
       }
 
@@ -9830,6 +9847,12 @@ if (typeof module !== 'undefined' && module.exports) {
         const r = computeSowReadiness(p.sowModel, p.sowMonths, ctx);
         if (!r) return null;
         if (r.canPlantOut) return { cls: 'pl-ready', txt: '✓ Plant out' };   // green go — the sanctioned green
+        // Too HOT: a heat spell ahead cooks a fresh transplant, so hold plant-out even when soil + nights are
+        // fine. Amber + heat mark, mirroring the cold gap below. Checked first — heat trumps a satisfied cold gate.
+        if (r.tooHotToPlant) {
+          const hg = (r.heatPlantGap != null && r.heatPlantGap > 0) ? r.heatPlantGap : 0;
+          return { cls: 'pl-hot', mark: 'ui-wx-heat', txt: (hg > 0 ? 'Days ' + hg + '° too hot to plant' : 'Too hot to plant out') };
+        }
         // Not ready yet: show whichever gate is the BINDING blocker — the SOIL below the growing floor (roots
         // won't establish) or the NIGHTS below the frost floor. Blue + frost mark, same language as the soil
         // panel's cold gap. "to plant" names the gate (window→outside, not sowing/growing).
@@ -10702,49 +10725,62 @@ if (typeof module !== 'undefined' && module.exports) {
         return null;
       }
 
-      // One catalogue row → { bucket, line, cls, note }. The pane answers ONE question — "can I sow it?" — and
-      // groups by WHERE you'd act (In-season redesign v7.61, docs/SCOPE-IN-SEASON.md). Line 1 is the verdict AND
-      // carries the colour; line 2 is ALWAYS quiet grey (the deadline / the reason). Four buckets:
-      //  · inseason  (green  "✓ Sow" / "✓ Sow or plant") — window's open + soil in band: act straight outdoors.
-      //  · indoors   (blue   "✓ Sow indoors")            — too cold to go out, but a tray crop starts inside now.
-      //                                                     Grey reason = the binding blocker: "soil N° too cold" | "from Sep".
-      //  · plantonly (orange "✓ Plant only")             — sow window's shut, a raised seedling still fits: ending.
-      //  · hidden    (grey, silent, collapsed)           — not in season; nothing to do today.
-      // Reuses computeSowReadiness verbatim — the SAME verdict flags the passport shows; this only groups + colours.
+      // Crops that genuinely can't be planted from a seedling — tap-rooted (fork/bolt if transplanted) or grown
+      // from tuber/clove (not "sown" at all). These stay SOW-only; every other crop offers a plant option (owner,
+      // 18/07: a seedling-haver can plant almost anything — the old "direct-sow only, no plant" was stigma).
+      const IS_NEVER_PLANT = { carrot: 1, parsnip: 1, radish: 1, turnip: 1, turnips: 1, swede: 1, potato: 1, potatoes: 1, garlic: 1 };
+
+      // One catalogue row → { bucket, line, cls, note }. Buckets = the owner's 5 categories (18/07). Line 1 is the
+      // verdict + colour; line 2 is the quiet grey note (deadline / reason). Reuses computeSowReadiness verbatim.
+      //  · plantorsow       (green "✓ Plant or sow")        — raise-crop, warm enough to plant a seedling out now
+      //  · plantorsowdirect (green "✓ Plant or sow direct") — direct-sow crop that still takes a seedling (peas, beans)
+      //  · sowdirect        (green "✓ Sow direct")          — a can't-transplant crop (roots), or a direct crop too cold to plant a seedling yet
+      //  · sowindoors       (blue  "✓ Sow indoors")         — raise-crop, too cold to plant out — start seed under cover
+      //  · plantonly        (amber "✓ Plant only")          — sow window shut, a raised seedling still fits
+      //  · hidden           (grey, collapsed)               — not in season
       function isReadinessFor(row, ctx) {
         const r = (typeof computeSowReadiness === 'function') ? computeSowReadiness(row, row.sowMonths, ctx) : null;
         if (!r) return { bucket: 'hidden', line: '', cls: 'is-far' };
         const mon = (typeof SOW_MONDISP !== 'undefined') ? SOW_MONDISP : null;
-        const join = function (a, b) { return [a, b].filter(function (x) { return x; }).join(' · '); };
-        const fmtDeg = function (n) { return (Math.round(n)).toString(); };
         const sowEnd = isWindowEndMonth(row.sowMonths, ctx && ctx.monthIdx);
         const untilSow = (sowEnd && mon) ? ('until ' + mon[sowEnd - 1]) : '';
+        const isRoot = !!IS_NEVER_PLANT[String(row.crop || '').trim().toLowerCase()];
+        const raised = r.transplantOk === true;
 
-        // GREEN — fully in season: sow direct (soil's in the germ band), and plant a seedling too when it's warm enough.
-        if (r.canDirectSow) {
-          const verb = (r.transplantOk && r.canPlantOut) ? '✓ Sow or plant' : '✓ Sow';
-          return { bucket: 'inseason', line: verb, cls: 'is-go', note: join(untilSow, r.anywhere ? 'anywhere' : 'outdoors') };
-        }
-        // BLUE — sow indoors only: too cold to go outside today, but a tray crop can start on the windowsill now.
-        // (startInsideNow = a lead-weeks head-start; indoorAside = a lead-0 tray crop merely too cold to direct-sow.)
-        if (r.startInsideNow || r.indoorAside) {
-          let reason = '';
-          if (r.soilPlantGap != null && r.soilPlantGap > 0) reason = 'soil ' + fmtDeg(r.soilPlantGap) + '° too cold';
-          else if (r.inWindow && r.soilTooCold) reason = 'soil too cold';
-          else { const ns = isNextWindowMonth(row.sowMonths, ctx && ctx.monthIdx); reason = (ns && mon) ? ('from ' + mon[ns - 1]) : ''; }
-          return { bucket: 'indoors', line: '✓ Sow indoors', cls: 'is-cold', note: reason };
-        }
-        // ORANGE — plant only: past the sow window, but a raised seedling still has time to mature. Season ending.
+        // AMBER — plant only: past the sow window, but a raised seedling still has time. Checked first (a crop
+        // here is OUT of its sow window, so "plant or sow" can't apply — only planting a seedling does).
         if (r.canPlantOnly) {
           const untilPlant = (r.plantWindowEnd && mon) ? ('until ' + mon[r.plantWindowEnd - 1]) : '';
           return { bucket: 'plantonly', line: '✓ Plant only', cls: 'is-plant', note: untilPlant };
         }
-        // HIDDEN — not in season. Silent; the note (shown only if the group's expanded) keeps the reason.
+        // RAISE-CROP lane (tray-raisable). Route on plant-out readiness — you raise these, so "sow" means start
+        // seed (under cover, or direct once warm); the outdoor direct-sow gate isn't the deciding factor.
+        if (raised) {
+          if (r.canPlantOut && (r.canDirectSow || r.canStartIndoors)) {
+            return { bucket: 'plantorsow', line: '✓ Plant or sow', cls: 'is-go', note: untilSow };
+          }
+          if (r.canStartIndoors) {
+            let reason = '';
+            if (r.soilPlantGap != null && r.soilPlantGap > 0) reason = 'soil ' + Math.round(r.soilPlantGap) + '° too cold';
+            else if (r.inWindow && r.soilTooCold) reason = 'soil too cold';
+            else { const ns = isNextWindowMonth(row.sowMonths, ctx && ctx.monthIdx); reason = (ns && mon) ? ('from ' + mon[ns - 1]) : ''; }
+            return { bucket: 'sowindoors', line: '✓ Sow indoors', cls: 'is-cold', note: reason };
+          }
+          return { bucket: 'hidden', line: r.sowLine || '', cls: 'is-far', note: '' };
+        }
+        // DIRECT-SOW lane (sown straight in the ground). In season → offer plant too, UNLESS it's a true root or
+        // it's currently too cold/hot to plant a seedling out (then plain "Sow direct" — temperature, not stigma).
+        if (r.canDirectSow) {
+          if (isRoot || !r.canPlantOut) {
+            return { bucket: 'sowdirect', line: '✓ Sow direct', cls: 'is-go', note: untilSow };
+          }
+          return { bucket: 'plantorsowdirect', line: '✓ Plant or sow direct', cls: 'is-go', note: untilSow };
+        }
         return { bucket: 'hidden', line: r.sowLine || '', cls: 'is-far', note: '' };
       }
 
       // One crop row's HTML: icon · name (+ "seeds in shed" when owned) · the readiness line, with an optional
-      // muted note stacked under it (deadline / "or under cover" — the quiet secondary, right-aligned).
+      // muted note stacked under it (the deadline / reason — the quiet secondary, right-aligned).
       function isRowHtml(row, line, cls, note) {
         const icon = (typeof plantIconSvgHtml === 'function') ? plantIconSvgHtml(row.crop) : '';
         const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
@@ -10786,10 +10822,10 @@ if (typeof module !== 'undefined' && module.exports) {
         }
 
         const ctx = isBuildCtx();
-        const groups = { inseason: [], indoors: [], plantonly: [], hidden: [] };
+        const groups = { plantorsow: [], plantorsowdirect: [], sowdirect: [], sowindoors: [], plantonly: [], hidden: [] };
         catalogue.forEach(function (row) {
           const v = isReadinessFor(row, ctx);
-          groups[v.bucket].push({ row: row, line: v.line, cls: v.cls, note: v.note });
+          (groups[v.bucket] || groups.hidden).push({ row: row, line: v.line, cls: v.cls, note: v.note });
         });
         // Within a group: owned crops first (the gentle nudge — you have these), then A→Z. The server already
         // sorts A→Z, so a stable owned-first partition preserves that.
@@ -10809,24 +10845,26 @@ if (typeof module !== 'undefined' && module.exports) {
         } else {
           soilNote = '<span class="is-soil is-soil-cal">Calendar only — no live soil reading yet</span>';
         }
-        const intro = '<div class="is-intro">' +
-            '<p class="is-lede">What the planting calendar and today\'s soil say you could sow.</p>' +
-            soilNote + '</div>';
+        // Header = the bar's "Planting Guide" + today's soil reading (owner, 18/07). The old lede sentence is
+        // dropped — the title + the live soil temp are the whole header.
+        const intro = '<div class="is-intro">' + soilNote + '</div>';
 
-        const secSub = function (arr) { return arr.length ? arr.length + '' : ''; };
         let html = intro;
 
-        // IN SEASON (green) — the headline: sow / plant straight outdoors. Empty → a gentle steer to the windowsill.
-        if (groups.inseason.length) {
-          html += isSectionHtml('In season', secSub(groups.inseason), rowsOf(groups.inseason), 'is-inseason');
+        // ONE "In season" list under a single header. Each row keeps its own verdict COLOUR + line, so the
+        // distinction reads per-row. Ordered by the owner's logical flow (18/07): the five categories in sequence
+        //   Plant or sow → Plant or sow direct → Sow direct → Sow indoors → Plant only
+        // (green · green · green · blue · amber). Only "Not in season" stays a separate (collapsed) group.
+        const seasonRows = rowsOf(groups.plantorsow) + rowsOf(groups.plantorsowdirect) + rowsOf(groups.sowdirect) +
+                           rowsOf(groups.sowindoors) + rowsOf(groups.plantonly);
+        const seasonCount = groups.plantorsow.length + groups.plantorsowdirect.length + groups.sowdirect.length +
+                           groups.sowindoors.length + groups.plantonly.length;
+        if (seasonCount) {
+          html += isSectionHtml('In season', seasonCount + '', seasonRows, 'is-inseason');
         } else {
           html += '<div class="is-section is-inseason"><div class="is-sec-head"><span class="is-sec-title">In season</span></div>' +
-            '<div class="is-none">Nothing to sow straight into the ground today — the soil\'s still catching up. Look at what you can start indoors.</div></div>';
+            '<div class="is-none">Nothing to sow or plant today — the soil\'s still catching up. Check back as it warms.</div></div>';
         }
-        // SOW INDOORS (blue) — start seeds on the windowsill; too cold to go out yet.
-        html += isSectionHtml('Sow indoors', secSub(groups.indoors), rowsOf(groups.indoors), 'is-sowindoors');
-        // PLANT ONLY (orange) — the season-ending tail: sow window shut, a seedling still fits.
-        html += isSectionHtml('Plant only', secSub(groups.plantonly), rowsOf(groups.plantonly), 'is-plantonly');
         // NOT IN SEASON (grey) — silent + collapsed behind a tap; nothing to act on (possibility, not a wall).
         if (groups.hidden.length) {
           html += '<div class="is-section is-notinseason">' +
