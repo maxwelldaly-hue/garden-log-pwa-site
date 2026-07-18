@@ -1740,7 +1740,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.70</span>
+        <span class="header-version">v7.71</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2041,7 +2041,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.70 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.71 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3024,7 +3024,7 @@
          with the crops you already own seeds for marked. Pull, not push: nothing loads until it's opened. -->
     <div id="inSeasonOverlay" class="pp-fs" style="display:none;">
       <div class="pp-bar">
-        <span class="pp-crumb">In season</span>
+        <span class="pp-crumb">Planting Guide</span>
         <button type="button" class="pp-close" onclick="closeInSeason()" aria-label="Close In-season pane">✕</button>
       </div>
       <div id="inSeasonBody" class="pp-body" role="dialog" aria-modal="true"></div>
@@ -3728,34 +3728,37 @@ function explainSowReadiness(model, sowMonthsStr, ctx) {
   const germMin = num(model.germMinC), germMax = num(model.germMaxC);
   const lines = [];
 
-  // 1) The sow-window calendar — the first gate. All-year / in it now / opens later.
-  if (win.allYear) lines.push('Sow window: all year round');
-  else if (r.inWindow) lines.push('In its sow window now');
-  else {
+  // LINE 1 — the crop's headline criterion (owner-approved 18/07; minimal, no restating "in season", no doubled
+  // soil number). A DIRECT-SOW crop is defined by its germination soil band (you sow the seed straight in), so
+  // name it + flag "direct-sow only" (this is the pea answer). A RAISE-AND-TRANSPLANT crop is planted out as a
+  // seedling — it germinates in a punnet, so the outdoor germ band is irrelevant; name ONLY its plant-out soil
+  // floor (SoilCold). Today's soil reading lives in the header, so it isn't repeated here.
+  if (!r.transplantOk) {
+    if (germMin !== null || germMax !== null) {
+      const band = (germMin !== null && germMax !== null) ? germMin + '–' + germMax + '°'
+        : (germMin !== null ? germMin + '°+' : 'up to ' + germMax + '°');
+      lines.push('Germinates ' + band + ' · direct-sow only');
+    } else lines.push('Direct-sow only');
+  } else {
+    const growFloor = (model.soilCold != null) ? Number(model.soilCold) : germMin;
+    if (growFloor !== null) lines.push('Plant out ' + growFloor + '°+');
+  }
+
+  // LINE 2 — the binding hold, ONLY when it's not a clean go. Out-of-window trumps all. A DIRECT-SOW crop holds
+  // on SOWING soil; a TRANSPLANT crop holds on PLANTING OUT and NEVER on "too cold to sow" (you raise it indoors,
+  // so the outdoor sow soil is moot — owner, 18/07). "Plant only" already reads its verdict, so no extra line.
+  if (r.canPlantOnly) {
+    // orange "Plant only" — sow window shut, a seedling still fits. The verdict says it; keep the why to line 1.
+  } else if (!r.inWindow && !win.allYear) {
     const next = win.months ? nextSowMonth(win.months, ctx.monthIdx) : null;
-    lines.push('Out of its sow window' + (next && mon ? ' — opens ' + mon[next - 1] : ''));
-  }
-
-  // 2) Soil vs the germination band — the direct-sow gate.
-  if (soil === null) lines.push('No live soil reading yet — going on the calendar alone');
-  else if (germMin !== null || germMax !== null) {
-    const band = (germMin !== null && germMax !== null) ? germMin + '–' + germMax + '°'
-      : (germMin !== null ? 'from ' + germMin + '°' : 'up to ' + germMax + '°');
-    if (r.soilTooCold) lines.push('Soil ' + fmt(soil) + '° — ' + fmt(germMin - soil) + '° too cold to germinate (needs ' + band + ')');
-    else if (r.soilTooWarm) lines.push('Soil ' + fmt(soil) + '° — ' + fmt(soil - germMax) + '° too warm to germinate (best ' + band + ')');
-    else lines.push('Soil ' + fmt(soil) + '° — warm enough to germinate (' + band + ')');
-  }
-
-  // 3) Transplant tolerance — WHY there is (or isn't) a "plant" option. Answers the pea question directly.
-  if (r.transplantOk) lines.push('Can be raised as seedlings and planted out');
-  else lines.push('Direct-sow only — it dislikes being transplanted, so there is no plant-out option');
-
-  // 4) The plant-OUT gate (only meaningful for a tray-raisable crop): the live hold on planting a seedling.
-  if (r.transplantOk) {
-    if (r.canPlantOut) lines.push('Warm enough to plant seedlings out now');
-    else if (r.tooHotToPlant) lines.push('Too hot to plant seedlings out — a heat spell ahead cooks a fresh transplant');
-    else if (r.soilPlantGap != null && r.soilPlantGap > 0) lines.push('Too cold to plant seedlings out — soil ' + fmt(r.soilPlantGap) + '° below its growing floor');
-    else if (r.plantOutGap != null && r.plantOutGap > 0) lines.push('Too cold to plant seedlings out — nights ' + fmt(r.plantOutGap) + '° too cold');
+    if (next && mon) lines.push('Window opens ' + mon[next - 1]);
+  } else if (!r.transplantOk) {
+    if (r.soilTooCold) lines.push('Soil ' + fmt(soil) + '° today — too cold to sow');
+    else if (r.soilTooWarm) lines.push('Soil ' + fmt(soil) + '° today — too warm to sow');
+  } else {
+    if (r.tooHotToPlant) lines.push('Too hot to plant out');
+    else if (r.soilPlantGap != null && r.soilPlantGap > 0) lines.push('Soil ' + fmt(soil) + '° today — too cold to plant out');
+    else if (r.plantOutGap != null && r.plantOutGap > 0) lines.push('Nights too cold to plant out');
   }
 
   return lines;
@@ -10871,9 +10874,9 @@ if (typeof module !== 'undefined' && module.exports) {
         } else {
           soilNote = '<span class="is-soil is-soil-cal">Calendar only — no live soil reading yet</span>';
         }
-        const intro = '<div class="is-intro">' +
-            '<p class="is-lede">What the planting calendar and today\'s soil say you could sow.</p>' +
-            soilNote + '</div>';
+        // Header = the bar's "Planting Guide" + today's soil reading (owner, 18/07). The old lede sentence is
+        // dropped — the title + the live soil temp are the whole header.
+        const intro = '<div class="is-intro">' + soilNote + '</div>';
 
         let html = intro;
 
