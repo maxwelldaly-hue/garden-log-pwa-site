@@ -1737,7 +1737,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.75</span>
+        <span class="header-version">v7.76</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2038,7 +2038,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.75 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.76 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3240,7 +3240,7 @@ const CROP_ICON_SYNONYMS = [
   [/sorrel/, 'red-chard'],            // red-veined sorrel ~ red chard (no sorrel icon in the set)
   [/\brocket\b|arugula/, 'arugula'],
   [/pak ?choi|bok ?choy/, 'bok-choy'],
-  [/garlic ?chives?/, 'garlic-chive'],
+  [/garlic ?chives?/, 'onion-chive'],  // 'garlic-chive' manifest id exists but has no baked art — onion-chive stand-in (same allium look)
   [/\bchives?\b/, 'onion-chive'],
   [/spearmint|peppermint/, 'mint'],
   [/spring onion|scallion|salad ?onions?/, 'spring-onion'],   // salad/bunching onions ~ spring onion (green bunching top)
@@ -3290,7 +3290,17 @@ const CROP_ICON_SYNONYMS = [
   // an intentional flower icon rather than falling through to the ungrouped 'generic-plant' leaf. Poppy gets
   // the existing poppy art; everything else gets the generic bloom.
   [/\bpoppy\b/, 'california-poppy'],
-  [/marigold|sunflower|nasturtium|petunia|\bpansy\b|\bviola\b|zinnia|cosmos|snapdragon/, 'generic-flower']
+  [/marigold|sunflower|nasturtium|petunia|\bpansy\b|\bviola\b|zinnia|cosmos|snapdragon/, 'generic-flower'],
+  // Clove/tuber/division/potted-perennial crops newly surfaced by the "Plant" readiness lane (owner, 18/07 —
+  // these carried a real calendar window but no germ model, so they were excluded outright until now). Same
+  // stand-in treatment: an explicit, intentional icon rather than a silent 'generic-plant' gap.
+  [/\bdahlia/, 'generic-flower'],
+  [/\bdaisy\b/, 'generic-flower'],
+  [/\brose\b/, 'generic-flower'],
+  [/geranium/, 'generic-flower'],
+  [/catmint/, 'mint'],                         // same family look as the baked mint icon
+  [/lemon ?balm/, 'generic-plant'],            // 'lemon-balm' manifest id exists but has no baked art
+  [/\bclover\b/, 'generic-plant']              // cover crop, no dedicated art
 ];
 // Custom (non-Open-Crop) icon ids that resolveCropIcon can return — drawn/ported in CropIconArt.html.
 const CROP_ICON_CUSTOM = ['blood-lily', 'salvia', 'jasmine', 'redbud', 'succulent', 'tree', 'lebanese-cucumber', 'oregano-sprig'];
@@ -3299,7 +3309,7 @@ const CROP_ICON_CUSTOM = ['blood-lily', 'salvia', 'jasmine', 'redbud', 'succulen
 // A bare crop word with no cultivar picks a representative icon; but "sweet potato",
 // "red onion", "savoy cabbage" etc. must first get their SPECIFIC icon from the manifest.
 const CROP_ICON_DEFAULTS = [
-  [/\bpotato\b/, 'russet-potato'],
+  [/\bpotato(es)?\b/, 'russet-potato'],   // plural too — bare "Potatoes" (In-season plant lane) must still match
   [/\bcabbage\b/, 'green-cabbage'],
   [/\bkale\b/, 'curly-kale'],
   [/\bonions?\b/, 'yellow-onion'],   // bare/plural onion ("Onions, Storage") -> representative bulb
@@ -3657,7 +3667,7 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
   const lead = Number(model.indoorLeadWeeks || 0);
   const leadMonths = lead > 0 ? Math.ceil(lead / 4) : 0;   // weeks → whole months of head-start runway
 
-  const hasSoilGate = germMin !== null || germMax !== null;
+  const hasGermGate = germMin !== null || germMax !== null;
   const inWindow = !!win.allYear || win.months.indexOf(monthIdx) >= 0;
   // Months until the OUTDOOR sow window opens (0 = already in it). The indoor head-start begins in the runway
   // BEFORE the window — raising seedlings inside is exactly how you're ready to plant out when the season turns.
@@ -3666,7 +3676,12 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
   const soilKnown = soil !== null;
   const soilTooCold = soilKnown && germMin !== null && soil < germMin;
   const soilTooWarm = soilKnown && germMax !== null && soil > germMax;
-  const soilOk = soilKnown && hasSoilGate && !soilTooCold && !soilTooWarm;
+  // A crop with NO germination floor/ceiling (clove, tuber, division, potted perennial — Garlic, Potatoes,
+  // Mint, Chives...) doesn't germinate at all, so there's no soil-temperature check to run: the calendar
+  // window itself IS the readiness (owner, 18/07 — "you'd still plant a mint in September" surfaced this gap;
+  // these crops carry a real SowMonths window in the book but were silently excluded because buildSowCatalogue
+  // required a germ model to include a row at all). A crop WITH a germ model keeps the existing soil-gated check.
+  const soilOk = hasGermGate ? (soilKnown && !soilTooCold && !soilTooWarm) : true;
 
   const canDirectSow = inWindow && soilOk;
   // Transplant tolerance — can this crop be raised in a tray/module and moved? The sheet's TransplantOK wins;
@@ -3746,8 +3761,9 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
   // (you CAN start it now) rather than a bare cold gap; a direct-only crop that's too cold keeps the number.
   let sowLine = null;
   if (inWindow) {
-    // No soil gate on this crop (unclassified / soil-only entry) → we can't give a live reading; keep static.
-    if (!hasSoilGate) sowLine = null;
+    // No germination gate on this crop (clove/tuber/division/potted perennial) → the window alone is the
+    // readiness, worded as PLANT (there's no seed step to sow at all), not "Sow outdoors".
+    if (!hasGermGate) sowLine = '✓ Plant';
     else if (canDirectSow) sowLine = '✓ Sow outdoors';
     else if (canStartIndoors) sowLine = '✓ Sow indoors';                      // soil not ready outside, but the house is — start it inside
     else if (soilTooCold) sowLine = fmtDeg(germMin - soil) + '° too cold';    // direct-only crop: how far the SOIL is below the germ floor
@@ -3756,7 +3772,7 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
   } else if (inLeadRunway) {
     sowLine = '✓ Sow indoors';   // ahead of the window — the head-start the lead weeks are FOR (no soil gate)
   } else if (win.months) {
-    sowLine = 'Sow from ' + SOW_MONDISP[nextSowMonth(win.months, monthIdx) - 1];
+    sowLine = (hasGermGate ? 'Sow from ' : 'Plant from ') + SOW_MONDISP[nextSowMonth(win.months, monthIdx) - 1];
   }
   // Plant-out gap = the coldest upcoming NIGHT below the crop's transplant floor (>0 = not safe; ≤0 = ready).
   // soilPlantGap = the SOIL below the growing floor. The passport shows whichever is the binding blocker.
@@ -3765,7 +3781,8 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
            indoorAlso: indoorAlso, canPlantOut: canPlantOut, plantOutGap: plantOutGap, soilPlantGap: soilPlantGap,
            inWindow: inWindow, transplantOk: transplantOk, startInsideNow: startInsideNow, indoorAside: indoorAside,
            anywhere: anywhere, canPlantOnly: canPlantOnly, plantWindowEnd: plantWindowEnd, leavingDir: leavingDir,
-           soilTooCold: soilTooCold, soilTooWarm: soilTooWarm, tooHotToPlant: tooHotToPlant, heatPlantGap: heatPlantGap };
+           soilTooCold: soilTooCold, soilTooWarm: soilTooWarm, tooHotToPlant: tooHotToPlant, heatPlantGap: heatPlantGap,
+           hasGermGate: hasGermGate };
 }
 
 // Build the readiness context from the SAME cached forecast the weather card uses. PURE (today is passed
@@ -10771,8 +10788,11 @@ if (typeof module !== 'undefined' && module.exports) {
       // 18/07: a seedling-haver can plant almost anything — the old "direct-sow only, no plant" was stigma).
       const IS_NEVER_PLANT = { carrot: 1, parsnip: 1, radish: 1, turnip: 1, turnips: 1, swede: 1, potato: 1, potatoes: 1, garlic: 1 };
 
-      // One catalogue row → { bucket, line, cls, note }. Buckets = the owner's 5 categories (18/07). Line 1 is the
+      // One catalogue row → { bucket, line, cls, note }. Buckets = the owner's 6 categories (18/07). Line 1 is the
       // verdict + colour; line 2 is the quiet grey note (deadline / reason). Reuses computeSowReadiness verbatim.
+      //  · plant            (green "✓ Plant")                — no germination gate at all (clove/tuber/division/
+      //                                                          potted perennial — Garlic, Potatoes, Mint...);
+      //                                                          the calendar window IS the readiness, no seed step
       //  · plantorsow       (green "✓ Plant or sow")        — raise-crop, warm enough to plant a seedling out now
       //  · plantorsowdirect (green "✓ Plant or sow direct") — direct-sow crop that still takes a seedling (peas, beans)
       //  · sowdirect        (green "✓ Sow direct")          — a can't-transplant crop (roots), or a direct crop too cold to plant a seedling yet
@@ -10787,6 +10807,15 @@ if (typeof module !== 'undefined' && module.exports) {
         const untilSow = (sowEnd && mon) ? ('until ' + mon[sowEnd - 1]) : '';
         const isRoot = !!IS_NEVER_PLANT[String(row.crop || '').trim().toLowerCase()];
         const raised = r.transplantOk === true;
+
+        // GREEN — plant, no seed step: a clove/tuber/division/potted-perennial crop has no germination gate at
+        // all, so the calendar window alone is the readiness (checked first — this is a different KIND of crop,
+        // not a variant of the sow lanes below). Out-of-window falls through to hidden with r.sowLine already
+        // worded "Plant from <Month>" (computeSowReadiness), not "Sow from".
+        if (r.hasGermGate === false) {
+          if (r.canDirectSow) return { bucket: 'plant', line: '✓ Plant', cls: 'is-go', note: untilSow };
+          return { bucket: 'hidden', line: r.sowLine || '', cls: 'is-far', note: '' };
+        }
 
         // AMBER — plant only: past the sow window, but a raised seedling still has time. Checked first (a crop
         // here is OUT of its sow window, so "plant or sow" can't apply — only planting a seedling does).
@@ -10879,7 +10908,7 @@ if (typeof module !== 'undefined' && module.exports) {
         }
 
         const ctx = isBuildCtx();
-        const groups = { plantorsow: [], plantorsowdirect: [], sowdirect: [], sowindoors: [], plantonly: [], hidden: [] };
+        const groups = { plant: [], plantorsow: [], plantorsowdirect: [], sowdirect: [], sowindoors: [], plantonly: [], hidden: [] };
         filtered.forEach(function (row) {
           const v = isReadinessFor(row, ctx);
           (groups[v.bucket] || groups.hidden).push({ row: row, line: v.line, cls: v.cls, note: v.note });
@@ -10909,12 +10938,12 @@ if (typeof module !== 'undefined' && module.exports) {
         let html = intro;
 
         // ONE "In season" list under a single header. Each row keeps its own verdict COLOUR + line, so the
-        // distinction reads per-row. Ordered by the owner's logical flow (18/07): the five categories in sequence
-        //   Plant or sow → Plant or sow direct → Sow direct → Sow indoors → Plant only
-        // (green · green · green · blue · amber). Only "Not in season" stays a separate (collapsed) group.
-        const seasonRows = rowsOf(groups.plantorsow) + rowsOf(groups.plantorsowdirect) + rowsOf(groups.sowdirect) +
+        // distinction reads per-row. Ordered by the owner's logical flow (18/07): the six categories in sequence
+        //   Plant → Plant or sow → Plant or sow direct → Sow direct → Sow indoors → Plant only
+        // (green · green · green · green · blue · amber). Only "Not in season" stays a separate (collapsed) group.
+        const seasonRows = rowsOf(groups.plant) + rowsOf(groups.plantorsow) + rowsOf(groups.plantorsowdirect) + rowsOf(groups.sowdirect) +
                            rowsOf(groups.sowindoors) + rowsOf(groups.plantonly);
-        const seasonCount = groups.plantorsow.length + groups.plantorsowdirect.length + groups.sowdirect.length +
+        const seasonCount = groups.plant.length + groups.plantorsow.length + groups.plantorsowdirect.length + groups.sowdirect.length +
                            groups.sowindoors.length + groups.plantonly.length;
         if (seasonCount) {
           html += isSectionHtml('In season', seasonCount + '', seasonRows, 'is-inseason');
