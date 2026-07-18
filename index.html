@@ -1722,7 +1722,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.63</span>
+        <span class="header-version">v7.64</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2019,7 +2019,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.63 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.64 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -4661,6 +4661,10 @@ if (typeof module !== 'undefined' && module.exports) {
 
           const header = document.createElement('div');
           header.className = 'bed-card-header';
+          // Seeds & Seedlings carry NO meaningful quantity (owner, 18/07): a packet holds hundreds of seeds and
+          // there's never a second identical packet — so the per-row count is noise. Hide the row quantity chip,
+          // and count each packet as ONE in the header badge (distinct packets, not a summed stock).
+          const isSeedCat = /seed/i.test(String(g.category || ''));
           // Toggle by closure over this card (category names contain spaces/slashes — not id-safe).
           header.onclick = function () {
             const nowCollapsed = card.classList.toggle('collapsed');
@@ -4690,7 +4694,7 @@ if (typeof module !== 'undefined' && module.exports) {
           // Garden bed badge (a count), via the same predicate the row chip uses.
           let n = 0;
           g.items.forEach(function (it) {
-            n += shedQuantityParts(it.quantity).value;
+            n += isSeedCat ? 1 : shedQuantityParts(it.quantity).value;   // seeds: one per packet, no stock sum
           });
           badge.textContent = String(n);
           right.appendChild(badge);
@@ -4735,9 +4739,9 @@ if (typeof module !== 'undefined' && module.exports) {
             // No leading space: the lead-chip's margin-right handles the gap, identical to the Garden .plant-ic.
             name.appendChild(document.createTextNode(itemLabel));
             top.appendChild(name);
-            if (it.quantity) {
+            if (it.quantity && !isSeedCat) {
               // ×N for countables ("×3" bags); measures shown bare ("600 g", "1 L") — the × language
-              // belongs to counts, and "×600g" reads as multiplying a unit.
+              // belongs to counts, and "×600g" reads as multiplying a unit. Seeds show no quantity (owner, 18/07).
               const qty = document.createElement('span');
               qty.className = 'inv-qty';
               qty.textContent = shedQuantityParts(it.quantity).display;
@@ -9980,8 +9984,11 @@ if (typeof module !== 'undefined' && module.exports) {
         const sub = document.createElement('div');
         sub.className = 'pp-id-sub';
         const bits = [];
+        // Seeds carry no meaningful quantity (owner, 18/07) — a packet is hundreds of seeds and never duplicated;
+        // the shed passport opens for seed packets, so drop the count and lead with when it was bought.
+        const isSeedCat = /seed/i.test(String(category || item.category || ''));
         const qty = (typeof shedQuantityParts === 'function') ? shedQuantityParts(item.quantity).display : String(item.quantity || '');
-        if (qty) bits.push(qty);
+        if (qty && !isSeedCat) bits.push(qty);
         if (item.purchasedate) {
           const rel = (typeof relativePast === 'function') ? relativePast(item.purchasedate) : '';
           bits.push('bought ' + (rel || item.purchasedate));
