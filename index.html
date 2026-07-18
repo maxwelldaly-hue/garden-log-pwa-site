@@ -610,6 +610,7 @@
       .pl-harvest-check { color: var(--text-muted); font-weight: 600; } /* estimate reached — a quiet "go look" nudge, muted (no green) */
       .pl-ready { color: var(--color-go); font-weight: 600; }         /* "✓ Ready to plant" — the sanctioned green: an actionable GO, not a nudge */
       .pl-cold  { color: var(--blue-400); }                           /* "❄ N° too cold to plant" — same blue+frost language as the dashboard soil panel's cold gap */
+      .pl-hot   { color: var(--color-plant); }                        /* "N° too hot to plant" — heat spell ahead cooks a fresh transplant; warm amber, the heat side of the cold gap */
       .pl-line-ic { width: 1em; height: 1em; fill: currentColor; vertical-align: -0.12em; }  /* inline weather-mark in a ledger line (mirrors .soil-go-ic) */
       /* Optimistic Garden-tab row (latency Slice A, docs/SCOPE-LATENCY-SLICES.md): the confident-match case
          dims the row + adds a quiet "saving…" line while the real write is still in flight. .plant-row-spin
@@ -1731,7 +1732,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.68</span>
+        <span class="header-version">v7.69</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2032,7 +2033,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.68 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.69 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3618,16 +3619,23 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
   const indoorAlso = canDirectSow && canStartIndoors;
   // Plant-OUT readiness (LIVE "can I plant a seedling out today"): the soil must be warm enough for roots to
   // ESTABLISH — the crop's GROWING floor (soilCold), NOT the germination floor (a tomato germinates at 10° but
-  // sulks below ~16°) — AND the nights frost-free. Soil + frost, per owner. This is DELIBERATELY separate from
-  // the calendar "Leaving soon / Plant only" tail, which is a time-to-maturity deadline (you skip planting a
-  // tomato in late autumn because there's no season left to fruit, even if today's soil is fine) — so that tail
-  // stays forecast/calendar-based and is NEVER gated on this. (docs/SCOPE-SOW-INDOORS-AUDIT.md)
+  // sulks below ~16°) — the nights frost-free, AND no heat spell ahead. Cold floor + hot ceiling + frost. This
+  // is DELIBERATELY separate from the calendar "Leaving soon / Plant only" tail, which is a time-to-maturity
+  // deadline (you skip planting a tomato in late autumn because there's no season left to fruit, even if today's
+  // soil is fine) — so that tail stays forecast/calendar-based and is NEVER gated on this. (docs/SCOPE-SOW-INDOORS-AUDIT.md)
   const growFloor = (model.soilCold != null) ? Number(model.soilCold) : germMin;
   const soilPlantGap = (soil !== null && growFloor !== null) ? Math.round((growFloor - soil) * 10) / 10 : null;
   const nightPlantGap = (night !== null && tNight !== null) ? Math.round((tNight - night) * 10) / 10 : null;
   const soilPlantOk = soilPlantGap === null ? true : soilPlantGap <= 0;      // unknown soil → don't block on it
   const nightPlantOk = nightPlantGap === null ? false : nightPlantGap <= 0;  // need a night reading to say "go"
-  const canPlantOut = soilPlantOk && nightPlantOk;
+  // HEAT ceiling on plant-out (universal, not per-crop): transplant shock + a heat spell kills nearly any fresh
+  // seedling, so a hot day in the forecast holds plant-out. Ceiling = the owner-tunable heatDayC (default 35°C,
+  // the same "heat day" the weather card's survival alert uses). Unknown forecast → don't block (degrade to safe).
+  const dayMax = num(ctx.dayMaxC);
+  const heatCeil = (ctx.heatDayC != null && ctx.heatDayC !== '') ? Number(ctx.heatDayC) : 35;
+  const heatPlantGap = (dayMax !== null) ? Math.round((dayMax - heatCeil) * 10) / 10 : null;  // >0 = a hot day ahead
+  const tooHotToPlant = heatPlantGap !== null && heatPlantGap > 0;
+  const canPlantOut = soilPlantOk && nightPlantOk && !tooHotToPlant;
 
   // --- SOW-vs-PLANT model (the pane's richer calendar; the passport keeps the single sowLine above) ---------
   // The pane distinguishes SOWING (seed) from PLANTING-OUT (a raised seedling). Flags below feed its labels:
@@ -3692,7 +3700,7 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
            indoorAlso: indoorAlso, canPlantOut: canPlantOut, plantOutGap: plantOutGap, soilPlantGap: soilPlantGap,
            inWindow: inWindow, transplantOk: transplantOk, startInsideNow: startInsideNow, indoorAside: indoorAside,
            anywhere: anywhere, canPlantOnly: canPlantOnly, plantWindowEnd: plantWindowEnd, leavingDir: leavingDir,
-           soilTooCold: soilTooCold, soilTooWarm: soilTooWarm };
+           soilTooCold: soilTooCold, soilTooWarm: soilTooWarm, tooHotToPlant: tooHotToPlant, heatPlantGap: heatPlantGap };
 }
 
 // Build the readiness context from the SAME cached forecast the weather card uses. PURE (today is passed
@@ -3713,10 +3721,16 @@ function computeSowContext(forecastData, todayIso, bedSoilOffset) {
   const fNights = arr.filter(function (d) { return d && d.type === 'Forecast' && d.minTemp !== null && d.minTemp !== undefined; })
     .map(function (d) { return Number(d.minTemp); }).filter(function (n) { return !isNaN(n); });
   const nightMinC = fNights.length ? Math.min.apply(null, fNights) : null;
+  // The HOTTEST upcoming forecast day — the mirror of nightMinC. Feeds the plant-out heat gate: transplanting
+  // seedlings into a heat spell cooks them, so a hot day ahead holds plant-out just as a cold night does.
+  // Conservative (the single hottest day), matching nightMinC's single-coldest-night reading.
+  const fDays = arr.filter(function (d) { return d && d.type === 'Forecast' && d.maxTemp !== null && d.maxTemp !== undefined; })
+    .map(function (d) { return Number(d.maxTemp); }).filter(function (n) { return !isNaN(n); });
+  const dayMaxC = fDays.length ? Math.max.apply(null, fDays) : null;
   let monthIdx = null;
   const m = String(todayIso || '').match(/^\d{4}-(\d{2})/);
   if (m) monthIdx = parseInt(m[1], 10);
-  return { soilTemp: soilTemp, nightMinC: nightMinC, monthIdx: monthIdx, hasData: soilTemp !== null && monthIdx !== null };
+  return { soilTemp: soilTemp, nightMinC: nightMinC, dayMaxC: dayMaxC, monthIdx: monthIdx, hasData: soilTemp !== null && monthIdx !== null };
 }
 
 // Node harness reaches these via the eval'd sandbox; the browser gets them as globals.
@@ -9757,13 +9771,16 @@ if (typeof module !== 'undefined' && module.exports) {
           if (typeof computeSowContext !== 'function') return null;
           const fc = JSON.parse(localStorage.getItem('garden_log_forecast'));
           if (!Array.isArray(fc) || !fc.length) return null;
-          let offset = 0;
+          let offset = 0, heatDayC = null;
           try {
             const a = JSON.parse(localStorage.getItem('garden_log_alert_thresholds'));
             if (a && a.bedSoilOffsetC != null) offset = Number(a.bedSoilOffsetC);
+            if (a && a.heatDayC != null) heatDayC = Number(a.heatDayC);   // plant-out heat ceiling = the same tunable the weather alert uses
           } catch (e) {}
           const todayIso = (typeof todayAdelaide === 'function') ? todayAdelaide() : '';
-          return computeSowContext(fc, todayIso, offset);
+          const ctx = computeSowContext(fc, todayIso, offset);
+          if (ctx && heatDayC != null) ctx.heatDayC = heatDayC;
+          return ctx;
         } catch (e) { return null; }
       }
 
@@ -9781,6 +9798,12 @@ if (typeof module !== 'undefined' && module.exports) {
         const r = computeSowReadiness(p.sowModel, p.sowMonths, ctx);
         if (!r) return null;
         if (r.canPlantOut) return { cls: 'pl-ready', txt: '✓ Plant out' };   // green go — the sanctioned green
+        // Too HOT: a heat spell ahead cooks a fresh transplant, so hold plant-out even when soil + nights are
+        // fine. Amber + heat mark, mirroring the cold gap below. Checked first — heat trumps a satisfied cold gate.
+        if (r.tooHotToPlant) {
+          const hg = (r.heatPlantGap != null && r.heatPlantGap > 0) ? r.heatPlantGap : 0;
+          return { cls: 'pl-hot', mark: 'ui-wx-heat', txt: (hg > 0 ? 'Days ' + hg + '° too hot to plant' : 'Too hot to plant out') };
+        }
         // Not ready yet: show whichever gate is the BINDING blocker — the SOIL below the growing floor (roots
         // won't establish) or the NIGHTS below the frost floor. Blue + frost mark, same language as the soil
         // panel's cold gap. "to plant" names the gate (window→outside, not sowing/growing).
