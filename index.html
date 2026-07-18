@@ -980,6 +980,14 @@
       .is-indoors { opacity: 0.68; font-weight: 500; }         /* (legacy) start-indoors quieter cue — retained for back-compat */
       .is-soon { color: var(--blue-400); }                     /* (legacy) in-window but soil not there yet */
       .is-far  { color: var(--text-muted); }                   /* GREY — not in season, quiet "from Sep" */
+      /* Tap-to-expand "why" (owner: "I can't see the criteria"). The row is the button; the .is-why panel is a
+         sibling inside .is-rowwrap so the row's flex layout is untouched. Caret sits after the verdict lines. */
+      .is-rowwrap { display: flex; flex-direction: column; }
+      .is-row-tap { cursor: pointer; }
+      .is-why-caret { flex: 0 0 auto; color: var(--text-muted); font-size: var(--fs-sm); opacity: 0.55; margin-left: 2px; transition: transform 0.15s ease; }
+      .is-row-tap.is-open .is-why-caret { transform: rotate(180deg); }
+      .is-why { padding: 2px 6px 10px 46px; display: flex; flex-direction: column; gap: 3px; }
+      .is-why-line { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.45; }
       .is-none, .is-empty { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.5; padding: 6px 2px; }
       .is-empty { text-align: center; padding-top: 40px; }
 
@@ -1732,7 +1740,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.69</span>
+        <span class="header-version">v7.70</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2033,7 +2041,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.69 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.70 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3701,6 +3709,56 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
            inWindow: inWindow, transplantOk: transplantOk, startInsideNow: startInsideNow, indoorAside: indoorAside,
            anywhere: anywhere, canPlantOnly: canPlantOnly, plantWindowEnd: plantWindowEnd, leavingDir: leavingDir,
            soilTooCold: soilTooCold, soilTooWarm: soilTooWarm, tooHotToPlant: tooHotToPlant, heatPlantGap: heatPlantGap };
+}
+
+// Human-readable "WHY" for the In-season pane's tap-to-expand (owner: "I can't see the criteria, so I can't
+// understand why I can't plant a pea"). Turns the SAME readiness flags into a short list of plain reasons, so
+// the verdict is legible and the copy can NEVER drift from the decision (it re-runs computeSowReadiness). PURE
+// + Node-tested. Returns [] when there's nothing to say (no model / unparseable window). docs/SCOPE-IN-SEASON.md.
+function explainSowReadiness(model, sowMonthsStr, ctx) {
+  if (!model) return [];   // no crop data → nothing to explain
+  ctx = ctx || {};
+  const r = computeSowReadiness(model, sowMonthsStr, ctx);
+  const win = parseSowWindow(sowMonthsStr);
+  if (!r || !win) return [];
+  const num = function (v) { return v == null || v === '' ? null : Number(v); };
+  const fmt = function (n) { return (Math.round(n * 10) / 10).toString().replace(/\.0$/, ''); };
+  const mon = (typeof SOW_MONDISP !== 'undefined') ? SOW_MONDISP : null;
+  const soil = num(ctx.soilTemp);
+  const germMin = num(model.germMinC), germMax = num(model.germMaxC);
+  const lines = [];
+
+  // 1) The sow-window calendar — the first gate. All-year / in it now / opens later.
+  if (win.allYear) lines.push('Sow window: all year round');
+  else if (r.inWindow) lines.push('In its sow window now');
+  else {
+    const next = win.months ? nextSowMonth(win.months, ctx.monthIdx) : null;
+    lines.push('Out of its sow window' + (next && mon ? ' — opens ' + mon[next - 1] : ''));
+  }
+
+  // 2) Soil vs the germination band — the direct-sow gate.
+  if (soil === null) lines.push('No live soil reading yet — going on the calendar alone');
+  else if (germMin !== null || germMax !== null) {
+    const band = (germMin !== null && germMax !== null) ? germMin + '–' + germMax + '°'
+      : (germMin !== null ? 'from ' + germMin + '°' : 'up to ' + germMax + '°');
+    if (r.soilTooCold) lines.push('Soil ' + fmt(soil) + '° — ' + fmt(germMin - soil) + '° too cold to germinate (needs ' + band + ')');
+    else if (r.soilTooWarm) lines.push('Soil ' + fmt(soil) + '° — ' + fmt(soil - germMax) + '° too warm to germinate (best ' + band + ')');
+    else lines.push('Soil ' + fmt(soil) + '° — warm enough to germinate (' + band + ')');
+  }
+
+  // 3) Transplant tolerance — WHY there is (or isn't) a "plant" option. Answers the pea question directly.
+  if (r.transplantOk) lines.push('Can be raised as seedlings and planted out');
+  else lines.push('Direct-sow only — it dislikes being transplanted, so there is no plant-out option');
+
+  // 4) The plant-OUT gate (only meaningful for a tray-raisable crop): the live hold on planting a seedling.
+  if (r.transplantOk) {
+    if (r.canPlantOut) lines.push('Warm enough to plant seedlings out now');
+    else if (r.tooHotToPlant) lines.push('Too hot to plant seedlings out — a heat spell ahead cooks a fresh transplant');
+    else if (r.soilPlantGap != null && r.soilPlantGap > 0) lines.push('Too cold to plant seedlings out — soil ' + fmt(r.soilPlantGap) + '° below its growing floor');
+    else if (r.plantOutGap != null && r.plantOutGap > 0) lines.push('Too cold to plant seedlings out — nights ' + fmt(r.plantOutGap) + '° too cold');
+  }
+
+  return lines;
 }
 
 // Build the readiness context from the SAME cached forecast the weather card uses. PURE (today is passed
@@ -10689,15 +10747,17 @@ if (typeof module !== 'undefined' && module.exports) {
         const r = (typeof computeSowReadiness === 'function') ? computeSowReadiness(row, row.sowMonths, ctx) : null;
         if (!r) return { bucket: 'hidden', line: '', cls: 'is-far' };
         const mon = (typeof SOW_MONDISP !== 'undefined') ? SOW_MONDISP : null;
-        const join = function (a, b) { return [a, b].filter(function (x) { return x; }).join(' · '); };
         const fmtDeg = function (n) { return (Math.round(n)).toString(); };
         const sowEnd = isWindowEndMonth(row.sowMonths, ctx && ctx.monthIdx);
         const untilSow = (sowEnd && mon) ? ('until ' + mon[sowEnd - 1]) : '';
 
-        // GREEN — fully in season: sow direct (soil's in the germ band), and plant a seedling too when it's warm enough.
+        // GREEN — fully in season: sow direct (soil's in the germ band), and plant a seedling too when it's warm
+        // enough. The verb NAMES the location ("Sow outdoors"), so the note is just the deadline — no redundant
+        // "outdoors"/"anywhere" method word (owner, 18/07). "Sow or plant" = seed or seedling; "Sow outdoors" =
+        // seed only (direct-sow-only crop, or a tray crop whose plant-out is still gated).
         if (r.canDirectSow) {
-          const verb = (r.transplantOk && r.canPlantOut) ? '✓ Sow or plant' : '✓ Sow';
-          return { bucket: 'inseason', line: verb, cls: 'is-go', note: join(untilSow, r.anywhere ? 'anywhere' : 'outdoors') };
+          const verb = (r.transplantOk && r.canPlantOut) ? '✓ Sow or plant' : '✓ Sow outdoors';
+          return { bucket: 'inseason', line: verb, cls: 'is-go', note: untilSow };
         }
         // BLUE — sow indoors only: too cold to go outside today, but a tray crop can start on the windowsill now.
         // (startInsideNow = a lead-weeks head-start; indoorAside = a lead-0 tray crop merely too cold to direct-sow.)
@@ -10718,8 +10778,10 @@ if (typeof module !== 'undefined' && module.exports) {
       }
 
       // One crop row's HTML: icon · name (+ "seeds in shed" when owned) · the readiness line, with an optional
-      // muted note stacked under it (deadline / "or under cover" — the quiet secondary, right-aligned).
-      function isRowHtml(row, line, cls, note) {
+      // muted note stacked under it (the deadline — the quiet secondary, right-aligned). When `why` lines are
+      // present the row is TAP-to-expand: a caret + a hidden .is-why panel that reveals the plain-English
+      // criteria behind the verdict (owner: "I can't see the criteria"). All computed client-side — zero latency.
+      function isRowHtml(row, line, cls, note, why) {
         const icon = (typeof plantIconSvgHtml === 'function') ? plantIconSvgHtml(row.crop) : '';
         const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
         const owned = row.owned
@@ -10727,12 +10789,36 @@ if (typeof module !== 'undefined' && module.exports) {
           : '';
         const lineHtml = line ? '<span class="is-line ' + cls + '">' + esc(line) + '</span>' : '';
         const noteHtml = note ? '<span class="is-note">' + esc(note) + '</span>' : '';
-        const linesHtml = (line || note) ? '<span class="is-lines">' + lineHtml + noteHtml + '</span>' : '';
-        return '<div class="is-row' + (row.owned ? ' is-row-owned' : '') + '">' +
-                 '<span class="is-ic">' + icon + '</span>' +
-                 '<span class="is-name">' + esc(row.crop) + owned + '</span>' +
-                 linesHtml +
+        const hasWhy = why && why.length;
+        const caret = hasWhy ? '<span class="is-why-caret" aria-hidden="true">⌄</span>' : '';
+        const linesHtml = (line || note || hasWhy)
+          ? '<span class="is-lines">' + lineHtml + noteHtml + '</span>' + caret : '';
+        const whyHtml = hasWhy
+          ? '<div class="is-why" style="display:none">' +
+              why.map(function (w) { return '<div class="is-why-line">' + esc(w) + '</div>'; }).join('') +
+            '</div>'
+          : '';
+        const tap = hasWhy
+          ? ' is-row-tap" role="button" tabindex="0" aria-expanded="false" onclick="isToggleWhy(this)"' +
+            ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();isToggleWhy(this);}'
+          : '';
+        return '<div class="is-rowwrap">' +
+                 '<div class="is-row' + (row.owned ? ' is-row-owned' : '') + tap + '">' +
+                   '<span class="is-ic">' + icon + '</span>' +
+                   '<span class="is-name">' + esc(row.crop) + owned + '</span>' +
+                   linesHtml +
+                 '</div>' + whyHtml +
                '</div>';
+      }
+
+      // Toggle a row's "why" panel (the .is-why sibling inside the .is-rowwrap). Mirrors isToggleLater.
+      function isToggleWhy(rowEl) {
+        const wrap = rowEl.parentNode; if (!wrap) return;
+        const panel = wrap.querySelector('.is-why'); if (!panel) return;
+        const open = panel.style.display !== 'none';
+        panel.style.display = open ? 'none' : '';
+        rowEl.classList.toggle('is-open', !open);
+        rowEl.setAttribute('aria-expanded', open ? 'false' : 'true');
       }
 
       function isSectionHtml(title, sub, rowsHtml, extraClass) {
@@ -10763,7 +10849,9 @@ if (typeof module !== 'undefined' && module.exports) {
         const groups = { inseason: [], indoors: [], plantonly: [], hidden: [] };
         catalogue.forEach(function (row) {
           const v = isReadinessFor(row, ctx);
-          groups[v.bucket].push({ row: row, line: v.line, cls: v.cls, note: v.note });
+          // The tap-to-expand "why" — computed here from the SAME row + ctx, entirely client-side (no network).
+          const why = (typeof explainSowReadiness === 'function') ? explainSowReadiness(row, row.sowMonths, ctx) : [];
+          groups[v.bucket].push({ row: row, line: v.line, cls: v.cls, note: v.note, why: why });
         });
         // Within a group: owned crops first (the gentle nudge — you have these), then A→Z. The server already
         // sorts A→Z, so a stable owned-first partition preserves that.
@@ -10772,7 +10860,7 @@ if (typeof module !== 'undefined' && module.exports) {
             .concat(arr.filter(function (e) { return !e.row.owned; }));
         };
         const rowsOf = function (arr) {
-          return orderGroup(arr).map(function (e) { return isRowHtml(e.row, e.line, e.cls, e.note); }).join('');
+          return orderGroup(arr).map(function (e) { return isRowHtml(e.row, e.line, e.cls, e.note, e.why); }).join('');
         };
 
         // Intro: the one-line "what this is" + the live soil reading when we have it (the honesty of the signal).
@@ -10789,13 +10877,15 @@ if (typeof module !== 'undefined' && module.exports) {
 
         let html = intro;
 
-        // ONE "In season" list (owner, 18/07): the three actionable buckets — sow/plant outdoors (green),
-        // sow indoors (blue), plant only (orange) — collapse under a SINGLE "In season" header rather than
-        // three sub-sections. Each row keeps its own verdict COLOUR (is-go / is-cold / is-plant) and its
-        // "✓ Sow / ✓ Sow indoors / ✓ Plant only" line, so the distinction still reads per-row; the list just
-        // isn't chopped into labelled groups. Order preserved green→blue→orange so it still flows from
-        // "act outdoors now" to "season ending". Only "Not in season" stays a separate (collapsed) group.
-        const seasonRows = rowsOf(groups.inseason) + rowsOf(groups.indoors) + rowsOf(groups.plantonly);
+        // ONE "In season" list (owner, 18/07): the actionable buckets collapse under a SINGLE "In season"
+        // header rather than labelled sub-sections. Each row keeps its own verdict COLOUR (is-go / is-cold /
+        // is-plant) + line, so the distinction reads per-row. Ordered by the owner's logical flow (18/07):
+        //   (1) Sow or plant  →  (2) Sow outdoors  →  (3) Sow indoors  →  (4) Plant only
+        // The green bucket splits by verb (Sow-or-plant leads Sow-outdoors); then blue, then orange. Only
+        // "Not in season" stays a separate (collapsed) group.
+        const sowOrPlant = groups.inseason.filter(function (e) { return e.line === '✓ Sow or plant'; });
+        const sowOutdoors = groups.inseason.filter(function (e) { return e.line !== '✓ Sow or plant'; });
+        const seasonRows = rowsOf(sowOrPlant) + rowsOf(sowOutdoors) + rowsOf(groups.indoors) + rowsOf(groups.plantonly);
         const seasonCount = groups.inseason.length + groups.indoors.length + groups.plantonly.length;
         if (seasonCount) {
           html += isSectionHtml('In season', seasonCount + '', seasonRows, 'is-inseason');
