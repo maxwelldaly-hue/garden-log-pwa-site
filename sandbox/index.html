@@ -959,9 +959,9 @@
       .is-section { display: flex; flex-direction: column; gap: 8px; }
       .is-sec-head { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 2px; border-bottom: 1px solid var(--border-color); }
       .is-sec-title { font-size: var(--fs-sm); font-weight: 600; color: var(--text-main); letter-spacing: var(--ls-wide); text-transform: uppercase; }
-      .is-ready .is-sec-title { color: var(--color-go); }
+      .is-ready .is-sec-title { color: var(--color-sage); }
       /* In-season redesign (v7.61): four sections by WHERE you'd act — the section title carries the verdict colour. */
-      .is-inseason   .is-sec-title { color: var(--color-go); }      /* the garden — sow / plant outdoors */
+      .is-inseason   .is-sec-title { color: var(--color-sage); }      /* the garden — sow / plant outdoors */
       .is-sowindoors .is-sec-title { color: var(--blue-400); }      /* the windowsill — sow indoors only (name avoids the legacy .is-indoors opacity rule) */
       .is-plantonly  .is-sec-title { color: var(--color-plant); }   /* last-chance seedling — season ending */
       .is-notinseason .is-sec-title { color: var(--text-muted); }   /* silent — nothing to do yet */
@@ -979,7 +979,7 @@
       .is-lines { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex: 0 0 auto; min-width: 0; }
       .is-line { font-size: var(--fs-sm); font-weight: 500; text-align: right; white-space: nowrap; flex: 0 0 auto; }
       .is-note { font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; font-weight: 500; }   /* quiet secondary under the go line: deadline / "or under cover" */
-      .is-go   { color: var(--color-go); font-weight: 600; }    /* GREEN — sow/plant outdoors now (In season) */
+      .is-go   { color: var(--color-sage); font-weight: 600; }    /* GREEN — sow/plant outdoors now (In season) */
       .is-cold { color: var(--blue-400); font-weight: 600; }    /* BLUE — ✓ Sow indoors (too cold outside, start on the windowsill) */
       .is-plant { color: var(--color-plant); font-weight: 600; } /* ORANGE — ✓ Plant only (sow window shut, seedling still fits — ending) */
       .is-indoors { opacity: 0.68; font-weight: 500; }         /* (legacy) start-indoors quieter cue — retained for back-compat */
@@ -1737,7 +1737,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.79</span>
+        <span class="header-version">v7.80</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2038,7 +2038,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.79 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.80 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -10831,9 +10831,14 @@ if (typeof module !== 'undefined' && module.exports) {
           }
           if (r.canStartIndoors) {
             let reason = '';
-            if (r.soilPlantGap != null && r.soilPlantGap > 0) reason = 'soil ' + Math.round(r.soilPlantGap) + '° too cold';
-            else if (r.inWindow && r.soilTooCold) reason = 'soil too cold';
-            else { const ns = isNextWindowMonth(row.sowMonths, ctx && ctx.monthIdx); reason = (ns && mon) ? ('from ' + mon[ns - 1]) : ''; }
+            if (!r.inWindow) {
+              const ns = isNextWindowMonth(row.sowMonths, ctx && ctx.monthIdx);
+              reason = (ns && mon) ? ('outside from ' + mon[ns - 1]) : '';
+            } else if (r.soilPlantGap != null && r.soilPlantGap > 0) {
+              reason = 'soil ' + Math.round(r.soilPlantGap) + '° too cold';
+            } else if (r.inWindow && r.soilTooCold) {
+              reason = 'soil too cold';
+            }
             return { bucket: 'sowindoors', line: '✓ Sow indoors', cls: 'is-cold', note: reason };
           }
           return { bucket: 'hidden', line: r.sowLine || '', cls: 'is-far', note: '' };
