@@ -67,6 +67,7 @@
         --amber-500: #f59e0b;      /* primary amber */
         --amber-400: #fbbf24;      /* amber text */
         --amber-300: #fcd34d;      /* light amber hint */
+        --color-plant: #fb923c;    /* "plant only / season ending" orange — warmer + more urgent than the amber notes, distinct from the go-green and frost-blue verdicts (In-season redesign v7.61) */
         --red-500: #ef4444;        /* danger */
         --red-300: #f87171;        /* danger text */
         --blue-500: #3b82f6;
@@ -941,9 +942,10 @@
       }
 
       /* === In-season pane (docs/SCOPE-IN-SEASON.md) — the reconciliation finale ==========================
-         Whole classified catalogue × the live forecast, grouped Ready now / Coming soon / Out of season.
-         Reuses the .pp-fs overlay shell; these style only the body content. Quiet by design (a possibility
-         view, not a chore): green is reserved for a real GO (Ready now), everything else is muted chrome. */
+         Whole classified catalogue × the live forecast. Grouped by WHERE you'd act (redesign v7.61): In season
+         (green — sow/plant outdoors) / Sow indoors (blue — start on the windowsill) / Plant only (orange —
+         season ending) / Not in season (grey, silent). Line 1 carries the verdict + colour; line 2 is always
+         quiet grey. Reuses the .pp-fs overlay shell; these style only the body content. */
       .is-intro { display: flex; flex-direction: column; gap: 4px; }
       .is-lede { margin: 0; font-size: var(--fs-base); color: var(--text-main); }
       .is-soil { font-size: var(--fs-xs); color: var(--text-muted); letter-spacing: var(--ls-wide); text-transform: uppercase; }
@@ -952,6 +954,11 @@
       .is-sec-head { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 2px; border-bottom: 1px solid var(--border-color); }
       .is-sec-title { font-size: var(--fs-sm); font-weight: 600; color: var(--text-main); letter-spacing: var(--ls-wide); text-transform: uppercase; }
       .is-ready .is-sec-title { color: var(--color-go); }
+      /* In-season redesign (v7.61): four sections by WHERE you'd act — the section title carries the verdict colour. */
+      .is-inseason   .is-sec-title { color: var(--color-go); }      /* the garden — sow / plant outdoors */
+      .is-sowindoors .is-sec-title { color: var(--blue-400); }      /* the windowsill — sow indoors only (name avoids the legacy .is-indoors opacity rule) */
+      .is-plantonly  .is-sec-title { color: var(--color-plant); }   /* last-chance seedling — season ending */
+      .is-notinseason .is-sec-title { color: var(--text-muted); }   /* silent — nothing to do yet */
       .is-sec-sub { font-size: var(--fs-xs); color: var(--text-muted); }
       .is-collapsible { cursor: pointer; }
       .is-caret { display: inline-block; transition: transform 0.15s ease; }
@@ -966,10 +973,12 @@
       .is-lines { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex: 0 0 auto; min-width: 0; }
       .is-line { font-size: var(--fs-sm); font-weight: 500; text-align: right; white-space: nowrap; flex: 0 0 auto; }
       .is-note { font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; font-weight: 500; }   /* quiet secondary under the go line: deadline / "or under cover" */
-      .is-go   { color: var(--color-go); font-weight: 600; }   /* the sanctioned GO green — only in Ready now */
-      .is-indoors { opacity: 0.68; font-weight: 500; }         /* start-indoors: still a ✓ go, but a quieter/less-green cue than direct-sow (raise inside, soil not there yet) */
-      .is-soon { color: var(--blue-400); }                     /* in-window but soil not there yet — blue/frost, matches the soil-panel cold gap */
-      .is-far  { color: var(--text-muted); }                   /* out of the window — quiet "Sow from Sep" */
+      .is-go   { color: var(--color-go); font-weight: 600; }    /* GREEN — sow/plant outdoors now (In season) */
+      .is-cold { color: var(--blue-400); font-weight: 600; }    /* BLUE — ✓ Sow indoors (too cold outside, start on the windowsill) */
+      .is-plant { color: var(--color-plant); font-weight: 600; } /* ORANGE — ✓ Plant only (sow window shut, seedling still fits — ending) */
+      .is-indoors { opacity: 0.68; font-weight: 500; }         /* (legacy) start-indoors quieter cue — retained for back-compat */
+      .is-soon { color: var(--blue-400); }                     /* (legacy) in-window but soil not there yet */
+      .is-far  { color: var(--text-muted); }                   /* GREY — not in season, quiet "from Sep" */
       .is-none, .is-empty { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.5; padding: 6px 2px; }
       .is-empty { text-align: center; padding-top: 40px; }
 
@@ -1722,7 +1731,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.65</span>
+        <span class="header-version">v7.67</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -1952,8 +1961,12 @@
           </div>
         </div>
 
-        <!-- SOIL TEMPERATURE: crop bands (defaults closed) -->
-        <div id="soilPanel" class="insights-panel collapsed">
+        <!-- SOIL TEMPERATURE: crop bands (defaults closed).
+             HIDDEN for now (owner, 18/07) — the In-season pane already reads soil temp against the whole
+             catalogue to say what you can sow, which was this panel's daily job, so it's redundant on the
+             dashboard. Kept in the DOM (display:none) so renderForecast still populates it harmlessly and
+             re-showing is a one-line revert. -->
+        <div id="soilPanel" class="insights-panel collapsed" style="display:none">
           <div class="insights-header" onclick="togglePanel('soilPanel','soil_collapsed')">
             <span class="insights-title"><span class="title-icon"><svg class="title-ic" viewBox="0 0 24 24"><use href="#card-soiltemp" xlink:href="#card-soiltemp"></use></svg></span> Soil temperature <button type="button" class="ui-hint" onclick="event.stopPropagation();toggleHint(this)" aria-expanded="false" aria-label="About soil temperature"></button></span>
             <span class="insights-end"><span id="soilHeaderReading" class="insights-meta"></span><span class="insights-arrow">⌄</span></span>
@@ -2019,7 +2032,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.65 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.67 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6358,8 +6371,9 @@ if (typeof module !== 'undefined' && module.exports) {
       syncLogEntryState();
 
       // === One-Log-button confirmation chip (Approach B, Phase 3b). After a submit the chip REPLACES the Log
-      // button: "Logging…" while the route is decided server-side, then "✓ Logged to Garden/Shed · tap to
-      // change". Tapping opens an inline Garden/Shed picker (no modal) that moves the just-filed entry to the
+      // button: an instant optimistic "✓ Logged" (the note's durably queued), upgraded to "✓ Logged to
+      // Garden/Shed · tap to change" once the route is decided server-side.
+      // Tapping opens an inline Garden/Shed picker (no modal) that moves the just-filed entry to the
       // other domain (rerouteLog). Auto-fades after a few seconds, or clears the moment the user types a new
       // note. Tracks ONE logId at a time (the latest submit) — a stale response never claims the chip.
       let _chipLogId = null, _chipFade = null;
@@ -6386,7 +6400,13 @@ if (typeof module !== 'undefined' && module.exports) {
         _clearChipFade(); _chipLogId = logId;
         btn.style.display = 'none';
         chip.classList.remove('fading'); chip.onclick = null;
-        chip.textContent = 'Logging…';
+        // Optimistic confirm (owner, 18/07): the note is durably queued the moment this runs (addLogToDB
+        // already succeeded), so acknowledge it INSTANTLY as "✓ Logged" instead of parking on "Logging…"
+        // for the Gemini round-trip. resolveLogChip then upgrades this to the routed "✓ Logged to
+        // Garden/Shed · tap to change" once the server names the domain (and adds the reroute affordance,
+        // which needs the synced row to exist). No domain / tap-to-change here on purpose: showing a domain
+        // before the router decides would risk a visible Garden→Shed flip.
+        chip.textContent = '✓ Logged';
         chip.style.display = 'flex';
       }
       function resolveLogChip(logId, domain, canChange) {
@@ -7097,8 +7117,8 @@ if (typeof module !== 'undefined' && module.exports) {
           // Optimistic Garden-tab row (latency Slice A) — GARDEN notes only (a shed supply never touches the
           // Garden tab). No-ops silently when the note doesn't confidently target one visible plant.
           if (mode === 'garden') registerOptimisticPending(logId, text);
-          // The inline confirmation CHIP (Phase 3b) is the acknowledgement — "Logging…" then "✓ Logged to
-          // Garden/Shed · tap to change" once the route lands — so no separate "Saved" toast is needed.
+          // The inline confirmation CHIP (Phase 3b) is the acknowledgement — an instant "✓ Logged" then
+          // "✓ Logged to Garden/Shed · tap to change" once the route lands — so no separate "Saved" toast is needed.
           showLogChipPending(logId);
           syncQueue();
         });
@@ -7214,7 +7234,7 @@ if (typeof module !== 'undefined' && module.exports) {
                 if (typeof window !== 'undefined') {
                   // Both branches must be OWNERSHIP-GUARDED (§1.3): resolveLogChip already checks _chipLogId, but
                   // the dismiss did not — an OLDER queued log returning `unreadable` would clear a NEWER submit's
-                  // "Logging…" chip and its "✓ Logged" would never show. Only touch the chip this response owns.
+                  // optimistic "✓ Logged" chip and its routed "✓ Logged to …" would never show. Only touch the chip this response owns.
                   if (res.data.unreadable) { if (_chipLogId === currentLog.id) dismissLogChip(); }
                   else { const cd = chipDomainFromRouted(res.data.routed); resolveLogChip(currentLog.id, cd.domain, cd.canChange); }
                 }
@@ -10622,45 +10642,56 @@ if (typeof module !== 'undefined' && module.exports) {
         return end;
       }
 
-      // One catalogue row → { bucket, line, cls, note }. The pane models SOWING (seed) AND PLANTING-OUT
-      // (a raised seedling). Four buckets (SCOPE-SOW-INDOORS-AUDIT.md):
-      //  · ready   (green)      — act today: "✓ Sow or plant" (tray-tolerant) / "✓ Sow" (direct-only), the grey
-      //                           note carries the deadline + method ("until May · anywhere / outdoor sowing").
-      //  · soon    ("Season coming") — the outdoor SOW season isn't here yet: a head-start crop you can start
-      //                           INSIDE now (green "✓ Sow · indoor sowing"), or one still too cold to direct-sow
-      //                           (blue "N° too cold"). Both live here — the tick colour shows what's actionable.
-      //  · leaving ("Season ending", green) — the sow window's shut, but a raised seedling still goes in:
-      //                           "✓ Plant only" (calendar deadline, NOT temp-gated).
-      //  · later   (grey)       — out of season ("Sow from Sep").
-      // Verb is "Sow or plant" only when the crop is tray-tolerant AND plantable out today — you can't transplant a carrot.
+      // The first upcoming month IN the sow window (the current month if already in it) — feeds the grey "from Sep"
+      // reason under a Sow-indoors row whose blocker is the CALENDAR (window not open) rather than the soil. Null
+      // for all-year / unparseable. Mirrors isWindowEndMonth's parse.
+      function isNextWindowMonth(sowMonths, monthIdx) {
+        const win = (typeof parseSowWindow === 'function') ? parseSowWindow(sowMonths) : null;
+        if (!win || win.allYear || !win.months || !monthIdx) return null;
+        const set = {}; win.months.forEach(function (m) { set[m] = 1; });
+        for (let k = 0; k < 12; k++) { const m = ((monthIdx - 1 + k) % 12) + 1; if (set[m]) return m; }
+        return null;
+      }
+
+      // One catalogue row → { bucket, line, cls, note }. The pane answers ONE question — "can I sow it?" — and
+      // groups by WHERE you'd act (In-season redesign v7.61, docs/SCOPE-IN-SEASON.md). Line 1 is the verdict AND
+      // carries the colour; line 2 is ALWAYS quiet grey (the deadline / the reason). Four buckets:
+      //  · inseason  (green  "✓ Sow" / "✓ Sow or plant") — window's open + soil in band: act straight outdoors.
+      //  · indoors   (blue   "✓ Sow indoors")            — too cold to go out, but a tray crop starts inside now.
+      //                                                     Grey reason = the binding blocker: "soil N° too cold" | "from Sep".
+      //  · plantonly (orange "✓ Plant only")             — sow window's shut, a raised seedling still fits: ending.
+      //  · hidden    (grey, silent, collapsed)           — not in season; nothing to do today.
+      // Reuses computeSowReadiness verbatim — the SAME verdict flags the passport shows; this only groups + colours.
       function isReadinessFor(row, ctx) {
         const r = (typeof computeSowReadiness === 'function') ? computeSowReadiness(row, row.sowMonths, ctx) : null;
-        if (!r) return { bucket: 'later', line: '', cls: 'is-far' };
+        if (!r) return { bucket: 'hidden', line: '', cls: 'is-far' };
         const mon = (typeof SOW_MONDISP !== 'undefined') ? SOW_MONDISP : null;
         const join = function (a, b) { return [a, b].filter(function (x) { return x; }).join(' · '); };
+        const fmtDeg = function (n) { return (Math.round(n)).toString(); };
         const sowEnd = isWindowEndMonth(row.sowMonths, ctx && ctx.monthIdx);
         const untilSow = (sowEnd && mon) ? ('until ' + mon[sowEnd - 1]) : '';
-        // "or plant" only when it's genuinely plantable-out TODAY — soil ≥ growing floor + frost-free nights (r.canPlantOut).
-        const verb = (r.transplantOk && r.canPlantOut) ? '✓ Sow or plant' : '✓ Sow';
-        // READY NOW (green) — you can SOW OUTDOORS today (soil in the germ band).
+
+        // GREEN — fully in season: sow direct (soil's in the germ band), and plant a seedling too when it's warm enough.
         if (r.canDirectSow) {
-          return { bucket: 'ready', line: verb, cls: 'is-go', note: join(untilSow, r.anywhere ? 'anywhere' : 'outdoor sowing') };
+          const verb = (r.transplantOk && r.canPlantOut) ? '✓ Sow or plant' : '✓ Sow';
+          return { bucket: 'inseason', line: verb, cls: 'is-go', note: join(untilSow, r.anywhere ? 'anywhere' : 'outdoors') };
         }
-        // SEASON COMING — indoor sowing is the way in now (a head-start crop): green go, but the outdoor season's coming.
-        if (r.startInsideNow) {
-          return { bucket: 'soon', line: verb, cls: 'is-go', note: join(untilSow, 'indoor sowing') };
+        // BLUE — sow indoors only: too cold to go outside today, but a tray crop can start on the windowsill now.
+        // (startInsideNow = a lead-weeks head-start; indoorAside = a lead-0 tray crop merely too cold to direct-sow.)
+        if (r.startInsideNow || r.indoorAside) {
+          let reason = '';
+          if (r.soilPlantGap != null && r.soilPlantGap > 0) reason = 'soil ' + fmtDeg(r.soilPlantGap) + '° too cold';
+          else if (r.inWindow && r.soilTooCold) reason = 'soil too cold';
+          else { const ns = isNextWindowMonth(row.sowMonths, ctx && ctx.monthIdx); reason = (ns && mon) ? ('from ' + mon[ns - 1]) : ''; }
+          return { bucket: 'indoors', line: '✓ Sow indoors', cls: 'is-cold', note: reason };
         }
-        // SEASON COMING — in window but the soil's not there yet; a lead-0 tray crop notes the indoor fallback.
-        if (r.inWindow && (r.soilTooCold || r.soilTooWarm)) {
-          return { bucket: 'soon', line: r.sowLine || 'In season', cls: 'is-soon', note: r.indoorAside ? 'indoor sowing' : '' };
-        }
-        // SEASON ENDING (green) — the sow window's shut, but a raised seedling still has time to mature.
+        // ORANGE — plant only: past the sow window, but a raised seedling still has time to mature. Season ending.
         if (r.canPlantOnly) {
           const untilPlant = (r.plantWindowEnd && mon) ? ('until ' + mon[r.plantWindowEnd - 1]) : '';
-          return { bucket: 'leaving', line: '✓ Plant only', cls: 'is-go', note: untilPlant };
+          return { bucket: 'plantonly', line: '✓ Plant only', cls: 'is-plant', note: untilPlant };
         }
-        if (r.inWindow) return { bucket: 'soon', line: r.sowLine || 'In season', cls: 'is-soon' };
-        return { bucket: 'later', line: r.sowLine || '', cls: 'is-far' };
+        // HIDDEN — not in season. Silent; the note (shown only if the group's expanded) keeps the reason.
+        return { bucket: 'hidden', line: r.sowLine || '', cls: 'is-far', note: '' };
       }
 
       // One crop row's HTML: icon · name (+ "seeds in shed" when owned) · the readiness line, with an optional
@@ -10706,7 +10737,7 @@ if (typeof module !== 'undefined' && module.exports) {
         }
 
         const ctx = isBuildCtx();
-        const groups = { ready: [], soon: [], leaving: [], later: [] };
+        const groups = { inseason: [], indoors: [], plantonly: [], hidden: [] };
         catalogue.forEach(function (row) {
           const v = isReadinessFor(row, ctx);
           groups[v.bucket].push({ row: row, line: v.line, cls: v.cls, note: v.note });
@@ -10733,27 +10764,28 @@ if (typeof module !== 'undefined' && module.exports) {
             '<p class="is-lede">What the planting calendar and today\'s soil say you could sow.</p>' +
             soilNote + '</div>';
 
-        const readySub = groups.ready.length ? groups.ready.length + '' : '';
+        const secSub = function (arr) { return arr.length ? arr.length + '' : ''; };
         let html = intro;
-        if (groups.ready.length) {
-          html += isSectionHtml('Ready now', readySub, rowsOf(groups.ready), 'is-ready');
+
+        // IN SEASON (green) — the headline: sow / plant straight outdoors. Empty → a gentle steer to the windowsill.
+        if (groups.inseason.length) {
+          html += isSectionHtml('In season', secSub(groups.inseason), rowsOf(groups.inseason), 'is-inseason');
         } else {
-          html += '<div class="is-section is-ready"><div class="is-sec-head"><span class="is-sec-title">Ready now</span></div>' +
-            '<div class="is-none">Nothing\'s calling to be sown today — the soil\'s still catching up. Have a look at what\'s coming.</div></div>';
+          html += '<div class="is-section is-inseason"><div class="is-sec-head"><span class="is-sec-title">In season</span></div>' +
+            '<div class="is-none">Nothing to sow straight into the ground today — the soil\'s still catching up. Look at what you can start indoors.</div></div>';
         }
-        html += isSectionHtml('Season coming', groups.soon.length ? groups.soon.length + '' : '',
-          rowsOf(groups.soon), 'is-comingsoon');
-        // "Season ending": the plant-out tail — the sow window's shut but a seedling still goes in for a while.
-        html += isSectionHtml('Season ending', groups.leaving.length ? groups.leaving.length + '' : '',
-          rowsOf(groups.leaving), 'is-leaving');
-        // "Out of season" can be long — collapse it behind a tap so the pane stays quiet (possibility, not a wall).
-        if (groups.later.length) {
-          html += '<div class="is-section is-later">' +
+        // SOW INDOORS (blue) — start seeds on the windowsill; too cold to go out yet.
+        html += isSectionHtml('Sow indoors', secSub(groups.indoors), rowsOf(groups.indoors), 'is-sowindoors');
+        // PLANT ONLY (orange) — the season-ending tail: sow window shut, a seedling still fits.
+        html += isSectionHtml('Plant only', secSub(groups.plantonly), rowsOf(groups.plantonly), 'is-plantonly');
+        // NOT IN SEASON (grey) — silent + collapsed behind a tap; nothing to act on (possibility, not a wall).
+        if (groups.hidden.length) {
+          html += '<div class="is-section is-notinseason">' +
             '<div class="is-sec-head is-collapsible" role="button" tabindex="0" onclick="isToggleLater(this)" ' +
               'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();isToggleLater(this);}">' +
-              '<span class="is-sec-title">Out of season</span>' +
-              '<span class="is-sec-sub">' + groups.later.length + ' <span class="is-caret">⌄</span></span></div>' +
-            '<div class="is-list is-later-list" style="display:none;">' + rowsOf(groups.later) + '</div></div>';
+              '<span class="is-sec-title">Not in season</span>' +
+              '<span class="is-sec-sub">' + groups.hidden.length + ' <span class="is-caret">⌄</span></span></div>' +
+            '<div class="is-list is-later-list" style="display:none;">' + rowsOf(groups.hidden) + '</div></div>';
         }
 
         body.innerHTML = html;
