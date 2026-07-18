@@ -1722,7 +1722,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.61</span>
+        <span class="header-version">v7.62</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2019,7 +2019,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.61 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.62 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -10040,7 +10040,7 @@ if (typeof module !== 'undefined' && module.exports) {
           germination: ppGermination(lf.germination),
           seedcount: lf.seedcount || ppOtherFact(other, /seed ?count|seeds per|no\.? of seeds/i),
           bestbefore: lf.bestbefore || ppOtherFact(other, /best ?before|use ?by|sell ?by|expir/i)
-        }), name: item.item }, PP_SHED_FACT_DISPLAY);
+        }), name: item.item, reference: item.reference || null }, PP_SHED_FACT_DISPLAY, true);
         if (facts) body.appendChild(facts);
       }
 
@@ -10180,6 +10180,18 @@ if (typeof module !== 'undefined' && module.exports) {
           li.textContent = latin;
           txt.appendChild(li);
         }
+        // Lifecycle descriptor (reference/species knowledge, Crop Reference book): a quiet "Perennial" for the
+        // plants where it's non-obvious and genuinely useful — a herb-strip rosemary or an orchard tree reads
+        // differently from a season's tomato. PERENNIALS ONLY (an "Annual" tag on a tomato is noise the owner
+        // rejects); Filler-gated like the reference latin, so it's off with the overlay and absent until the book
+        // carries a lifecycle for the crop.
+        const lc = String(p.lifecycle || '').trim().toLowerCase();
+        if (fillerEnabled() && (lc === 'perennial' || lc === 'tender perennial')) {
+          const lcEl = document.createElement('div');
+          lcEl.className = 'pp-quiet';
+          lcEl.textContent = lc.charAt(0).toUpperCase() + lc.slice(1);
+          txt.appendChild(lcEl);
+        }
         wrap.appendChild(txt);
         // RIGHT: the lifecycle/location status tile (seed · sprout · the bed it's planted in).
         const status = ppStatusTileEl(p, bedName);
@@ -10305,7 +10317,7 @@ if (typeof module !== 'undefined' && module.exports) {
       // so a gifted cutting isn't a bare card. Folded into ppFactsEl above (one shared box), gap-fill only
       // (a captured fact always wins), gated by the Filler toggle, and marked as borrowed by italic value
       // alone (`.pp-fact-ref`) — no separate box, no header (owner, 17/07: "consistency in approach").
-      const PP_REF_DISPLAY = [['sun', 'Sun'], ['spacing', 'Spacing'], ['height', 'Height'], ['harvest', 'Harvest']];
+      const PP_REF_DISPLAY = [['sun', 'Sun'], ['maturity', 'Maturity'], ['spacing', 'Spacing'], ['height', 'Height'], ['harvest', 'Harvest']];
 
       // Story — lifecycle turns + harvests only, in the Recent-row register. Marks reuse the feed's
       // two-tier icon grammar (seeds/sprout for plantings, mono #ui-* for the rest).
