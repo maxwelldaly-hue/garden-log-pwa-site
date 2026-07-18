@@ -1731,7 +1731,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.67</span>
+        <span class="header-version">v7.68</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2032,7 +2032,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.67 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.68 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -10764,20 +10764,22 @@ if (typeof module !== 'undefined' && module.exports) {
             '<p class="is-lede">What the planting calendar and today\'s soil say you could sow.</p>' +
             soilNote + '</div>';
 
-        const secSub = function (arr) { return arr.length ? arr.length + '' : ''; };
         let html = intro;
 
-        // IN SEASON (green) — the headline: sow / plant straight outdoors. Empty → a gentle steer to the windowsill.
-        if (groups.inseason.length) {
-          html += isSectionHtml('In season', secSub(groups.inseason), rowsOf(groups.inseason), 'is-inseason');
+        // ONE "In season" list (owner, 18/07): the three actionable buckets — sow/plant outdoors (green),
+        // sow indoors (blue), plant only (orange) — collapse under a SINGLE "In season" header rather than
+        // three sub-sections. Each row keeps its own verdict COLOUR (is-go / is-cold / is-plant) and its
+        // "✓ Sow / ✓ Sow indoors / ✓ Plant only" line, so the distinction still reads per-row; the list just
+        // isn't chopped into labelled groups. Order preserved green→blue→orange so it still flows from
+        // "act outdoors now" to "season ending". Only "Not in season" stays a separate (collapsed) group.
+        const seasonRows = rowsOf(groups.inseason) + rowsOf(groups.indoors) + rowsOf(groups.plantonly);
+        const seasonCount = groups.inseason.length + groups.indoors.length + groups.plantonly.length;
+        if (seasonCount) {
+          html += isSectionHtml('In season', seasonCount + '', seasonRows, 'is-inseason');
         } else {
           html += '<div class="is-section is-inseason"><div class="is-sec-head"><span class="is-sec-title">In season</span></div>' +
-            '<div class="is-none">Nothing to sow straight into the ground today — the soil\'s still catching up. Look at what you can start indoors.</div></div>';
+            '<div class="is-none">Nothing to sow or plant today — the soil\'s still catching up. Check back as it warms.</div></div>';
         }
-        // SOW INDOORS (blue) — start seeds on the windowsill; too cold to go out yet.
-        html += isSectionHtml('Sow indoors', secSub(groups.indoors), rowsOf(groups.indoors), 'is-sowindoors');
-        // PLANT ONLY (orange) — the season-ending tail: sow window shut, a seedling still fits.
-        html += isSectionHtml('Plant only', secSub(groups.plantonly), rowsOf(groups.plantonly), 'is-plantonly');
         // NOT IN SEASON (grey) — silent + collapsed behind a tap; nothing to act on (possibility, not a wall).
         if (groups.hidden.length) {
           html += '<div class="is-section is-notinseason">' +
