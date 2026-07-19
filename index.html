@@ -1067,6 +1067,20 @@
       .pp-id-status { margin-left: auto; }   /* the right-hand lifecycle/place tile pushes to the far right, name in the middle */
       .pp-id h2 { margin: 0; font-size: var(--fs-lg); font-weight: 600; line-height: 1.25; color: var(--text-main); }
       .pp-id h2 .pp-variety { color: var(--text-muted); font-weight: 400; }
+      /* Rename (SCOPE-STABLE-IDENTITY step 6): a quiet inline ✎ + one-cell edit. The pencil sits by the title
+         and stays low-key (muted, brightening on hover) so it never competes with the plant identity. */
+      .pp-rename-btn { margin-left: 8px; padding: 0 2px; border: 0; background: none; cursor: pointer;
+        color: var(--text-muted); font-size: 0.7em; line-height: 1; vertical-align: middle; opacity: 0.75; }
+      .pp-rename-btn:hover { color: var(--text-main); opacity: 1; }
+      .pp-rename-edit { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+      .pp-rename-input { flex: 1 1 140px; min-width: 120px; padding: 5px 8px; font-size: var(--fs-md);
+        color: var(--text-main); background: var(--surface-inset-03); border: 1px solid var(--text-muted);
+        border-radius: 7px; }
+      .pp-rename-ok, .pp-rename-cancel { padding: 4px 9px; border-radius: 7px; border: 1px solid var(--surface-inset-03);
+        background: var(--surface-inset-03); color: var(--text-main); cursor: pointer; font-size: var(--fs-sm); }
+      .pp-rename-ok:hover, .pp-rename-cancel:hover { border-color: var(--text-muted); }
+      .pp-rename-ok[disabled], .pp-rename-cancel[disabled], .pp-rename-input[disabled] { opacity: 0.55; cursor: default; }
+      .pp-rename-note { flex-basis: 100%; color: var(--text-muted); font-size: var(--fs-sm); margin-top: 2px; }
       .pp-id-sub { color: var(--text-muted); font-size: var(--fs-sm); margin-top: 2px; }
       .pp-done .pp-id h2 { text-decoration: line-through; color: var(--text-muted); }
       /* Ledger lines reuse the row voice (.pl-line palette) — same strings, same register. The status
@@ -1761,7 +1775,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.90</span>
+        <span class="header-version">v7.91</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2062,7 +2076,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.90 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.91 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -5735,10 +5749,27 @@ if (typeof module !== 'undefined' && module.exports) {
             const hit = candidates.some(function (c) {
               return c && new RegExp('\\b' + esc(c.toLowerCase()) + '\\b', 'i').test(text);
             });
-            if (hit) matches.push({ plantName: name, bedName: bed.zone });
+            if (hit) matches.push({ plantName: name, bedName: bed.zone, plantId: String((p && p.plantId) || '') });
           });
         });
         return matches.length === 1 ? matches[0] : null;
+      }
+
+      // Does a rendered .plant-row correspond to a pending optimistic match? By STABLE ID when the match has
+      // one (rename/move-safe — the row's data-plant-id can't drift; SCOPE-STABLE-IDENTITY step 7), else by the
+      // plant name + its bed card (the pre-id fallback, for an id-less plant). Used by both overlay paths so
+      // apply and clear agree on identity.
+      function optimisticRowMatches(row, m) {
+        if (!row || !m) return false;
+        if (m.plantId) return row.dataset.plantId === m.plantId;
+        if (row.dataset.plantName !== m.plantName) return false;
+        const bedCard = row.closest('.bed-card');
+        return !!bedCard && bedCard.dataset.bedName === m.bedName;
+      }
+      // Two matches point at the SAME plant? (de-dupe when two queued notes hit one row.) Id when both carry it.
+      function optimisticSamePlant(a, b) {
+        if (!a || !b) return false;
+        return (a.plantId && b.plantId) ? a.plantId === b.plantId : (a.plantName === b.plantName && a.bedName === b.bedName);
       }
 
       // Register a just-queued GARDEN note for the overlay (called from submitLog, before syncQueue fires).
@@ -5769,16 +5800,13 @@ if (typeof module !== 'undefined' && module.exports) {
         // Only strip the DOM if no OTHER still-pending log claims the same row (two queued notes can target
         // the same plant — see applyOptimisticOverlays' de-dupe-by-row note).
         const stillClaimed = Object.keys(optimisticPendingByLog).some(function (id) {
-          const o = optimisticPendingByLog[id];
-          return o && o.plantName === m.plantName && o.bedName === m.bedName;
+          return optimisticSamePlant(optimisticPendingByLog[id], m);
         });
         if (stillClaimed) return;
         const rows = document.querySelectorAll('.plant-row.optimistic-saving[data-plant-name]');
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
-          if (row.dataset.plantName !== m.plantName) continue;
-          const bedCard = row.closest('.bed-card');
-          if (!bedCard || bedCard.dataset.bedName !== m.bedName) continue;
+          if (!optimisticRowMatches(row, m)) continue;
           row.classList.remove('optimistic-saving');
           const line = row.querySelector('.pl-saving');
           if (line) line.remove();
@@ -5799,9 +5827,7 @@ if (typeof module !== 'undefined' && module.exports) {
           if (!m) return;
           for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
-            if (row.dataset.plantName !== m.plantName) continue;
-            const bedCard = row.closest('.bed-card');
-            if (!bedCard || bedCard.dataset.bedName !== m.bedName) continue;
+            if (!optimisticRowMatches(row, m)) continue;
             if (!row.classList.contains('optimistic-saving')) {
               row.classList.add('optimistic-saving');
               const meta = row.querySelector('.plant-meta');
@@ -6203,6 +6229,7 @@ if (typeof module !== 'undefined' && module.exports) {
             const row = document.createElement('div');
             row.className = 'plant-row';
             row.dataset.plantName = name;
+            if (p.plantId) row.dataset.plantId = String(p.plantId); // stable id for the optimistic overlay to key on (rename/move-safe); omitted when absent so id-less rows stay byte-identical
             row.dataset.planted = metadata.planted || '';
             // Plant passport: the row is the tap target (docs/SCOPE-PLANT-HISTORY.md). The full cached
             // model `p` rides the closure, so the card's top half opens with ZERO lookup or network.
@@ -10331,8 +10358,8 @@ if (typeof module !== 'undefined' && module.exports) {
           .withFailureHandler(function () { if (ppOpen && ppCurrentKey === key) ppStoryFailed(!!_ppCache[key]); })
           .processClientRequest(JSON.stringify({
             action: 'getPlantPassport', crop: p.name, zone: bedName, planted: p.planted || '',
-            transplanted: p.transplanted || '',   // window-chapter bound (SCOPE-BATCH-IDENTITY rule 5) — the id-LESS legacy fallback join
-            plantId: p.plantId || '',              // stable id (SCOPE-STABLE-IDENTITY) — id'd rows join by this, rename/move-safe
+            plantId: p.plantId || '',              // stable id (SCOPE-STABLE-IDENTITY) — the sole join key now, rename/move-safe
+            parentId: p.parentId || '',            // split child's sow-batch id — pulls in its shared pre-split chapter
             token: token, pin: pin
           }));
       }
@@ -10481,6 +10508,57 @@ if (typeof module !== 'undefined' && module.exports) {
         return null;   // nothing meaningful → single (crop-only) header
       }
 
+      // Inline one-cell rename (docs/SCOPE-STABLE-IDENTITY.md step 6 — the whole "Slice B"). Swap the title
+      // for a text field; on save post renamePlant BY ID (a single-cell edit — reads join by id, so no Log
+      // sweep), then re-render the card under the new name and pull the renamed row into the Garden tab/map
+      // (refreshStateView). Esc / ✕ cancels; a failure shows a quiet inline note and keeps the field open.
+      function ppBeginRename(p, bedName, titleWrap, h) {
+        if (!p || !p.plantId || !titleWrap) return;
+        if (titleWrap.querySelector('.pp-rename-edit')) return; // already editing
+        const editor = document.createElement('div');
+        editor.className = 'pp-rename-edit';
+        const input = document.createElement('input');
+        input.type = 'text'; input.className = 'pp-rename-input'; input.value = p.name || '';
+        input.setAttribute('aria-label', 'Plant name'); input.autocomplete = 'off';
+        const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'pp-rename-ok'; ok.textContent = '✓'; ok.title = 'Save';
+        const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'pp-rename-cancel'; cancel.textContent = '✕'; cancel.title = 'Cancel';
+        const note = document.createElement('div'); note.className = 'pp-rename-note';
+        editor.appendChild(input); editor.appendChild(ok); editor.appendChild(cancel); editor.appendChild(note);
+        h.style.display = 'none';
+        titleWrap.insertBefore(editor, h);
+        try { input.focus(); input.select(); } catch (e) {}
+        const close = function () { editor.remove(); h.style.display = ''; };
+        const commit = function () {
+          const nv = String(input.value || '').replace(/\s+/g, ' ').trim();
+          if (!nv || nv === (p.name || '')) { close(); return; }
+          const pin = localStorage.getItem('garden_log_pin'), token = localStorage.getItem('garden_log_token');
+          if (!pin && !token) { note.textContent = 'Enter your PIN first.'; return; }
+          input.disabled = ok.disabled = cancel.disabled = true; note.textContent = 'Saving…';
+          google.script.run
+            .withSuccessHandler(function (resStr) {
+              let res = null; try { res = JSON.parse(resStr); } catch (e) {}
+              if (res && res.status === 'success' && res.data && res.data.renamed) {
+                p.name = res.data.name || nv;
+                if (_ppLast && _ppLast.p) _ppLast.p.name = p.name;
+                try { ppRender(p, bedName, _ppCache[ppCurrentKey], false); } catch (e) {} // rebuilds the card (drops the editor) under the new name
+                if (typeof refreshStateView === 'function') refreshStateView(true);       // pull the renamed row into the Garden tab + map + cache
+              } else {
+                input.disabled = ok.disabled = cancel.disabled = false;
+                note.textContent = (res && res.data && res.data.message) || (res && res.message) || 'Could not rename — try again.';
+              }
+            })
+            .withFailureHandler(function () { input.disabled = ok.disabled = cancel.disabled = false; note.textContent = 'Could not rename — try again.'; })
+            .processClientRequest(JSON.stringify({ action: 'renamePlant', plantId: p.plantId, name: nv, token: token, pin: pin }));
+        };
+        ok.onclick = function (e) { e.stopPropagation(); commit(); };
+        cancel.onclick = function (e) { e.stopPropagation(); close(); };
+        input.addEventListener('click', function (e) { e.stopPropagation(); });
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); commit(); }
+          else if (e.key === 'Escape') { e.preventDefault(); close(); }
+        });
+      }
+
       function ppIdentityEl(p, bedName) {
         const wrap = document.createElement('div');
         wrap.className = 'pp-id';
@@ -10501,6 +10579,16 @@ if (typeof module !== 'undefined' && module.exports) {
           v.className = 'pp-variety';
           v.textContent = ' (' + parts[1] + ')';
           h.appendChild(v);
+        }
+        // Rename (SCOPE-STABLE-IDENTITY step 6): a quiet ✎ by the title turns it into a one-cell edit. Only a
+        // real, id-bearing plant can be renamed this way (a to-confirm card resolves through its own dialog).
+        if (p.plantId) {
+          const rn = document.createElement('button');
+          rn.type = 'button'; rn.className = 'pp-rename-btn';
+          rn.setAttribute('aria-label', 'Rename'); rn.title = 'Rename';
+          rn.textContent = '✎';
+          rn.onclick = function (e) { e.stopPropagation(); ppBeginRename(p, bedName, txt, h); };
+          h.appendChild(rn);
         }
         txt.appendChild(h);
         const sub = document.createElement('div');
