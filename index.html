@@ -1775,7 +1775,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.91</span>
+        <span class="header-version">v7.92</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2076,7 +2076,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.91 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.92 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -10261,6 +10261,15 @@ if (typeof module !== 'undefined' && module.exports) {
           v.textContent = ' (' + parts[1] + ')';
           h.appendChild(v);
         }
+        // Rename (SCOPE-STABLE-IDENTITY step 6): a quiet ✎ turns the packet name into a one-cell edit by ItemId.
+        if (item.itemId) {
+          const rn = document.createElement('button');
+          rn.type = 'button'; rn.className = 'pp-rename-btn';
+          rn.setAttribute('aria-label', 'Rename'); rn.title = 'Rename';
+          rn.textContent = '✎';
+          rn.onclick = function (e) { e.stopPropagation(); ppBeginRenameShed(item, category, txt, h); };
+          h.appendChild(rn);
+        }
         txt.appendChild(h);
         const sub = document.createElement('div');
         sub.className = 'pp-id-sub';
@@ -10549,6 +10558,52 @@ if (typeof module !== 'undefined' && module.exports) {
             })
             .withFailureHandler(function () { input.disabled = ok.disabled = cancel.disabled = false; note.textContent = 'Could not rename — try again.'; })
             .processClientRequest(JSON.stringify({ action: 'renamePlant', plantId: p.plantId, name: nv, token: token, pin: pin }));
+        };
+        ok.onclick = function (e) { e.stopPropagation(); commit(); };
+        cancel.onclick = function (e) { e.stopPropagation(); close(); };
+        input.addEventListener('click', function (e) { e.stopPropagation(); });
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); commit(); }
+          else if (e.key === 'Escape') { e.preventDefault(); close(); }
+        });
+      }
+
+      // Shed twin of ppBeginRename (SCOPE-STABLE-IDENTITY step 6): inline-rename a supply BY ItemId. On save
+      // posts renameShedItem (a one-cell Item edit), re-renders the shed card, and repaints the Shed tab.
+      function ppBeginRenameShed(item, category, titleWrap, h) {
+        if (!item || !item.itemId || !titleWrap) return;
+        if (titleWrap.querySelector('.pp-rename-edit')) return; // already editing
+        const editor = document.createElement('div'); editor.className = 'pp-rename-edit';
+        const input = document.createElement('input'); input.type = 'text'; input.className = 'pp-rename-input'; input.value = item.item || '';
+        input.setAttribute('aria-label', 'Item name'); input.autocomplete = 'off';
+        const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'pp-rename-ok'; ok.textContent = '✓'; ok.title = 'Save';
+        const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'pp-rename-cancel'; cancel.textContent = '✕'; cancel.title = 'Cancel';
+        const note = document.createElement('div'); note.className = 'pp-rename-note';
+        editor.appendChild(input); editor.appendChild(ok); editor.appendChild(cancel); editor.appendChild(note);
+        h.style.display = 'none'; titleWrap.insertBefore(editor, h);
+        try { input.focus(); input.select(); } catch (e) {}
+        const close = function () { editor.remove(); h.style.display = ''; };
+        const commit = function () {
+          const nv = String(input.value || '').replace(/\s+/g, ' ').trim();
+          if (!nv || nv === (item.item || '')) { close(); return; }
+          const pin = localStorage.getItem('garden_log_pin'), token = localStorage.getItem('garden_log_token');
+          if (!pin && !token) { note.textContent = 'Enter your PIN first.'; return; }
+          input.disabled = ok.disabled = cancel.disabled = true; note.textContent = 'Saving…';
+          google.script.run
+            .withSuccessHandler(function (resStr) {
+              let res = null; try { res = JSON.parse(resStr); } catch (e) {}
+              if (res && res.status === 'success' && res.data && res.data.renamed) {
+                item.item = res.data.name || nv;
+                if (_ppShedLast && _ppShedLast.item) _ppShedLast.item.item = item.item;
+                try { ppRenderShed(item, category); } catch (e) {}                         // rebuilds the card under the new name
+                if (typeof loadInventory === 'function') { try { loadInventory(); } catch (e) {} } // repaint the Shed tab
+              } else {
+                input.disabled = ok.disabled = cancel.disabled = false;
+                note.textContent = (res && res.data && res.data.message) || (res && res.message) || 'Could not rename — try again.';
+              }
+            })
+            .withFailureHandler(function () { input.disabled = ok.disabled = cancel.disabled = false; note.textContent = 'Could not rename — try again.'; })
+            .processClientRequest(JSON.stringify({ action: 'renameShedItem', itemId: item.itemId, name: nv, token: token, pin: pin }));
         };
         ok.onclick = function (e) { e.stopPropagation(); commit(); };
         cancel.onclick = function (e) { e.stopPropagation(); close(); };
