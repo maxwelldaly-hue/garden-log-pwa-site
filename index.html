@@ -816,8 +816,6 @@
       .ui-hint--tab.open .ui-hint-text { display: inline; }
       /* Per-plant latest-photo 📷 in the Garden tab: a quiet tap-target that opens the stored Drive image.
          Only rendered when the plant has a photo (renderLayoutModel), so it's never a dead end. */
-      .plant-photo-link { margin-left: 6px; font-size: var(--fs-sm); text-decoration: none; opacity: 0.75; line-height: 1; }
-      .plant-photo-link:hover, .plant-photo-link:focus { opacity: 1; }
       /* Rain summary line under the Weather grid (7-day fallen + forecast). */
       .rain-line { font-size: var(--fs-sm); color: var(--text-muted); }
 
@@ -984,6 +982,15 @@
       .is-indoors { opacity: 0.68; font-weight: 500; }         /* (legacy) start-indoors quieter cue — retained for back-compat */
       .is-soon { color: var(--blue-400); }                     /* (legacy) in-window but soil not there yet */
       .is-far  { color: var(--text-muted); }                   /* GREY — not in season, quiet "from Sep" */
+      /* Tap-to-expand (SCOPE-PASSPORT-SEASONAL-FOLD.md — the light partial fold): a row reveals the window +
+         maturity facts the guide already owns. A caret rotates on open (reuses the .is-caret transition). */
+      .is-row-tap { cursor: pointer; }
+      .is-row-caret { flex: 0 0 auto; color: var(--text-muted); font-size: var(--fs-sm); line-height: 1; margin-left: 2px; }
+      .is-row.is-open .is-caret { transform: rotate(180deg); }
+      .is-expand { display: flex; flex-direction: column; gap: 4px; padding: 2px 6px 10px 46px; }   /* 46px = row pad + 30px icon + gap, so facts line up under the crop name */
+      .is-fact { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+      .is-fact-k { font-size: var(--fs-xs); color: var(--text-muted); letter-spacing: var(--ls-wide); text-transform: uppercase; }
+      .is-fact-v { font-size: var(--fs-sm); color: var(--text-soft); text-align: right; }
       .is-none, .is-empty { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.5; padding: 6px 2px; }
       .is-empty { text-align: center; padding-top: 40px; }
 
@@ -1775,7 +1782,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.93</span>
+        <span class="header-version">v7.94</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2076,7 +2083,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.93 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.94 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6266,22 +6273,10 @@ if (typeof module !== 'undefined' && module.exports) {
             // (Life-phase, step 4) The raw Stage badge is GONE — the enum is demoted to a Log memory, and
             // the card's lifecycle now reads from the derived phase (🫘/🌱 nursery icons + the harvest/yield
             // lines). A "first flowers" note lives in Recent, not as a badge here. See DEBUGGING §2.5.
-            // Latest-photo 📷 (tap-to-view): only rendered when this plant has a stored photo, so the icon
-            // is never a dead end. Opens the Drive image in a new tab (same as the Shed 📷 + Recent links) —
-            // nothing loads until tapped, so it adds no render weight. stopPropagation so it can't toggle the
-            // bed collapse. The stored URL is crop@bed-keyed (newest photo; see stampGardenPlantImage).
-            if (p.image) {
-              const cam = document.createElement('a');
-              cam.className = 'plant-photo-link';
-              cam.href = p.image;
-              cam.target = '_blank';
-              cam.rel = 'noopener';
-              cam.innerHTML = uiMarkSvg('ui-camera', 14);   // mono camera mark (was the per-device 📷)
-              cam.title = 'Latest photo';
-              cam.setAttribute('aria-label', name + ' — latest photo');
-              cam.onclick = function (e) { e.stopPropagation(); };
-              topRow.appendChild(cam);
-            }
+            // Latest-photo icon REMOVED (v7.94): the Plant Passport is now the definitive home for a plant's
+            // history + media, so the top-level Garden row no longer carries a 📷. It rode a lossy crop@bed
+            // image binding (the tap target the passport supersedes); the photo URL is still STORED
+            // (stampGardenPlantImage) and surfaced in the passport — this only drops the redundant row icon.
             row.appendChild(topRow);
 
             const metaContainer = document.createElement('div');
@@ -11226,8 +11221,40 @@ if (typeof module !== 'undefined' && module.exports) {
         return { bucket: 'hidden', line: r.sowLine || '', cls: 'is-far', note: '' };
       }
 
+      // The light tap-to-expand (docs/SCOPE-PASSPORT-SEASONAL-FOLD.md — the PARTIAL fold, owner-approved 20/07):
+      // tapping a row reveals only the two facts the guide already OWNS — the full Adelaide sow window +
+      // the typical maturity. Deliberately NOT the instructional tier (spacing / companions / helps-avoid):
+      // that stays the Gem's delegated job (rule 30 "describe, never diagnose"). No new overlay, no extra
+      // network — maturityDays already rides the catalogue row (CropsBook.buildSowCatalogue).
+      function isFmtSowWindow(row) {
+        const w = (typeof ppFormatSowMonths === 'function') ? ppFormatSowMonths(row.sowMonths) : String(row.sowMonths || '').trim();
+        return w ? (w + ' (Adelaide)') : '';
+      }
+      function isExpandHtml(row, esc) {
+        const facts = [];
+        const win = isFmtSowWindow(row);
+        if (win) facts.push(['Sow window', win]);
+        if (row.maturityDays != null && row.maturityDays > 0) facts.push(['Typical maturity', '~' + row.maturityDays + ' days']);
+        if (!facts.length) return '';
+        return '<div class="is-expand" style="display:none;">' +
+          facts.map(function (f) {
+            return '<div class="is-fact"><span class="is-fact-k">' + f[0] + '</span><span class="is-fact-v">' + esc(f[1]) + '</span></div>';
+          }).join('') + '</div>';
+      }
+      // Toggle a row's window+maturity panel (its sibling .is-expand). Mirrors the "Not in season" caret:
+      // rotate on open, track aria-expanded. Open rows survive a background refresh (see renderInSeason).
+      function isToggleRow(rowEl) {
+        const panel = rowEl.nextElementSibling;
+        if (!panel || !panel.classList.contains('is-expand')) return;
+        const isOpen = panel.style.display !== 'none';
+        panel.style.display = isOpen ? 'none' : 'block';
+        rowEl.classList.toggle('is-open', !isOpen);
+        rowEl.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+      }
+
       // One crop row's HTML: icon · name (+ "seeds in shed" when owned) · the readiness line, with an optional
-      // muted note stacked under it (the deadline / reason — the quiet secondary, right-aligned).
+      // muted note stacked under it (the deadline / reason — the quiet secondary, right-aligned). A tappable
+      // row also carries a caret + a sibling .is-expand facts panel (window + maturity), toggled by isToggleRow.
       function isRowHtml(row, line, cls, note) {
         const icon = (typeof plantIconSvgHtml === 'function') ? plantIconSvgHtml(row.crop) : '';
         const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
@@ -11237,11 +11264,19 @@ if (typeof module !== 'undefined' && module.exports) {
         const lineHtml = line ? '<span class="is-line ' + cls + '">' + esc(line) + '</span>' : '';
         const noteHtml = note ? '<span class="is-note">' + esc(note) + '</span>' : '';
         const linesHtml = (line || note) ? '<span class="is-lines">' + lineHtml + noteHtml + '</span>' : '';
-        return '<div class="is-row' + (row.owned ? ' is-row-owned' : '') + '">' +
+        const expand = isExpandHtml(row, esc);
+        const caret = expand ? '<span class="is-caret is-row-caret" aria-hidden="true">⌄</span>' : '';
+        const tapAttrs = expand
+          ? ' role="button" tabindex="0" aria-expanded="false" onclick="isToggleRow(this)"' +
+            ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();isToggleRow(this);}"'
+          : '';
+        return '<div class="is-row' + (row.owned ? ' is-row-owned' : '') + (expand ? ' is-row-tap' : '') +
+                 '" data-crop="' + esc(row.crop) + '"' + tapAttrs + '>' +
                  '<span class="is-ic">' + icon + '</span>' +
                  '<span class="is-name">' + esc(row.crop) + owned + '</span>' +
                  linesHtml +
-               '</div>';
+                 caret +
+               '</div>' + expand;
       }
 
       function isSectionHtml(title, sub, rowsHtml, extraClass) {
@@ -11274,6 +11309,11 @@ if (typeof module !== 'undefined' && module.exports) {
         // rebuild and re-apply it after, so a background refresh never undoes the user's tap.
         const priorLaterList = body.querySelector('.is-later-list');
         const wasLaterOpen = !!(priorLaterList && priorLaterList.style.display !== 'none');
+        // Same reason for the tap-to-expand rows: capture which crops the user has opened so a background
+        // refresh (this same function, seconds after the tap) doesn't silently re-collapse them.
+        const openCrops = {};
+        const priorOpenRows = body.querySelectorAll('.is-row.is-open');
+        for (let i = 0; i < priorOpenRows.length; i++) { const c = priorOpenRows[i].dataset.crop; if (c) openCrops[c] = true; }
 
         // Veg/Herbs/Flowers filter (header checkboxes): which categories to show. A row with no category
         // (older cache shape, pre-filter) defaults to 'vegetable' so nothing vanishes on first load post-update.
@@ -11345,6 +11385,21 @@ if (typeof module !== 'undefined' && module.exports) {
           const head = body.querySelector('.is-collapsible');
           if (list) list.style.display = '';
           if (head) head.classList.add('is-open');
+        }
+        // Re-open the rows that were expanded before this rebuild (background-refresh preservation).
+        if (Object.keys(openCrops).length) {
+          const allRows = body.querySelectorAll('.is-row');
+          for (let i = 0; i < allRows.length; i++) {
+            const r = allRows[i];
+            if (r.dataset.crop && openCrops[r.dataset.crop]) {
+              const panel = r.nextElementSibling;
+              if (panel && panel.classList.contains('is-expand')) {
+                panel.style.display = 'block';
+                r.classList.add('is-open');
+                r.setAttribute('aria-expanded', 'true');
+              }
+            }
+          }
         }
       }
 
