@@ -1761,7 +1761,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.89</span>
+        <span class="header-version">v7.90</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2062,7 +2062,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.89 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.90 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2140,14 +2140,17 @@
             <div id="devMaintResult" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;"></div>
           </div>
 
-          <!-- Stable-identity cutover tooling (docs/HANDOFF-IDENTITY-CUTOVER-TOOLING.md, GardenSheet.js).
-               Two SAFE, non-destructive prerequisites for the eventual owner-run clean-slate cutover — the
-               Log wipe itself is NOT here (destructive; owner + Claude only, a separate step). -->
+          <!-- Stable-identity cutover tooling (docs/SCOPE-STABLE-IDENTITY.md step 4, GardenSheet.js).
+               Two SAFE prerequisites (backup, assign) THEN the destructive clean-slate wipe — run them in
+               order, top to bottom. The wipe is triple-gated (type WIPE + confirm dialog + a backup must exist). -->
           <div class="dev-section">
             <h4 class="dev-h">Stable identity cutover</h4>
-            <p class="dev-note">Prep for giving every plant and shed item a permanent id. <strong>Back up Log</strong> duplicates the Log tab to a timestamped copy — run this first, it only reads and copies. <strong>Assign stable IDs</strong> mints an id onto any existing plant/shed row that doesn't have one yet; it never overwrites an id that's already there, so it's safe to tap more than once.</p>
+            <p class="dev-note">Run these in order. <strong>1. Back up Log</strong> duplicates the Log tab to a timestamped copy — it only reads and copies. <strong>2. Assign stable IDs</strong> mints an id onto any existing plant/shed row that lacks one; it never overwrites an existing id, so it's safe to tap twice.</p>
             <button class="settings-save-btn" onclick="runBackupLogTab(this)">Back up Log</button>
             <button class="settings-save-btn" onclick="runAssignStableIds(this)" style="margin-top:8px;">Assign stable IDs</button>
+            <p class="dev-note" style="margin-top:12px;"><strong>3. Wipe Log history</strong> — the clean-slate step. Deletes every Log entry (keeps the column header); plants, dates, counts and the ids you just assigned stay put, while stories, photo journeys, care timers and the Recent feed clear and re-fill from new logs. It refuses unless a backup exists. Type <code>WIPE</code> to enable, then confirm.</p>
+            <input type="text" id="devWipeConfirm" placeholder="type WIPE" autocomplete="off" autocapitalize="characters" spellcheck="false">
+            <button class="settings-save-btn" onclick="runWipeLogData(this)" style="margin-top:8px;">Wipe Log history</button>
             <div id="devIdentityResult" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;"></div>
           </div>
 
@@ -5144,6 +5147,40 @@ if (typeof module !== 'undefined' && module.exports) {
             if (out) out.textContent = 'Could not run — ' + (e && e.message ? e.message : 'try again.');
           })
           .processClientRequest(JSON.stringify({ action: 'assignStableIds', token: token, pin: pin }));
+      }
+
+      // Stable-identity cutover — the DESTRUCTIVE step (docs/SCOPE-STABLE-IDENTITY.md step 4). Deletes every
+      // Log data row (keeps the header) so the clean slate begins. THREE gates: the owner types "WIPE" in the
+      // box, confirms the dialog, and the server refuses unless the typed word matches AND a "Log backup …"
+      // tab exists. Run “Back up Log” + “Assign stable IDs” FIRST.
+      function runWipeLogData(btn) {
+        const out = document.getElementById('devIdentityResult');
+        const pin = localStorage.getItem('garden_log_pin');
+        const token = localStorage.getItem('garden_log_token');
+        if (!pin && !token) { if (out) out.textContent = 'Enter your PIN in App Settings first.'; return; }
+        const inp = document.getElementById('devWipeConfirm');
+        const word = inp ? String(inp.value || '').trim().toUpperCase() : '';
+        if (word !== 'WIPE') { if (out) out.textContent = 'Type WIPE in the box to enable the wipe.'; return; }
+        if (!window.confirm('Delete ALL Log history?\n\nPlants, dates, counts and the ids you assigned STAY. Stories, photo journeys, care timers and the Recent feed clear and re-accrue from new logs. A backup tab is required and kept.')) return;
+        if (btn) { btn.disabled = true; btn.textContent = 'Wiping…'; }
+        if (out) out.textContent = 'Working…';
+        const reset = function () { if (btn) { btn.disabled = false; btn.textContent = 'Wipe Log history'; } };
+        google.script.run
+          .withSuccessHandler(function (resStr) {
+            reset();
+            let res = null; try { res = JSON.parse(resStr); } catch (e) {}
+            if (res && res.status === 'success') {
+              if (out) out.textContent = (res.data && res.data.report) || 'Done.';
+              if (inp) inp.value = '';
+            } else if (out) {
+              out.textContent = (res && res.message) ? res.message : 'Could not run — try again.';
+            }
+          })
+          .withFailureHandler(function (e) {
+            reset();
+            if (out) out.textContent = 'Could not run — ' + (e && e.message ? e.message : 'try again.');
+          })
+          .processClientRequest(JSON.stringify({ action: 'wipeLogData', confirm: 'WIPE', token: token, pin: pin }));
       }
 
       // Dev-drawer: create (first tap) or ensure the per-instance Crop Reference book, then link it so the
