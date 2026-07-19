@@ -1761,7 +1761,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.83</span>
+        <span class="header-version">v7.84</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2062,7 +2062,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.83 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.84 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -10187,7 +10187,11 @@ if (typeof module !== 'undefined' && module.exports) {
               if (r && r.sowLine) live = r.sowLine;
             }
           }
-          sowWhen = live || staticWin;
+          // Seed passport shows the FULL season, not the terse live line (owner, 19/07 — "sow from Sep" is
+          // seasonal-guide messaging; a passport has room for the whole window). The full window always shows;
+          // a live GO reading ("✓ Sow outdoors") only PREPENDS when it's actually sowable now — so we keep the
+          // actionable cue without ever collapsing to a bare start month.
+          sowWhen = (live && live.charAt(0) === '✓') ? (live + ' · ' + staticWin) : staticWin;
         } else {
           sowWhen = lf.sow || ppOtherFact(other, /^when$|sow|season|plant/i);
         }
@@ -10290,11 +10294,20 @@ if (typeof module !== 'undefined' && module.exports) {
         wrap.appendChild(btn);
         return wrap;
       }
+      // The choices are HARVEST-TYPE aware, because "harvested" means different things (the owner's lingo point,
+      // 19/07). For a one_shot crop (beetroot/lettuce/root/head) harvesting IS the removal — one pick takes the
+      // whole plant — so "Harvested" ends it (Harvesting → the one_shot tombstone path). For an ONGOING cropper
+      // (tomato/beans/cut-and-come) a harvest NEVER ends the plant (it just accrues yield), so the two choices
+      // are both removals: "Finished for the season" (a good run, now pulling it) vs "Removed" (died/failed).
+      // Either way the plant leaves; only the word + sentiment recorded differ. `p.harvestType` rides the model
+      // (GardenSheet.js) and defaults to 'ongoing' — the safe side (never mis-frames a pull as a final harvest).
       function ppRemoveConfirm(wrap, p, bedName) {
         wrap.innerHTML = '';
+        const base = ppSplitName(p.name)[0];
+        const ongoing = (String(p.harvestType || 'ongoing') !== 'one_shot');
         const q = document.createElement('div');
         q.className = 'pp-remove-q';
-        q.textContent = 'How did this ' + ppSplitName(p.name)[0] + ' go?';
+        q.textContent = ongoing ? ('Why is this ' + base + ' leaving?') : ('How did this ' + base + ' go?');
         wrap.appendChild(q);
         const choices = document.createElement('div');
         choices.className = 'pp-remove-choices';
@@ -10309,15 +10322,28 @@ if (typeof module !== 'undefined' && module.exports) {
           b.onclick = function () { ppRemoveSubmit(p, bedName, kind); };
           return b;
         };
-        choices.appendChild(mk('Harvested', '— picked the crop', 'harvest'));
-        choices.appendChild(mk('Removed', '— bolted, died, or cleared', 'removal'));
+        if (ongoing) {
+          choices.appendChild(mk('Finished for the season', '— had a good run', 'finished'));
+          choices.appendChild(mk('Removed', '— died or failed', 'removal'));
+        } else {
+          choices.appendChild(mk('Harvested', '— picked the crop', 'harvest'));
+          choices.appendChild(mk('Removed', '— bolted, died, or cleared', 'removal'));
+        }
         wrap.appendChild(choices);
+        // Bring the whole confirm (both buttons) into view — it sits at the foot of a scrollable card, so the
+        // second choice can otherwise land below the fold (owner, 19/07 — "shouldn't have to scroll to click").
+        requestAnimationFrame(function () { try { wrap.scrollIntoView({ behavior: 'smooth', block: 'end' }); } catch (e) {} });
       }
       function ppRemoveSubmit(p, bedName, kind) {
-        const verb = (kind === 'harvest') ? 'Harvested' : 'Removed';
-        // "all of" nudges the scribe to a whole-plant tombstone rather than a partial pick. bedName is the
-        // canonical zone the scribe matches on; omit the "from" clause only if we somehow have no bed.
-        const text = verb + ' all of the ' + p.name + (bedName ? ' from ' + bedName : '');
+        const from = bedName ? ' from ' + bedName : '';   // bedName is the canonical zone the scribe matches on
+        let text;
+        if (kind === 'harvest') {
+          text = 'Harvested all of the ' + p.name + from;                     // one_shot: harvest empties → tombstone
+        } else if (kind === 'finished') {
+          text = 'Removed the ' + p.name + from + ' — finished for the season'; // ongoing positive end: still a removal
+        } else {
+          text = 'Removed the ' + p.name + from;                              // pulled/failed: Removal → tombstone
+        }
         closePassport();
         if (typeof submitLog === 'function') submitLog('garden', text);
       }
