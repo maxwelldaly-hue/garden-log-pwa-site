@@ -1022,6 +1022,31 @@
         color: var(--text-muted); border-radius: var(--r-xs);
         font-size: var(--fs-md); line-height: 1; padding: 6px 10px; cursor: pointer;
       }
+      /* Bar actions (SCOPE-PASSPORT-ACTIONS.md): the scoped-log ✎ sits LEFT of the ✕, mirroring the header's
+         pencil-then-status-dot order. The ✎ is a bare glyph (like .header-log-btn), the ✕ keeps its inset chip. */
+      .pp-bar-actions { display: flex; align-items: center; gap: 8px; }
+      .pp-log {
+        background: none; border: none; color: var(--text-muted); cursor: pointer;
+        padding: 4px; display: inline-flex; align-items: center; justify-content: center;
+      }
+      .pp-log svg { width: 20px; height: 20px; }
+      /* Remove control (SCOPE-PASSPORT-ACTIONS.md ask 3): a QUIET foot-of-card button (never a loud CTA — this
+         is a user-initiated correction). Tapping it swaps in the harvest/removal choice; both file a log note. */
+      .pp-remove { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--surface-inset-03); }
+      .pp-remove-btn {
+        width: 100%; background: none; border: 1px solid var(--surface-inset-03);
+        color: var(--text-muted); border-radius: var(--r-sm);
+        font-size: var(--fs-sm); padding: 9px 14px; cursor: pointer;
+      }
+      .pp-remove-btn:hover { border-color: var(--text-muted); }
+      .pp-remove-q { font-size: var(--fs-sm); color: var(--text-main); margin-bottom: 10px; }
+      .pp-remove-choices { display: flex; flex-direction: column; gap: 8px; }
+      .pp-remove-choice {
+        width: 100%; text-align: left; border-radius: var(--r-sm);
+        font-size: var(--fs-sm); padding: 11px 14px; cursor: pointer;
+        background: var(--surface-inset-01); border: 1px solid var(--surface-inset-03); color: var(--text-main);
+      }
+      .pp-remove-choice small { color: var(--text-muted); }
       .pp-body {
         flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch;
         padding: 8px 16px 28px;
@@ -1736,7 +1761,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.82</span>
+        <span class="header-version">v7.85</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2037,7 +2062,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.82 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.85 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3040,7 +3065,15 @@
     <div id="passportOverlay" class="pp-fs" style="display:none;">
       <div class="pp-bar">
         <span id="ppCrumb" class="pp-crumb"></span>
-        <button type="button" class="pp-close" onclick="closePassport()" aria-label="Close passport">✕</button>
+        <div class="pp-bar-actions">
+          <!-- Scoped capture (SCOPE-PASSPORT-ACTIONS.md ask 1): the SAME pencil glyph as the header ✎, in the
+               same top-right spot, so it reads as the identical control. Prefills the capture sheet with this
+               plant/packet then hands off to the normal log flow (openPassportLog). -->
+          <button type="button" class="pp-log" onclick="openPassportLog()" aria-label="Log about this plant" title="Log about this plant">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+          </button>
+          <button type="button" class="pp-close" onclick="closePassport()" aria-label="Close passport">✕</button>
+        </div>
       </div>
       <div id="passportBody" class="pp-body" role="dialog" aria-modal="true"></div>
     </div>
@@ -7161,10 +7194,15 @@ if (typeof module !== 'undefined' && module.exports) {
           .processClientRequest(JSON.stringify(req));
       }
 
-      function submitLog(dest) {
-        let text = document.getElementById('logTextarea').value.trim();
+      // `explicitText` (optional): a programmatic submit from a passport action (Remove / harvest) that files
+      // a ready-made note WITHOUT touching the user's draft in #logTextarea. When present it is the note verbatim
+      // and no photo rides along; when absent this reads the box exactly as before. Everything downstream (queue,
+      // chip, optimistic row, sync) is shared — one submit path.
+      function submitLog(dest, explicitText) {
+        const programmatic = (typeof explicitText === 'string');
+        let text = (programmatic ? explicitText : document.getElementById('logTextarea').value).trim();
         const pin = localStorage.getItem('garden_log_pin');
-        if (!text.trim() && !currentPhotoData) return;
+        if (!text.trim() && !(programmatic ? false : currentPhotoData)) return;
         if (!pin) {
           showToast("Setup Required", "Enter PIN in App Settings.");
           return;
@@ -7186,7 +7224,7 @@ if (typeof module !== 'undefined' && module.exports) {
         const logItem = {
           id: logId,
           rawText: text,
-          photoData: currentPhotoData,
+          photoData: programmatic ? null : currentPhotoData,
           mode: mode, // always 'garden' since v7.15; 'shed' can only arrive from a pre-cutover queued item (selects the Router action in syncQueue)
           timestamp: Date.now()
         };
@@ -7198,14 +7236,17 @@ if (typeof module !== 'undefined' && module.exports) {
             showToast("Couldn't save", "Your note wasn't queued — please try again.", null, { alert: true });
             return;
           }
-          // Cleared only after the write is durably queued.
-          document.getElementById('logTextarea').value = '';
-          document.getElementById('photoPreview').style.display = 'none';
-          document.getElementById('photoPreview').src = '';
-          document.getElementById('photoInput').value = '';
-          document.getElementById('photoUploadInput').value = '';
-          currentPhotoData = null;
-          if (typeof syncLogEntryState === 'function') syncLogEntryState(); // re-disable Log (one-button): box is empty again
+          // Cleared only after the write is durably queued. A programmatic submit never touched the box or the
+          // staged photo, so it leaves the user's draft untouched.
+          if (!programmatic) {
+            document.getElementById('logTextarea').value = '';
+            document.getElementById('photoPreview').style.display = 'none';
+            document.getElementById('photoPreview').src = '';
+            document.getElementById('photoInput').value = '';
+            document.getElementById('photoUploadInput').value = '';
+            currentPhotoData = null;
+            if (typeof syncLogEntryState === 'function') syncLogEntryState(); // re-disable Log (one-button): box is empty again
+          }
           if (isRecording) recognition.stop();
 
           updateQueueUI();
@@ -9700,6 +9741,38 @@ if (typeof module !== 'undefined' && module.exports) {
       let ppOpen = false;
       let ppCurrentKey = '';
       let _ppLast = null;    // {p, bed} of the open passport, so a prefetch arrival can re-render it
+      let _ppShedLast = null; // {item, category} of an open SHED passport (no async story to re-render into)
+
+      // Scoped capture (SCOPE-PASSPORT-ACTIONS.md ask 1): the pp-bar ✎. Prefills the ONE capture box with this
+      // plant/packet, then hands off to the normal summoned sheet. We CLOSE the passport first (rather than
+      // stack the sheet over it) — a single overlay at a time keeps the back/Esc/history handling simple, and
+      // the plant is already named in the box so context isn't lost. The prefill is ordinary editable text: the
+      // user can delete it and log anything, or log against another plant entirely. No auto-focus (owner pref,
+      // 17/07 — the keyboard shouldn't slam up), so the box stays a calm, tap-to-edit draft.
+      function openPassportLog() {
+        const ta = document.getElementById('logTextarea');
+        if (!ta) return;
+        let prefill = '';
+        if (_ppLast && _ppLast.p) {
+          const bed = _ppLast.bed;
+          const bedTxt = bed ? (typeof bedDisplayName === 'function' ? bedDisplayName(bed) : bed) : '';
+          prefill = _ppLast.p.name + (bedTxt ? ', ' + bedTxt : '') + ': ';
+        } else if (_ppShedLast && _ppShedLast.item) {
+          prefill = 'Sowed ' + _ppShedLast.item.item;   // the natural note against a seed packet
+        }
+        ta.value = prefill;
+        // Close the passport SYNCHRONOUSLY before opening the sheet: .pp-fs is z-1000 with an opaque bg and the
+        // log sheet is z-999, so a still-visible passport would fully hide the sheet. The normal closePassport()
+        // defers the hide to a popstate (async), which would leave the sheet invisible for a beat — so hide here
+        // and pop the pushed history entry ourselves; the resulting popstate no-ops (ppOpen is already false).
+        const overlay = document.getElementById('passportOverlay');
+        if (_ppPushed) { _ppPushed = false; try { history.back(); } catch (e) {} }
+        if (overlay) overlay.style.display = 'none';
+        ppOpen = false; ppCurrentKey = '';
+        document.body.style.overflow = '';
+        if (typeof openLogSheet === 'function') openLogSheet();
+        if (typeof syncLogEntryState === 'function') syncLogEntryState();  // the box has text now — enable Log
+      }
 
       // Kill switch (owner, 15/07): the Dev drawer's "Show plant passports" toggle. Off -> plant rows go
       // back to being inert and the prefetch stops — per device, instant, no deploy. The one stored flag
@@ -10001,6 +10074,7 @@ if (typeof module !== 'undefined' && module.exports) {
         ppOpen = true;
         ppCurrentKey = ppKeyFor(p, bedName);
         _ppLast = { p: p, bed: bedName };
+        _ppShedLast = null;
         ppBindBackdrop(overlay);
         document.body.style.overflow = 'hidden';
         overlay.style.display = 'flex';
@@ -10052,6 +10126,7 @@ if (typeof module !== 'undefined' && module.exports) {
         ppOpen = true;
         ppCurrentKey = 'shed:' + String(item.item || '');
         _ppLast = null;   // no async story to re-render into
+        _ppShedLast = { item: item, category: category };   // context for the pp-bar ✎ (log a sow of this packet)
         ppBindBackdrop(overlay);
         document.body.style.overflow = 'hidden';
         overlay.style.display = 'flex';
@@ -10161,7 +10236,11 @@ if (typeof module !== 'undefined' && module.exports) {
               if (r && r.sowLine) live = r.sowLine;
             }
           }
-          sowWhen = live || staticWin;
+          // Seed passport shows the FULL season, not the terse live line (owner, 19/07 — "sow from Sep" is
+          // seasonal-guide messaging; a passport has room for the whole window). The full window always shows;
+          // a live GO reading ("✓ Sow outdoors") only PREPENDS when it's actually sowable now — so we keep the
+          // actionable cue without ever collapsing to a bare start month.
+          sowWhen = (live && live.charAt(0) === '✓') ? (live + ' · ' + staticWin) : staticWin;
         } else {
           sowWhen = lf.sow || ppOtherFact(other, /^when$|sow|season|plant/i);
         }
@@ -10241,6 +10320,81 @@ if (typeof module !== 'undefined' && module.exports) {
 
         const photos = ppPhotosEl(story);
         if (photos) body.appendChild(photos);
+
+        // Remove control (SCOPE-PASSPORT-ACTIONS.md ask 3) — foot of card, plant passports only, and never on a
+        // row that's already leaving (tombstone) or an Empty bed.
+        const remove = ppRemoveEl(p, bedName);
+        if (remove) body.appendChild(remove);
+      }
+
+      // "Remove from garden" → a quiet foot-of-card button that, on tap, swaps in the two-way harvest/removal
+      // choice. Both file a normal log note through the shared submit path (the scribe tombstones the row and
+      // the nightly flush clears it); the choice is only which of the scribe's two categories/sentiments to
+      // record — Harvested (positive) vs Removed (bolted/died/cleared). See the confirm copy note in the scope.
+      function ppRemoveEl(p, bedName) {
+        if (!p || p.isTombstone || p.isEmpty) return null;
+        const wrap = document.createElement('div');
+        wrap.className = 'pp-remove';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pp-remove-btn';
+        btn.textContent = 'Remove from garden';
+        btn.onclick = function () { ppRemoveConfirm(wrap, p, bedName); };
+        wrap.appendChild(btn);
+        return wrap;
+      }
+      // The choices are HARVEST-TYPE aware, because "harvested" means different things (the owner's lingo point,
+      // 19/07). For a one_shot crop (beetroot/lettuce/root/head) harvesting IS the removal — one pick takes the
+      // whole plant — so "Harvested" ends it (Harvesting → the one_shot tombstone path). For an ONGOING cropper
+      // (tomato/beans/cut-and-come) a harvest NEVER ends the plant (it just accrues yield), so the two choices
+      // are both removals: "Finished for the season" (a good run, now pulling it) vs "Removed" (died/failed).
+      // Either way the plant leaves; only the word + sentiment recorded differ. `p.harvestType` rides the model
+      // (GardenSheet.js) and defaults to 'ongoing' — the safe side (never mis-frames a pull as a final harvest).
+      function ppRemoveConfirm(wrap, p, bedName) {
+        wrap.innerHTML = '';
+        const base = ppSplitName(p.name)[0];
+        const ongoing = (String(p.harvestType || 'ongoing') !== 'one_shot');
+        const q = document.createElement('div');
+        q.className = 'pp-remove-q';
+        q.textContent = ongoing ? ('Why is this ' + base + ' leaving?') : ('How did this ' + base + ' go?');
+        wrap.appendChild(q);
+        const choices = document.createElement('div');
+        choices.className = 'pp-remove-choices';
+        const mk = function (word, aside, kind) {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'pp-remove-choice';
+          b.appendChild(document.createTextNode(word + ' '));
+          const s = document.createElement('small');
+          s.textContent = aside;
+          b.appendChild(s);
+          b.onclick = function () { ppRemoveSubmit(p, bedName, kind); };
+          return b;
+        };
+        if (ongoing) {
+          choices.appendChild(mk('Finished for the season', '— had a good run', 'finished'));
+          choices.appendChild(mk('Removed', '— died or failed', 'removal'));
+        } else {
+          choices.appendChild(mk('Harvested', '— picked the crop', 'harvest'));
+          choices.appendChild(mk('Removed', '— bolted, died, or cleared', 'removal'));
+        }
+        wrap.appendChild(choices);
+        // Bring the whole confirm (both buttons) into view — it sits at the foot of a scrollable card, so the
+        // second choice can otherwise land below the fold (owner, 19/07 — "shouldn't have to scroll to click").
+        requestAnimationFrame(function () { try { wrap.scrollIntoView({ behavior: 'smooth', block: 'end' }); } catch (e) {} });
+      }
+      function ppRemoveSubmit(p, bedName, kind) {
+        const from = bedName ? ' from ' + bedName : '';   // bedName is the canonical zone the scribe matches on
+        let text;
+        if (kind === 'harvest') {
+          text = 'Harvested all of the ' + p.name + from;                     // one_shot: harvest empties → tombstone
+        } else if (kind === 'finished') {
+          text = 'Removed the ' + p.name + from + ' — finished for the season'; // ongoing positive end: still a removal
+        } else {
+          text = 'Removed the ' + p.name + from;                              // pulled/failed: Removal → tombstone
+        }
+        closePassport();
+        if (typeof submitLog === 'function') submitLog('garden', text);
       }
 
       // RIGHT-hand status tile (owner: "the missing visual piece") — reads a plant's stage/place at a glance,
@@ -10368,7 +10522,15 @@ if (typeof module !== 'undefined' && module.exports) {
         const since = function (dmy) { const d = ppShortDate(dmy); return d ? ' · since ' + d : ''; };
         let po = null;   // plant-out line for an under-cover seedling (ppPlantOutLine), assigned in the cascade below
         if (p.isTombstone) {
-          line('pl-done', '✓ Harvested — clears tonight');
+          // A pulled-out plant is NOT a harvest (SCOPE-PASSPORT-ACTIONS.md — the language bug): only a real
+          // Harvesting outcome earns the "✓ Harvested"; a Removal reads a neutral "Removed", no green tick. The
+          // cached model carries isTombstone but not WHY, so read the outcome off the story's newest terminal
+          // milestone — usually already cached on open; until it lands, a neutral "Clears tonight" (never a
+          // false positive).
+          const out = ppTombstoneOutcome(story);
+          if (out === 'removal') line('pl-done', 'Removed — clears tonight');
+          else if (out === 'harvest') line('pl-done', '✓ Harvested — clears tonight');
+          else line('pl-done', 'Clears tonight');
         } else if (p.phase === 'Dormant') {
           line('', 'Dormant');   // derived from species + season — the one sanctioned non-observed word
         } else if (p.yield || p.phase === 'Producing' || st === 'Harvesting') {
@@ -10394,6 +10556,18 @@ if (typeof module !== 'undefined' && module.exports) {
         }
         return wrap.children.length ? wrap : null;
       }
+      // Which terminal event tombstoned this plant — 'harvest' | 'removal' | '' (unknown yet). Milestones are
+      // newest-first, so the FIRST Harvesting/Removal we meet is the most recent terminal event.
+      function ppTombstoneOutcome(story) {
+        const ms = (story && story.milestones) || [];
+        for (let i = 0; i < ms.length; i++) {
+          const c = String(ms[i].category || '').toLowerCase();
+          if (c === 'harvesting') return 'harvest';
+          if (c === 'removal') return 'removal';
+        }
+        return '';
+      }
+
       // The OLDEST story milestone carrying this stage — the date the stage was first observed.
       // Milestones arrive newest-first, so scan from the end.
       function ppStageSince(story, stageName) {
