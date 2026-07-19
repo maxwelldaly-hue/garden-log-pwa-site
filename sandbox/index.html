@@ -1761,7 +1761,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.87</span>
+        <span class="header-version">v7.88</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2062,7 +2062,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.87 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.88 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2138,6 +2138,17 @@
             <button class="settings-save-btn" onclick="runShedCategorySync(this)">Sync category order</button>
             <button class="settings-save-btn" onclick="runClearShedSeeds(this)" style="margin-top:8px;">Clear un-captured seed entries</button>
             <div id="devMaintResult" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;"></div>
+          </div>
+
+          <!-- Stable-identity cutover tooling (docs/HANDOFF-IDENTITY-CUTOVER-TOOLING.md, GardenSheet.js).
+               Two SAFE, non-destructive prerequisites for the eventual owner-run clean-slate cutover — the
+               Log wipe itself is NOT here (destructive; owner + Claude only, a separate step). -->
+          <div class="dev-section">
+            <h4 class="dev-h">Stable identity cutover</h4>
+            <p class="dev-note">Prep for giving every plant and shed item a permanent id. <strong>Back up Log</strong> duplicates the Log tab to a timestamped copy — run this first, it only reads and copies. <strong>Assign stable IDs</strong> mints an id onto any existing plant/shed row that doesn't have one yet; it never overwrites an id that's already there, so it's safe to tap more than once.</p>
+            <button class="settings-save-btn" onclick="runBackupLogTab(this)">Back up Log</button>
+            <button class="settings-save-btn" onclick="runAssignStableIds(this)" style="margin-top:8px;">Assign stable IDs</button>
+            <div id="devIdentityResult" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;"></div>
           </div>
 
           <!-- Crop Reference book (CropsBook.js): the ONE home for generic species facts, seeded from the
@@ -5077,6 +5088,62 @@ if (typeof module !== 'undefined' && module.exports) {
             if (out) out.textContent = 'Could not run — ' + (e && e.message ? e.message : 'try again.');
           })
           .processClientRequest(JSON.stringify({ action: 'clearShedSeedEntries', token: token, pin: pin }));
+      }
+
+      // Stable-identity cutover tooling (docs/HANDOFF-IDENTITY-CUTOVER-TOOLING.md). Non-destructive: only
+      // duplicates the Log tab to a timestamped backup. Run this before the (separate, owner+Claude-only)
+      // clean-slate wipe so it's reversible in practice.
+      function runBackupLogTab(btn) {
+        const out = document.getElementById('devIdentityResult');
+        const pin = localStorage.getItem('garden_log_pin');
+        const token = localStorage.getItem('garden_log_token');
+        if (!pin && !token) { if (out) out.textContent = 'Enter your PIN in App Settings first.'; return; }
+        if (btn) { btn.disabled = true; btn.textContent = 'Backing up…'; }
+        if (out) out.textContent = 'Working…';
+        const reset = function () { if (btn) { btn.disabled = false; btn.textContent = 'Back up Log'; } };
+        google.script.run
+          .withSuccessHandler(function (resStr) {
+            reset();
+            let res = null; try { res = JSON.parse(resStr); } catch (e) {}
+            if (res && res.status === 'success') {
+              if (out) out.textContent = (res.data && res.data.report) || 'Done.';
+            } else if (out) {
+              out.textContent = (res && res.message) ? res.message : 'Could not run — try again.';
+            }
+          })
+          .withFailureHandler(function (e) {
+            reset();
+            if (out) out.textContent = 'Could not run — ' + (e && e.message ? e.message : 'try again.');
+          })
+          .processClientRequest(JSON.stringify({ action: 'backupLogTab', token: token, pin: pin }));
+      }
+
+      // Stable-identity cutover tooling (docs/HANDOFF-IDENTITY-CUTOVER-TOOLING.md). One-off: mint an id onto
+      // every existing garden plant + shed item that lacks one. Fills blanks only (sticky), never touches
+      // the Log, idempotent — safe to tap more than once (a second run reports 0 assigned).
+      function runAssignStableIds(btn) {
+        const out = document.getElementById('devIdentityResult');
+        const pin = localStorage.getItem('garden_log_pin');
+        const token = localStorage.getItem('garden_log_token');
+        if (!pin && !token) { if (out) out.textContent = 'Enter your PIN in App Settings first.'; return; }
+        if (btn) { btn.disabled = true; btn.textContent = 'Assigning…'; }
+        if (out) out.textContent = 'Working…';
+        const reset = function () { if (btn) { btn.disabled = false; btn.textContent = 'Assign stable IDs'; } };
+        google.script.run
+          .withSuccessHandler(function (resStr) {
+            reset();
+            let res = null; try { res = JSON.parse(resStr); } catch (e) {}
+            if (res && res.status === 'success') {
+              if (out) out.textContent = (res.data && res.data.report) || 'Done.';
+            } else if (out) {
+              out.textContent = (res && res.message) ? res.message : 'Could not run — try again.';
+            }
+          })
+          .withFailureHandler(function (e) {
+            reset();
+            if (out) out.textContent = 'Could not run — ' + (e && e.message ? e.message : 'try again.');
+          })
+          .processClientRequest(JSON.stringify({ action: 'assignStableIds', token: token, pin: pin }));
       }
 
       // Dev-drawer: create (first tap) or ensure the per-instance Crop Reference book, then link it so the
