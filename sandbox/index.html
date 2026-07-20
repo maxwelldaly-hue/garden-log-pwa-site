@@ -1782,7 +1782,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.105</span>
+        <span class="header-version">v7.106</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -1859,8 +1859,13 @@
 
           <img id="photoPreview" class="photo-preview" />
           <!-- Two inputs: 'photoInput' forces the camera (capture); 'photoUploadInput' opens the
-               photo library (no capture) for a shot taken earlier. Both feed the same handler. -->
-          <input type="file" id="photoInput" accept="image/*" capture="environment" style="display: none;">
+               photo library (no capture) for a shot taken earlier. Both feed the same handler.
+               The 'android/allowCamera' MIME token is a known workaround for a Chrome-on-Android
+               14/15 regression where capture="environment" is silently ignored and the picker
+               falls back to the generic file/folder browser with no camera option at all (still
+               requires a device-side tap on "Camera" rather than skipping straight to it, but at
+               least the option is there again). Harmless no-op on unaffected browsers. -->
+          <input type="file" id="photoInput" accept="image/*,android/allowCamera" capture="environment" style="display: none;">
           <input type="file" id="photoUploadInput" accept="image/*" style="display: none;">
 
           <div class="controls-row">
@@ -2083,7 +2088,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.105 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.106 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
