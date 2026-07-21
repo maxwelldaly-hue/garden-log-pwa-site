@@ -1782,7 +1782,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.113</span>
+        <span class="header-version">v7.114</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2088,7 +2088,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.113 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.114 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2146,9 +2146,10 @@
           </div>
 
           <!-- Map binding lint (engineering brief A3): the "House Window rename" trap made visible. The map
-               binds each SVG zone to a bed by verbatim data-bed-id === bed.zone, so a renamed bed silently
+               binds each SVG zone to a bed by data-bed-id === bed.bedId — a STABLE opaque slug (BedId
+               migration), independent of the bed's display name, so renaming a bed in Blueprint no longer
                unbinds its overlay. Lists SVG zones with no matching bed and beds with no matching zone; a
-               near-match (differs only by case/spacing) is flagged as the likely rename culprit. Client-only. -->
+               near-match (differs only by case/spacing) is flagged as the likely stale-SVG-id culprit. Client-only. -->
           <div class="dev-section">
             <h4 class="dev-h">Map binding</h4>
             <p class="dev-note">The map ties each drawn zone to a bed by an exact name match, so renaming a bed can quietly unbind its overlay. This lists any drawn zone with no matching bed (and vice versa). A ⚠ near-match means the names differ only by capitalisation or spacing — almost always a rename that needs reconciling.</p>
@@ -2491,10 +2492,12 @@
                  section 3800 (incl the concrete gap). -->
             <polygon points="40,24 730,24 730,691 40,1026" fill="var(--plot-ground)" stroke="var(--plot-str-s)" stroke-width="2"/>
 
-            <!-- data-bed-id = the EXACT stateModel bed.zone (source of truth: test/real-garden-state.txt,
-                 left of the colon). This is the stable key renderMap() binds live status to; keep it
-                 verbatim. data-name/data-dims are display-only. Zones without a data-bed-id (Hedge, Path,
-                 Brick) are intentionally not in the data model. -->
+            <!-- data-bed-id = the bed's STABLE BedId slug (stateModel bed.bedId, minted once from the
+                 Blueprint Zone name — see canonicalBedId/loadCanonicalZonesFromSheet in GardenSheet.js).
+                 This is the key renderMap() binds live status to; it is deliberately NOT the display name
+                 (bed.zone), so renaming a bed in Blueprint never requires touching this SVG again.
+                 data-name/data-dims are display-only. Zones without a data-bed-id (Hedge, Path, Brick) are
+                 intentionally not in the data model. -->
             <!-- Orchard strip: NO fill — the trees/vines are planted straight in the ground, so it reads as
                  plain ground (owner, 05/07), marked only by the label + the tree rings. -->
             <text x="385" y="15" class="plot-edge">ORCHARD STRIP SIDE</text>
@@ -2591,16 +2594,16 @@
 
             <!-- Trees drawn as circles (owner, 03/07), evenly spaced across the orchard strip — equal gaps
                  between each tree and the street/house sides (r=38, centres 194/385/577 across x40→730). -->
-            <g class="plot-zone" data-bed-id="Orchard Tree Strip" data-name="Plum tree" data-dims="orchard strip">
+            <g class="plot-zone" data-bed-id="orchard-tree-strip" data-name="Plum tree" data-dims="orchard strip">
               <circle cx="194" cy="102" r="38" fill="var(--plot-tree-f)" stroke="var(--plot-tree-s)" stroke-width="2"/>
             </g>
-            <g class="plot-zone" data-bed-id="Orchard Tree Strip" data-name="Eastern Redbud" data-dims="orchard strip">
+            <g class="plot-zone" data-bed-id="orchard-tree-strip" data-name="Eastern Redbud" data-dims="orchard strip">
               <circle cx="385" cy="102" r="38" fill="var(--plot-tree-f)" stroke="var(--plot-tree-s)" stroke-width="2"/>
             </g>
-            <g class="plot-zone" data-bed-id="Orchard Tree Strip" data-name="Peach tree" data-dims="orchard strip">
+            <g class="plot-zone" data-bed-id="orchard-tree-strip" data-name="Peach tree" data-dims="orchard strip">
               <circle cx="577" cy="102" r="38" fill="var(--plot-tree-f)" stroke="var(--plot-tree-s)" stroke-width="2"/>
             </g>
-            <g class="plot-zone" data-bed-id="Orchard Tree Strip" data-name="Blood lily" data-dims="small · between redbud &amp; peach">
+            <g class="plot-zone" data-bed-id="orchard-tree-strip" data-name="Blood lily" data-dims="small · between redbud &amp; peach">
               <circle cx="481" cy="152" r="16" fill="var(--plot-tree-f)" stroke="var(--plot-tree-s)" stroke-width="2"/>
             </g>
             <!-- Two jasmine vines climb the back fence, one in each gap BETWEEN the trees (owner, 05/07; lifted
@@ -2609,16 +2612,16 @@
                  spot at the top of the Redbud–Peach gap. Small rings; they add one slot per vine so a 2nd jasmine
                  no longer doubles up. (They now sit above the tree tops, so the orchard's union bbox extends up
                  to ~y37 — placement of the un-anchored orchard icons rides that box; fine at this scale.) -->
-            <g class="plot-zone" data-bed-id="Orchard Tree Strip" data-name="Jasmine vine" data-dims="climbs the back fence · between Plum &amp; Redbud">
+            <g class="plot-zone" data-bed-id="orchard-tree-strip" data-name="Jasmine vine" data-dims="climbs the back fence · between Plum &amp; Redbud">
               <circle cx="289" cy="50" r="13" fill="var(--plot-tree-f)" stroke="var(--plot-tree-s)" stroke-width="2"/>
             </g>
-            <g class="plot-zone" data-bed-id="Orchard Tree Strip" data-name="Jasmine vine" data-dims="climbs the back fence · between Redbud &amp; Peach">
+            <g class="plot-zone" data-bed-id="orchard-tree-strip" data-name="Jasmine vine" data-dims="climbs the back fence · between Redbud &amp; Peach">
               <circle cx="515" cy="50" r="13" fill="var(--plot-tree-f)" stroke="var(--plot-tree-s)" stroke-width="2"/>
             </g>
 
             <!-- Individual pots drawn to true size (03/07): 2 × Ø370 + 1 trough 470×200. One zone group
                  so applyMapLive's badge/getBBox covers the whole cluster. -->
-            <g class="plot-zone" data-bed-id="Shade Pot Cluster" data-name="Shade Pot Cluster" data-dims="2 × Ø370 pots + 1 trough 470 × 200 mm · above Peach Bed">
+            <g class="plot-zone" data-bed-id="shade-pot-cluster" data-name="Shade Pot Cluster" data-dims="2 × Ø370 pots + 1 trough 470 × 200 mm · above Peach Bed">
               <text x="490" y="214" text-anchor="middle" class="plot-znlabel" style="fill:var(--plot-pot-t)">Shade Pots</text>
               <circle cx="470" cy="245" r="18.5" fill="var(--plot-pot-f)" stroke="var(--plot-pot-s)"/>
               <circle cx="510" cy="245" r="18.5" fill="var(--plot-pot-f)" stroke="var(--plot-pot-s)"/>
@@ -2626,29 +2629,29 @@
             </g>
             <!-- Two hanging pots (same bed id) drawn as two boxes so applyMapLive spreads one crop per pot.
                  450 × 170 each, long axis ALONG the fence (vertical on the map — corrected 03/07). -->
-            <g class="plot-zone" data-bed-id="Hanging Pots" data-name="Hanging pots" data-dims="450 × 170 mm each · hung along the street fence beside Plum Bed">
+            <g class="plot-zone" data-bed-id="hanging-pots" data-name="Hanging pots" data-dims="450 × 170 mm each · hung along the street fence beside Plum Bed">
               <rect x="42" y="204" width="17" height="45" rx="6" fill="var(--plot-pot-f)" stroke="var(--plot-pot-s)"/>
             </g>
-            <g class="plot-zone" data-bed-id="Hanging Pots" data-name="Hanging pots" data-dims="450 × 170 mm each · hung along the street fence beside Plum Bed">
+            <g class="plot-zone" data-bed-id="hanging-pots" data-name="Hanging pots" data-dims="450 × 170 mm each · hung along the street fence beside Plum Bed">
               <rect x="42" y="251" width="17" height="45" rx="6" fill="var(--plot-pot-f)" stroke="var(--plot-pot-s)"/>
             </g>
             <text x="73" y="250" transform="rotate(90 73 250)" text-anchor="middle" class="plot-znlabel" style="fill:var(--plot-pot-t)">Hanging Pots</text>
 
             <!-- The three fruit beds are 800 wide × 1200 deep (corrected 03/07 — portrait, not landscape). -->
-            <g class="plot-zone" data-bed-id="Plum Bed" data-name="Plum Bed" data-dims="800 × 1200 mm · street side">
+            <g class="plot-zone" data-bed-id="plum-bed" data-name="Plum Bed" data-dims="800 × 1200 mm · street side">
               <rect x="120" y="296" width="80" height="120" rx="6" fill="var(--plot-bed-f)" stroke="var(--plot-bed-s)"/><text x="160" y="320" text-anchor="middle" class="plot-znlabel" style="fill:var(--plot-bed-t)">Plum Bed</text>
             </g>
-            <g class="plot-zone" data-bed-id="Redbud Bed" data-name="Redbud Bed" data-dims="800 × 1200 mm · middle, 850 mm from Plum Bed">
+            <g class="plot-zone" data-bed-id="redbud-bed" data-name="Redbud Bed" data-dims="800 × 1200 mm · middle, 850 mm from Plum Bed">
               <rect x="285" y="296" width="80" height="120" rx="6" fill="var(--plot-bed-f)" stroke="var(--plot-bed-s)"/><text x="325" y="320" text-anchor="middle" class="plot-znlabel" style="fill:var(--plot-bed-t)">Redbud Bed</text>
             </g>
-            <g class="plot-zone" data-bed-id="Peach Bed" data-name="Peach Bed" data-dims="800 × 1200 mm · house side, 850 mm from Redbud Bed, 1500 mm from the hedge">
+            <g class="plot-zone" data-bed-id="peach-bed" data-name="Peach Bed" data-dims="800 × 1200 mm · house side, 850 mm from Redbud Bed, 1500 mm from the hedge">
               <rect x="450" y="296" width="80" height="120" rx="6" fill="var(--plot-bed-f)" stroke="var(--plot-bed-s)"/><text x="490" y="320" text-anchor="middle" class="plot-znlabel" style="fill:var(--plot-bed-t)">Peach Bed</text>
             </g>
 
             <!-- Individual pots drawn to true size (03/07): Ø370, square 400×400, trough 470×200,
                  and Ø270/250/230. Loose on the mulch BETWEEN Plum Bed and the Long bed
                  (photo-confirmed 03/07 — NOT on the concrete). One zone group = one badge/getBBox. -->
-            <g class="plot-zone" data-bed-id="Sun Pot Cluster" data-name="Sun Pot Cluster" data-dims="Ø370 + trough 470 × 200 + square 400 × 400 + Ø230/250/270 mm · loose on the mulch between Plum Bed &amp; the long bed">
+            <g class="plot-zone" data-bed-id="sun-pot-cluster" data-name="Sun Pot Cluster" data-dims="Ø370 + trough 470 × 200 + square 400 × 400 + Ø230/250/270 mm · loose on the mulch between Plum Bed &amp; the long bed">
               <circle cx="125" cy="445" r="18.5" fill="var(--plot-pot-f)" stroke="var(--plot-pot-s)"/>
               <rect x="150" y="426" width="40" height="40" rx="4" fill="var(--plot-pot-f)" stroke="var(--plot-pot-s)"/>
               <rect x="105" y="475" width="47" height="20" rx="4" fill="var(--plot-pot-f)" stroke="var(--plot-pot-s)"/>
@@ -2660,7 +2663,7 @@
             <!-- Long bed is COFFIN-shaped (owner, 03/07/2026): both short ends 800, widest point 1500
                  (780 below Redbud Bed); starts 1200 below Plum Bed, 1500 off the street wall; right end
                  2130 from the path entrance → total length ≈3270. Shoulder drawn under Redbud (x≈385). -->
-            <g class="plot-zone" data-bed-id="Long Bed" data-name="Long bed" data-dims="coffin-shaped · ends 800 mm, widest 1500 mm, ≈3270 long · 1500 off the street wall, 1200 below Plum Bed">
+            <g class="plot-zone" data-bed-id="long-bed" data-name="Long bed" data-dims="coffin-shaped · ends 800 mm, widest 1500 mm, ≈3270 long · 1500 off the street wall, 1200 below Plum Bed">
               <polygon points="190,536 325,494 517,529 517,609 325,644 190,616" fill="var(--plot-bed-f)" stroke="var(--plot-bed-s)"/><text x="350" y="520" text-anchor="middle" class="plot-znlabel" style="fill:var(--plot-bed-t)">Long Bed</text>
             </g>
 
@@ -2675,7 +2678,7 @@
             <!-- Herb strip's driveway-facing edge shifted inward (-7,-15) so it sits INSIDE the
                  driveway-edge brick course instead of exactly on the true boundary line, overlapping it
                  (owner-flagged 03/07: "driveway strip should not be on bricks"). Shape/size unchanged. -->
-            <g class="plot-zone" data-bed-id="Driveway Herb Strip" data-name="Driveway herb strip" data-dims="≈700 mm wide · ≈2/3 of the driveway run from the house end (incl a big rosemary ≈1100 × 1700 mm; wine-barrel corner being carved out)">
+            <g class="plot-zone" data-bed-id="driveway-herb-strip" data-name="Driveway herb strip" data-dims="≈700 mm wide · ≈2/3 of the driveway run from the house end (incl a big rosemary ≈1100 × 1700 mm; wine-barrel corner being carved out)">
               <!-- Soft green wash (--plot-bed-f-soft), not bare ground: same green family as the raised beds but
                    a lighter tint, so it reads as in-ground planting rather than a hollow outline (owner 13/07).
                    The fill still makes the whole strip a reliable tap target. -->
@@ -2691,25 +2694,25 @@
                  visual identity (owner, 13/07: "why is the barrel green?"). NO label. A barrel is round from above,
                  so it's a CIRCLE (13/07 — it had drifted to an oval); the line branch of plotBedSlots splits this
                  round companion into 2 side-by-side slots so both lavenders seat inside it, not out on the strip. -->
-            <g class="plot-zone" data-bed-id="Driveway Herb Strip" data-name="Wine barrel" data-dims="Ø≈800 mm corner planter at the driveway end of the herb strip — holds the 2 lavenders; part of the Driveway Herb Strip zone">
+            <g class="plot-zone" data-bed-id="driveway-herb-strip" data-name="Wine barrel" data-dims="Ø≈800 mm corner planter at the driveway end of the herb strip — holds the 2 lavenders; part of the Driveway Herb Strip zone">
               <circle cx="155" cy="902" r="28" fill="var(--plot-pot-f)" stroke="var(--plot-pot-s)" opacity="0.6"/>
             </g>
             <!-- Wine Barrel SUN anchor (owner, 12/07): the barrel's own per-zone sun survey (a Blueprint row the
-                 owner kept) still needs a `data-bed-id="Wine Barrel"` shape for the ☀️ pill to bind. Kept ONLY
+                 owner kept) still needs a `data-bed-id="wine-barrel"` shape for the ☀️ pill to bind. Kept ONLY
                  for that — so it's drawn all but invisible (owner, 13/07: "basically hidden on the map"): a faint
                  ghost ring on the driveway concrete beside the barrel. getBBox + pointer-events still work, so the
                  ☀️ overlay places its reading here and a tap still resolves it; it just doesn't clutter the map. -->
-            <g class="plot-zone" data-bed-id="Wine Barrel" data-name="Wine barrel (sun)" data-dims="tiny sun-survey anchor on the driveway concrete — the barrel's 2 lavenders live in the Driveway Herb Strip zone">
+            <g class="plot-zone" data-bed-id="wine-barrel" data-name="Wine barrel (sun)" data-dims="tiny sun-survey anchor on the driveway concrete — the barrel's 2 lavenders live in the Driveway Herb Strip zone">
               <circle cx="232" cy="905" r="5" fill="none" stroke="var(--plot-str-s)" opacity="0.14"/>
             </g>
 
             <!-- House Window — the INDOOR seed-raising spot (docs/SEED-RAISING-PLAN.md, owner 08/07:
                  "tucked away bottom right"). Deliberately drawn OUTSIDE the garden polygon on the empty
                  driveway-corner canvas with a DASHED outline: it's a window ledge in the house, not a
-                 bed in the ground. data-bed-id matches the Blueprint zone verbatim ('House Window', reconciled
-                 from the old 'Window (House)' 12/07 — run the Dev "Rename" job on existing data) so tap/live-
-                 status bind like any bed; sown trays inside draw the #plot-ic-sprout symbol (plotBedUnits). -->
-            <g class="plot-zone" data-bed-id="House Window" data-name="House Window" data-dims="indoor seed-raising spot — a sunny window ledge in the house">
+                 bed in the ground. data-bed-id carries this bed's stable BedId slug ('house-window') so
+                 tap/live-status bind regardless of whatever Blueprint currently calls this zone; sown
+                 trays inside draw the #plot-ic-sprout symbol (plotBedUnits). -->
+            <g class="plot-zone" data-bed-id="house-window" data-name="House Window" data-dims="indoor seed-raising spot — a sunny window ledge in the house">
               <!-- Moved up & right to hug the HOUSE-SIDE (right) edge (owner, 12/07) — reads as a ledge inside the
                    house, parallel to that edge, clear of the compass below. Border is a GENTLE BLUE (--blue-300,
                    the same soft sky-blue as the Garden-tab window icon's glass) to signal "indoors / different",
@@ -5456,24 +5459,28 @@ if (typeof module !== 'undefined' && module.exports) {
           : '<div class="k">All have bespoke art ✓</div>');
       }
 
-      // Map binding lint (engineering brief A3): the map binds each SVG zone to a bed by VERBATIM
-      // data-bed-id === bed.zone, so renaming a bed silently unbinds its overlay (the "House Window"
-      // trap). PURE core: given the SVG's bed-ids and the model's beds, list ids with no bed and beds
-      // with no id. A near-match (equal once case/space-normalised) is flagged as the likely rename.
+      // Map binding lint (engineering brief A3; BedId migration): the map binds each SVG zone to a bed by
+      // data-bed-id === bed.bedId — a STABLE opaque slug, independent of the bed's display name, so a
+      // Blueprint rename no longer unbinds its overlay (the "House Window" trap this originally caught).
+      // What's LEFT to catch: a genuinely stale/hand-edited SVG id, or a brand-new Blueprint bed that
+      // hasn't had its shape drawn yet. PURE core: given the SVG's bed-ids and the model's beds (each
+      // carrying {zone, bedId}), list ids with no bed and beds with no id. `beds` entries are matched by
+      // bedId; the near-match hint compares against the DISPLAY name too, in case an old SVG id was left
+      // holding a bed's name (pre-migration data) rather than its slug.
       function computeMapBindingLint(bedIds, beds) {
         const norm = function (s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); };
         const idSet = {}, bedSet = {};
         (bedIds || []).forEach(function (id) { if (id) idSet[id] = true; });
-        (beds || []).forEach(function (b) { if (b && b.zone) bedSet[b.zone] = true; });
-        const bedNorms = Object.keys(bedSet).map(norm);
+        (beds || []).forEach(function (b) { if (b && (b.bedId || b.zone)) bedSet[b.bedId || b.zone] = b.zone || b.bedId; });
+        const bedNorms = Object.keys(bedSet).map(norm).concat(Object.keys(bedSet).map(function (k) { return norm(bedSet[k]); }));
         const idNorms = Object.keys(idSet).map(norm);
-        // SVG zones with no exact bed — flag those that DO match once normalised (a rename), else truly orphaned.
+        // SVG zones with no exact bed — flag those that DO match once normalised (a rename/legacy id), else truly orphaned.
         const danglingSvg = Object.keys(idSet).filter(function (id) { return !bedSet[id]; }).map(function (id) {
           return { id: id, nearMatch: bedNorms.indexOf(norm(id)) !== -1 };
         });
-        // Beds with no exact SVG zone — same near-match hint (the bed was renamed, the SVG still holds the old id).
-        const unboundBeds = Object.keys(bedSet).filter(function (z) { return !idSet[z]; }).map(function (z) {
-          return { zone: z, nearMatch: idNorms.indexOf(norm(z)) !== -1 };
+        // Beds with no exact SVG zone — same near-match hint (the SVG still holds a stale id/name for this bed).
+        const unboundBeds = Object.keys(bedSet).filter(function (id) { return !idSet[id]; }).map(function (id) {
+          return { zone: bedSet[id], nearMatch: idNorms.indexOf(norm(bedSet[id])) !== -1 || idNorms.indexOf(norm(id)) !== -1 };
         });
         return { danglingSvg: danglingSvg, unboundBeds: unboundBeds };
       }
@@ -6237,12 +6244,12 @@ if (typeof module !== 'undefined' && module.exports) {
         return null;
       }
 
-      // DISPLAY-ONLY bed label: drops the "Driveway " qualifier so "Driveway Herb Strip" shows as
-      // "Herb Strip" and stops wrapping in the card header. The real zone name (bed.zone) is UNTOUCHED —
-      // it still keys the Sheet, the map binding, and the "Open in Garden" jump; only the visible text
-      // shortens. Keep this cosmetic-only: never feed bedDisplayName back into state or lookups.
+      // Bed label: shows exactly what Blueprint's Zone cell says — no code-side shortening. (Retired the
+      // old "Driveway " strip-prefix hack: Blueprint is the sole point of truth for a bed's name, full
+      // stop; if a shorter card header is wanted, rename the bed in Blueprint directly — see BedId
+      // migration, which is what makes that rename free of side effects everywhere else.)
       function bedDisplayName(bedName) {
-        return String(bedName).replace(/^Driveway\s+/i, '');
+        return String(bedName == null ? '' : bedName);
       }
 
 
@@ -7742,7 +7749,7 @@ if (typeof module !== 'undefined' && module.exports) {
       // original garden (a beta-only warning says so) — no live binding, so nothing reads the sandbox sheet.
       // AGENTS rule 15: overlays are text/getBBox only; zoom is viewBox-based (no transforms).
       let plotWired = false;                     // one-time wiring (taps, toggles, zoom, gestures)
-      let plotModelById = {};                    // bed.zone -> bed, from the last painted model
+      let plotModelById = {};                    // bed.bedId (stable slug) -> bed, from the last painted model
       let plotModel = null;                      // the last painted model (for optimistic arrange repaints)
       let plotBadges = [];                       // count-badge nodes, removed before each repaint
       let plotImageNodes = [];                   // crop-icon nodes (images overlay), removed before repaint
@@ -7773,9 +7780,9 @@ if (typeof module !== 'undefined' && module.exports) {
       }
 
       // ---- ☀️ Sun overlay: clear-sky "hours of direct sun this week per zone" (SunMath.html) -----------
-      // sunModel (shipped on getState, cached) holds per-zone anchors from the Blueprint sun columns; SunMath
-      // interpolates the current week. Zone match is by name (Sun Hours Zone == Blueprint zone == SVG
-      // data-bed-id), normalised case/space-insensitively for safety.
+      // sunModel (shipped on getState, cached) holds per-BED anchors from the Blueprint sun columns; SunMath
+      // interpolates the current week. Match is by BedId (Sun Hours bedId == SVG data-bed-id) — the STABLE
+      // slug, not the display name, so a Blueprint rename can't desync the sun overlay either.
       function sunZoneKey(z) { return String(z == null ? '' : z).trim().toLowerCase(); }
       function sunDoyToday() {
         const p = todayAdelaide().split('-');   // yyyy-MM-dd (Adelaide-local) → day-of-year
@@ -7784,7 +7791,7 @@ if (typeof module !== 'undefined' && module.exports) {
       function plotSunByZone() {
         const out = {};
         const sm = (readCachedGardenState() || {}).sunModel;
-        ((sm && sm.zones) || []).forEach(function (z) { if (z && z.zone) out[sunZoneKey(z.zone)] = z.anchors; });
+        ((sm && sm.zones) || []).forEach(function (z) { if (z && z.bedId) out[sunZoneKey(z.bedId)] = z.anchors; });
         return out;
       }
       function sunHoursThisWeekFor(zone) {
@@ -7917,7 +7924,7 @@ if (typeof module !== 'undefined' && module.exports) {
         if (!svg) return;
         plotModel = model;
         plotModelById = {};
-        if (model && model.beds) model.beds.forEach(function (b) { plotModelById[b.zone] = b; });
+        if (model && model.beds) model.beds.forEach(function (b) { plotModelById[b.bedId || b.zone] = b; });
         plotClearOverlays();
 
         const SVGNS = 'http://www.w3.org/2000/svg';
@@ -8026,11 +8033,14 @@ if (typeof module !== 'undefined' && module.exports) {
       // pitch, so a big bed gets more spots than a small one; a pot CLUSTER or MULTI-BOX bed → per-shape slots
       // via the trough rule (round/square pot or tree = 1, long trough = 2). Add an entry here ONLY to override
       // a zone whose real layout isn't a grid or a per-shape cluster — e.g. herbs in a line, plants in a barrel.
+      // Keyed by BedId (the stable slug), NOT the display name — a Blueprint rename must never require
+      // touching this table (BedId migration). 'driveway-herb-strip' is the bed currently called "Driveway
+      // Herb Strip" in Blueprint; see canonicalBedId/loadCanonicalZonesFromSheet (GardenSheet.js).
       const PLOT_SLOTS = {
         // 4 = the in-ground herbs strung along the strip. The 2 lavenders sit in the WINE BARREL instead — its
-        // circle is folded into this bed as a second shape (data-bed-id="Driveway Herb Strip" in Index.html),
+        // circle is folded into this bed as a second shape (data-bed-id="driveway-herb-strip" in Index.html),
         // and the line branch of plotBedSlots adds that barrel's 2 per-shape slots on top of these 4 (12/07).
-        'Driveway Herb Strip': { layout: 'line', n: 4 }     // 4 herbs along the strip; +2 in the folded-in barrel
+        'driveway-herb-strip': { layout: 'line', n: 4 }     // 4 herbs along the strip; +2 in the folded-in barrel
       };
       // Grid density for SOLID beds: one placement cell per ~250 mm (25 units @ 1 unit = 10 mm), capped so a
       // very large bed stays tappable. A standard 800×1200 bed → 3×5 = 15 cells (unchanged); the coffin Long
