@@ -1782,7 +1782,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.114</span>
+        <span class="header-version">v7.115</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2088,7 +2088,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.114 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.115 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2152,7 +2152,7 @@
                near-match (differs only by case/spacing) is flagged as the likely stale-SVG-id culprit. Client-only. -->
           <div class="dev-section">
             <h4 class="dev-h">Map binding</h4>
-            <p class="dev-note">The map ties each drawn zone to a bed by an exact name match, so renaming a bed can quietly unbind its overlay. This lists any drawn zone with no matching bed (and vice versa). A ⚠ near-match means the names differ only by capitalisation or spacing — almost always a rename that needs reconciling.</p>
+            <p class="dev-note">The map ties each drawn zone to a bed by a stable id, so renaming a bed in Blueprint no longer unbinds its overlay. This lists any drawn zone with no matching bed (and vice versa) — normally empty; a ⚠ near-match flags a genuinely stale or hand-edited id worth reconciling.</p>
             <div id="devMapLint" class="dev-kv">—</div>
           </div>
 
