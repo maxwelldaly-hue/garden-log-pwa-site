@@ -1782,7 +1782,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.106</span>
+        <span class="header-version">v7.107</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2088,7 +2088,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v7.106 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v7.107 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2318,8 +2318,8 @@
             <ul class="dev-rules">
               <li>The activity is written <strong>from your words only</strong> — the AI that records what happened <strong>never looks at the photo</strong>, so it can't invent how a plant looks. If <em>you</em> say "the leaves are yellowing", it keeps that; if you don't, it stays quiet.</li>
               <li>A photo gets its <strong>own separate description</strong> — that's the only part that looks at the picture. It describes what's visible right now (and can use your note for context), but never diagnoses or claims "new growth".</li>
-              <li>That same photo step reads a <strong>printed plant tag / seed packet</strong> if one's in frame — pulling the variety and days-to-maturity onto the plant (reading the label's text, not judging the plant).</li>
-              <li>A photo with <strong>no words</strong> and no readable tag becomes a "to confirm" card for you to identify — the AI won't guess a plant from a picture.</li>
+              <li>That same photo step reads a <strong>printed plant tag / seed packet</strong> if one's in frame, and tells them apart by how they're built: a sealed paper packet is a <strong>seed</strong>; a punched-hole or staked tag is a <strong>plant label</strong>. A seed packet files or restocks in the Shed by quantity. A plant label first checks whether you planted that crop &amp; variety in the last week — if so, it reads onto <em>that</em> plant; if not, it's filed in the Shed as a seedling awaiting planting (no quantity, just the label facts). Say <strong>"established"</strong> alongside the photo to skip that week check and apply it to a plant you've had for longer.</li>
+              <li>A photo with <strong>no words</strong>, no readable tag, or a genuinely unclear packet-vs-label read becomes a "to confirm" card for you to identify — the AI won't guess a plant from a picture.</li>
               <li>It splits one note into separate actions — one per bed <strong>you name</strong>. If you name no bed and the crop is in <em>several</em> beds, it depends on the action: routine <strong>care</strong> (water / feed / mulch / weed) applies to the whole crop, so it fans out to <strong>every</strong> bed that crop is in; but a harvest, removal, a count/date edit, or a stage note (like "sprouted") could corrupt data if mis-filed, so it parks a single <em>To confirm</em> card instead of guessing.</li>
               <li>Feed the <strong>whole garden</strong> ("fed the garden", "seaweed over everything") with no bed named, and it records it <strong>once, scoped to your managed beds &amp; pots</strong> — deliberately not the herb strip or trees (cared for differently), and not fanned into a separate row per bed. Which zones count as "the garden" comes from the Blueprint tab's <em>Care</em> column.</li>
               <li>It <strong>never invents a bed</strong>. No bed said and the crop is in exactly one bed? It reads that bed from your garden.</li>
