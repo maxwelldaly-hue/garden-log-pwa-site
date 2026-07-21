@@ -1782,7 +1782,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.06</span>
+        <span class="header-version">v8.07</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -1853,7 +1853,7 @@
                verify text can't be mis-sent). A confidently-wrong bed is fixed by undo + re-log, a
                Relocation, or a Sheet edit. -->
 
-          <form onsubmit="event.preventDefault(); submitLog('garden');" style="width: 100%; margin: 0; padding: 0;">
+          <form onsubmit="event.preventDefault(); submitLog();" style="width: 100%; margin: 0; padding: 0;">
             <textarea id="logTextarea" placeholder="What did you do? (e.g. 'watered Peach Bed', 'bought snail pellets')" autocomplete="on" autocorrect="on" autocapitalize="sentences" spellcheck="true"></textarea>
           </form>
 
@@ -1889,7 +1889,7 @@
                word "Log" reads as NAVIGATION, not a submit action — the arrow makes it a verb. The chip
                (#logChip) replaces the button after submit: "Logged to Garden/Shed · tap to change". -->
           <div class="log-row">
-            <button id="logEntryBtn" class="save-btn save-log" onclick="submitLog('garden')" disabled>
+            <button id="logEntryBtn" class="save-btn save-log" onclick="submitLog()" disabled>
               <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
               <span>Log entry</span>
             </button>
@@ -2088,7 +2088,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.06 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.07 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2874,8 +2874,8 @@
         </div><!-- /.plot-fs-body -->
       </div>
 
-      <!-- Shed: supplies (tools, fertilisers, treatments). Written by the pipeline via shed routing
-           (fileRoutedSupplies / legacy shedLogAction → persistInventoryOp) and also hand-editable in the Sheet's Shed tab; this in-app TAB is
+      <!-- Shed: supplies (tools, fertilisers, treatments). Written by the one-button router via shed routing
+           (fileRoutedSupplies / fileSupplyFromPhoto → persistInventoryOp) and also hand-editable in the Sheet's Shed tab; this in-app TAB is
            a read-only view (you log changes from the Dashboard, not by editing here). Collapsible category
            cards reuse the Current Layout bed-card pattern; categories sorted by the Order column. -->
       <div id="tab-inventory" class="tab-content">
@@ -4465,7 +4465,9 @@ if (typeof module !== 'undefined' && module.exports) {
       // crop/bed/count guess: the scribe is the only parser and the client must never invent a placement (the
       // To-confirm contract). It reconciles for free — a synced note is deleted from the queue and vanishes
       // here while its real parsed row arrives below via the feed refresh. Derived from the queue, so it also
-      // survives a reload. Shed notes (mode 'shed') don't belong in the Log feed and are excluded.
+      // survives a reload. Every queued item is a garden-domain submit (the one-button router decides Garden
+      // vs Shed server-side, v7.15) — no per-item mode filtering needed since the pre-cutover shed-replay
+      // compat was retired (v8.07, ROADMAP).
       function renderPendingLogs() {
         const box = document.getElementById('pendingLogList');
         if (!box) return;
@@ -4473,7 +4475,6 @@ if (typeof module !== 'undefined' && module.exports) {
           const box2 = document.getElementById('pendingLogList');
           if (!box2) return;
           const pend = (logs || [])
-            .filter(function (l) { return (l.mode || 'garden') === 'garden'; })
             .sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); }); // newest-first, like the feed
           box2.innerHTML = '';
           pend.forEach(function (l) {
@@ -7427,7 +7428,13 @@ if (typeof module !== 'undefined' && module.exports) {
       // a ready-made note WITHOUT touching the user's draft in #logTextarea. When present it is the note verbatim
       // and no photo rides along; when absent this reads the box exactly as before. Everything downstream (queue,
       // chip, optimistic row, sync) is shared — one submit path.
-      function submitLog(dest, explicitText) {
+      //
+      // The one-button cutover (v7.15) made the server (partitionForRouting, GardenDoc.js) the sole decider of
+      // garden vs shed, so there was never a caller-chosen destination after that; a `dest` param survived
+      // purely as legacy shape until the pre-cutover shed-replay compat was retired (v8.07, ROADMAP) — this
+      // function now takes only `explicitText`. Verifying a to-confirm card is NOT done here — that's the
+      // resolve dialog (resolveCard), which never touches this box, so leftover text can never be mis-sent.
+      function submitLog(explicitText) {
         const programmatic = (typeof explicitText === 'string');
         let text = (programmatic ? explicitText : document.getElementById('logTextarea').value).trim();
         const pin = localStorage.getItem('garden_log_pin');
@@ -7436,14 +7443,6 @@ if (typeof module !== 'undefined' && module.exports) {
           showToast("Setup Required", "Enter PIN in App Settings.");
           return;
         }
-
-        // Since the v7.15 one-button cutover every caller passes 'garden' (the server router picks the
-        // domain), so `mode` is always 'garden' for NEW writes; the `dest` param survives only as the
-        // legacy shape. The mode still rides on the queued item because a pre-cutover phone can hold a
-        // mode:'shed' item in its persistent IndexedDB queue — syncQueue's isShed branch replays it to the
-        // right scribe. Verifying a to-confirm card is NOT done here — that's the resolve dialog
-        // (resolveCard), which never touches this box, so leftover text can never be mis-sent.
-        const mode = (dest === 'shed') ? 'shed' : 'garden';
 
         // Unique per-submit id: a UUID, not Date.now(), so two saves in the same millisecond (double-tap,
         // or Enter+button) can't collide on the IndexedDB keyPath. Also the server idempotency key.
@@ -7454,7 +7453,6 @@ if (typeof module !== 'undefined' && module.exports) {
           id: logId,
           rawText: text,
           photoData: programmatic ? null : currentPhotoData,
-          mode: mode, // always 'garden' since v7.15; 'shed' can only arrive from a pre-cutover queued item (selects the Router action in syncQueue)
           timestamp: Date.now()
         };
 
@@ -7535,11 +7533,10 @@ if (typeof module !== 'undefined' && module.exports) {
           isSyncing = true;
           document.getElementById('connectionIndicator').className = 'status-indicator syncing';
           document.getElementById('connectionIndicator').title = 'Syncing…';
-          const isShed = currentLog.mode === 'shed'; // route a shed log to the shed scribe
           const payload = {
             token: token,
             pin: pin,
-            action: isShed ? 'shedLogAction' : 'logAction',
+            action: 'logAction', // the one-button router (partitionForRouting, GardenDoc.js) decides garden vs shed server-side
             logId: currentLog.id, // idempotency key — lets the server reject a re-sent log (see handleLogAction)
             rawText: currentLog.rawText,
             photoData: currentLog.photoData
@@ -7583,7 +7580,7 @@ if (typeof module !== 'undefined' && module.exports) {
                 } else if (res.data.unreadable) {
                   // "Couldn't read that" (ROADMAP §4b): the server read the note but produced nothing to
                   // save (empty parse / Gemini bailed). Tell the user instead of letting it vanish silently.
-                  showToast("Couldn't read that", isShed ? "Nothing saved — try rephrasing the supply." : "Nothing saved — try rephrasing.");
+                  showToast("Couldn't read that", "Nothing saved — try rephrasing.");
                 }
                 // The note text saved, but the attached photo couldn't be archived to Drive (independent of
                 // the above). Surface it — the queued log is about to be cleared, so without this the image
@@ -10636,7 +10633,7 @@ if (typeof module !== 'undefined' && module.exports) {
           text = 'Removed the ' + p.name + from;                              // pulled/failed: Removal → tombstone
         }
         closePassport();
-        if (typeof submitLog === 'function') submitLog('garden', text);
+        if (typeof submitLog === 'function') submitLog(text);
       }
 
       // RIGHT-hand status tile (owner: "the missing visual piece") — reads a plant's stage/place at a glance,
