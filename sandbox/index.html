@@ -1782,7 +1782,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v7.110</span>
+        <span class="header-version">v7.111</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2088,7 +2088,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.110 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v7.111 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2160,10 +2160,11 @@
                retired v6.85 once complete — the shed is on the 4 categories and the bed is renamed.) -->
           <div class="dev-section">
             <h4 class="dev-h">Maintenance</h4>
-            <p class="dev-note">One-tap jobs. <strong>Sync category order</strong> makes sure every category you use has a row on the <em>Shed Categories</em> tab, where you set the display order (edit the Order column — blank sorts last). <strong>Clear un-captured seed entries</strong> removes old description-only seed packets that can't open a passport, so you can re-add them fresh from the packets — it confirms first and never touches a properly-captured seed. <strong>Heal duplicate plants</strong> collapses a plant that got recorded as two rows in the same bed (a card-capture bug) into one, keeping the richer record — a real second planting on a different date is never touched. All safe to tap more than once.</p>
+            <p class="dev-note">One-tap jobs. <strong>Sync category order</strong> makes sure every category you use has a row on the <em>Shed Categories</em> tab, where you set the display order (edit the Order column — blank sorts last). <strong>Clear un-captured seed entries</strong> removes old description-only seed packets that can't open a passport, so you can re-add them fresh from the packets — it confirms first and never touches a properly-captured seed. <strong>Heal duplicate plants</strong> collapses a plant that got recorded as two rows in the same bed (a card-capture bug) into one, keeping the richer record — a real second planting on a different date is never touched. <strong>Backfill missing plantings</strong> re-creates a plant's card when it was logged as planted but never got one (a past bug) — it skips anything ever harvested or removed at that spot, so a real removal is never undone. All safe to tap more than once.</p>
             <button class="settings-save-btn" onclick="runShedCategorySync(this)">Sync category order</button>
             <button class="settings-save-btn" onclick="runClearShedSeeds(this)" style="margin-top:8px;">Clear un-captured seed entries</button>
             <button class="settings-save-btn" onclick="runHealDuplicatePlants(this)" style="margin-top:8px;">Heal duplicate plants</button>
+            <button class="settings-save-btn" onclick="runBackfillMissingPlantings(this)" style="margin-top:8px;">Backfill missing plantings</button>
             <div id="devMaintResult" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;"></div>
           </div>
 
@@ -5148,6 +5149,36 @@ if (typeof module !== 'undefined' && module.exports) {
             if (out) out.textContent = 'Could not run — ' + (e && e.message ? e.message : 'try again.');
           })
           .processClientRequest(JSON.stringify({ action: 'healDuplicatePlants', token: token, pin: pin }));
+      }
+
+      // Dev-drawer maintenance (owner-found 21/07): a logged Planting that never produced a Current State
+      // row (a Peach Bed rosemary planting silently lost this way). Re-runs each missing planting through
+      // the normal state machine; skips anything ever Harvested/Removed at that key. Same shape as the
+      // other Dev-drawer maintenance calls.
+      function runBackfillMissingPlantings(btn) {
+        const out = document.getElementById('devMaintResult');
+        const pin = localStorage.getItem('garden_log_pin');
+        const token = localStorage.getItem('garden_log_token');
+        if (!pin && !token) { if (out) out.textContent = 'Enter your PIN in App Settings first.'; return; }
+        if (btn) { btn.disabled = true; btn.textContent = 'Backfilling…'; }
+        if (out) out.textContent = 'Working…';
+        const reset = function () { if (btn) { btn.disabled = false; btn.textContent = 'Backfill missing plantings'; } };
+        google.script.run
+          .withSuccessHandler(function (resStr) {
+            reset();
+            let res = null; try { res = JSON.parse(resStr); } catch (e) {}
+            if (res && res.status === 'success') {
+              if (out) out.textContent = (res.data && res.data.report) || 'Done.';
+              try { refreshStateView(true); } catch (e) {}   // repaint the Garden tab if a row was created
+            } else if (out) {
+              out.textContent = (res && res.message) ? res.message : 'Could not run — try again.';
+            }
+          })
+          .withFailureHandler(function (e) {
+            reset();
+            if (out) out.textContent = 'Could not run — ' + (e && e.message ? e.message : 'try again.');
+          })
+          .processClientRequest(JSON.stringify({ action: 'backfillMissingPlantings', token: token, pin: pin }));
       }
 
       // Stable-identity cutover tooling (docs/HANDOFF-IDENTITY-CUTOVER-TOOLING.md). Non-destructive: only
