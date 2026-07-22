@@ -1478,10 +1478,18 @@
       <path fill="currentColor" d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/>
     </symbol>
 
-    <!-- ui-pencil — the ONE bare edit/log-capture glyph: header ✎, passport-bar ✎, and the log FAB all
-         `<use>` this so the three copy-pasted raw-path instances (pre-FAB) can't drift apart. -->
-    <symbol id="ui-pencil" viewBox="0 0 24 24">
-      <path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+    <!-- ui-log-entry — the log FAB + passport scoped-log button (owner feedback 22/07: a bare pencil reads
+         as "edit", not "add a new entry" — this button only ever creates, never edits). Google Material
+         Icons "post_add" path verbatim (Apache-2.0, same reuse-a-real-Material-path convention as
+         ui-nutshell/ui-howitworks/etc above): a note with a "+" corner badge — same idea as the polychrome
+         #card-log hero icon (memo + pencil) but correctly recoloured for the mono chrome tier, and reads as
+         "compose", not "edit". Replaces the retired #ui-pencil (no other consumer left once this shipped). -->
+    <symbol id="ui-log-entry" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M17,19.22H5V7h7V5H5C3.9,5,3,5.9,3,7v12c0,1.1,0.9,2,2,2h12c1.1,0,2-0.9,2-2v-7h-2V19.22z"/>
+      <path fill="currentColor" d="M19,2h-2v3h-3c0.01,0.01,0,2,0,2h3v2.99c0.01,0.01,2,0,2,0V7h3V5h-3V2z"/>
+      <rect fill="currentColor" height="2" width="8" x="7" y="9"/>
+      <polygon fill="currentColor" points="7,12 7,14 15,14 15,12 12,12"/>
+      <rect fill="currentColor" height="2" width="8" x="7" y="15"/>
     </symbol>
 
     <!-- ui-howitworks — "How it works" header (replaces 📖): open book. -->
@@ -1819,7 +1827,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.18</span>
+        <span class="header-version">v8.20</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2121,7 +2129,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.18 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.20 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3109,13 +3117,14 @@
     <!-- Log FAB (FAB-LOG-ENTRY brief): the single persistent, from-any-tab entry point into the log
          composer, replacing the retired header ✎ (see comment above in .header-right) as the "open from
          anywhere" trigger. Bottom-LEFT (brief spec) so it never competes with the bottom-right/centred
-         toast stack (.toast-container, Stylesheet.html). Reuses the bare #ui-pencil glyph (UiMarks.html) —
-         NOT the polychrome #card-log hero icon (Dashboard "Log activity" card), which is reserved for hero
-         surfaces and isn't restylable to white (ICON-SYSTEM two-tier rule). Shrinks/fades on scroll-down and
-         restores on scroll-up/idle (handleFabScroll, Js-UI.html) so it stays out of the way while reading a
-         long list (e.g. Garden) without disappearing entirely. -->
+         toast stack (.toast-container, Stylesheet.html). Icon is #ui-log-entry (UiMarks.html) — a mono
+         note+plus, not a pencil (owner feedback 22/07: a bare pencil reads as "edit"; this button only ever
+         creates a new entry). NOT the polychrome #card-log hero icon (Dashboard "Log activity" card), which
+         is reserved for hero surfaces and isn't restylable to white (ICON-SYSTEM two-tier rule). Shrinks/
+         fades on scroll-down and restores on scroll-up/idle (handleFabScroll, Js-UI.html) so it stays out of
+         the way while reading a long list (e.g. Garden) without disappearing entirely. -->
     <button type="button" id="logFab" class="log-fab" onclick="openLogSheet()" aria-label="Log activity" title="Log activity">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#ui-pencil" xlink:href="#ui-pencil"></use></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#ui-log-entry" xlink:href="#ui-log-entry"></use></svg>
     </button>
 
     <!-- Plant passport (docs/SCOPE-PLANT-HISTORY.md): tap a Garden plant row → this full-screen overlay.
@@ -3136,7 +3145,7 @@
            still here," while still opening the SCOPED flow (openPassportLog prefills this plant/packet, a
            better-targeted action than the generic composer). -->
       <button type="button" id="ppLogFab" class="log-fab" onclick="openPassportLog()" aria-label="Log about this plant" title="Log about this plant">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#ui-pencil" xlink:href="#ui-pencil"></use></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#ui-log-entry" xlink:href="#ui-log-entry"></use></svg>
       </button>
     </div>
 
