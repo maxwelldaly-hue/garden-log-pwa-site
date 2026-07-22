@@ -663,12 +663,8 @@
       /* Glanceable plant-row lines (Tier A): muted by default; green reserved for "go". */
       .plant-meta { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
       .pl-line { font-size: var(--fs-sm); color: var(--text-muted); }
-      /* The SECOND ledger line is the current-status headline (origin line stays small/muted context above
-         it) — a size step up gives it the weight the eye should land on first, without adding colour to
-         the estimate-reached case (still deliberately "no green", owner 17/07 — see pl-harvest-check). */
-      .pl-line:not(.pl-planted) { font-size: var(--fs-base); }
       .pl-countdown { color: var(--text-muted); }                    /* growing — muted, never green */
-      .pl-harvest-check { color: var(--text-main); font-weight: 600; } /* estimate reached — a quiet "go look" nudge, muted (no green) but brighter than the origin line */
+      .pl-harvest-check { color: var(--text-muted); font-weight: 600; } /* estimate reached — a quiet "go look" nudge, muted (no green) */
       .pl-ready { color: var(--color-go); font-weight: 600; }         /* "✓ Ready to plant" — the sanctioned green: an actionable GO, not a nudge */
       .pl-cold  { color: var(--blue-400); }                           /* "❄ N° too cold to plant" — same blue+frost language as the dashboard soil panel's cold gap */
       .pl-hot   { color: var(--color-plant); }                        /* "N° too hot to plant" — heat spell ahead cooks a fresh transplant; warm amber, the heat side of the cold gap */
@@ -1876,7 +1872,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.34</span>
+        <span class="header-version">v8.35</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2186,7 +2182,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.34 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.35 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
