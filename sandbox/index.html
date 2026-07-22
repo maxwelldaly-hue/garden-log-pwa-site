@@ -1047,14 +1047,9 @@
         color: var(--text-muted); border-radius: var(--r-xs);
         font-size: var(--fs-md); line-height: 1; padding: 6px 10px; cursor: pointer;
       }
-      /* Bar actions (SCOPE-PASSPORT-ACTIONS.md): the scoped-log ✎ sits LEFT of the ✕. The ✎ is a bare glyph
-         (shares #ui-pencil with .log-fab, the retired .header-log-btn's successor), the ✕ keeps its inset chip. */
+      /* Bar actions: just the ✕ now — the scoped-log control moved out of the bar and is restyled as
+         #ppLogFab (reuses .log-fab verbatim, bottom-left) so it reads as the same persistent button. */
       .pp-bar-actions { display: flex; align-items: center; gap: 8px; }
-      .pp-log {
-        background: none; border: none; color: var(--text-muted); cursor: pointer;
-        padding: 4px; display: inline-flex; align-items: center; justify-content: center;
-      }
-      .pp-log svg { width: 20px; height: 20px; }
       /* Remove control (SCOPE-PASSPORT-ACTIONS.md ask 3): a QUIET foot-of-card button (never a loud CTA — this
          is a user-initiated correction). Tapping it swaps in the harvest/removal choice; both file a log note. */
       .pp-remove { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--surface-inset-03); }
@@ -1806,12 +1801,13 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.11</span>
+        <span class="header-version">v8.13</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
-             this header trigger button is gone. The passport-bar scoped ✎ (.pp-log) is untouched — it prefills
-             plant context first, a different job than the general composer. -->
+             this header trigger button is gone. The passport's scoped log control (#ppLogFab) is now styled
+             identically to #logFab (owner feedback 22/07) — it still prefills plant context first, a
+             different job than the general composer, just presented as "the same button, still here". -->
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -2107,7 +2103,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.11 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.13 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3143,16 +3139,19 @@
       <div class="pp-bar">
         <span id="ppCrumb" class="pp-crumb"></span>
         <div class="pp-bar-actions">
-          <!-- Scoped capture (SCOPE-PASSPORT-ACTIONS.md ask 1): the SAME pencil glyph as the log FAB (#ui-pencil,
-               UiMarks.html), in the top-right spot, so it reads as the identical control. Prefills the capture
-               sheet with this plant/packet then hands off to the normal log flow (openPassportLog). -->
-          <button type="button" class="pp-log" onclick="openPassportLog()" aria-label="Log about this plant" title="Log about this plant">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#ui-pencil" xlink:href="#ui-pencil"></use></svg>
-          </button>
           <button type="button" class="pp-close" onclick="closePassport()" aria-label="Close passport">✕</button>
         </div>
       </div>
       <div id="passportBody" class="pp-body" role="dialog" aria-modal="true"></div>
+      <!-- Scoped capture (SCOPE-PASSPORT-ACTIONS.md ask 1), restyled to LOOK like the real log FAB (owner
+           feedback 22/07: the general FAB disappears behind this full-screen page — same z-index tier as
+           header/resolve — so rather than showing two overlapping "log" controls, this one control reuses
+           .log-fab's exact class, so it sits in the identical bottom-left spot and reads as "the same button,
+           still here," while still opening the SCOPED flow (openPassportLog prefills this plant/packet, a
+           better-targeted action than the generic composer). -->
+      <button type="button" id="ppLogFab" class="log-fab" onclick="openPassportLog()" aria-label="Log about this plant" title="Log about this plant">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#ui-pencil" xlink:href="#ui-pencil"></use></svg>
+      </button>
     </div>
 
     <!-- In-season pane (docs/SCOPE-IN-SEASON.md) — the reconciliation finale. A full-screen PULL surface,
