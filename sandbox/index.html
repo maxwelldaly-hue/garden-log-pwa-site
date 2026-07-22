@@ -43,6 +43,12 @@
         --text-muted: #94a3b8;
         --border-color: #334155;
         --border-input: #3f4d61;   /* a hair lighter than --bg-input so input/neutral-control borders read (STYLE-AUDIT #3); cards keep --border-color for soft edges */
+        --bg-elevated: #475569;    /* one step lighter than --bg-input — same neutral slate family, next
+                                      rung up (STYLE-AUDIT elevation ramp: ground/card/control/elevated).
+                                      Reserved for the log FAB (owner feedback 22/07: wanted more visual
+                                      confidence without a new colour) — the app's one always-on, most-tapped
+                                      control, so it earns its own tier rather than sharing --bg-input. */
+        --border-elevated: #64748b;
 
         /* Inset-pot surfaces — the nested white-alpha tints for a "pot within a pot" (a plant
            row inside a bed card, a stat box inside a panel, a badge on a card). One numbered
@@ -253,18 +259,23 @@
       /* Log FAB (FAB-LOG-ENTRY brief) — persistent bottom-left trigger for openLogSheet(), replacing the
          retired header ✎. Deliberately NEUTRAL slate, not --color-sage (reserved for foliage) or --amber-*
          (reserved for needs-attention states like #tidyBanner) — same "colour stays reserved" rule the
-         one-button Log action already follows (Stylesheet.html save-log block). CONTROL tier, not card tier
-         (owner feedback 22/07): --bg-card/--border-color made it read as just another item in the card stack
-         behind it, since it's the identical surface. --bg-input/--border-input is the one-step-lighter
-         "interactive/raised" tone the app already reserves for buttons/inputs (STYLE-AUDIT elevation ramp
-         L2) — still fully neutral, no new colour, but now visibly separate from the content it floats over.
-         z-index 500 sits above normal scrolling content but below the header/log-sheet/passport/toast tiers
-         (1000/999/1000/2000) so those overlays still visually cover it while open. */
-      .log-fab { position: fixed; left: 16px; bottom: calc(16px + var(--safe-area-inset-bottom)); width: 56px;
-        height: 56px; border-radius: var(--r-pill); background: var(--bg-input); border: 1px solid var(--border-input);
-        box-shadow: var(--shadow-lg); color: var(--text-main); display: flex; align-items: center; justify-content: center;
+         one-button Log action already follows (Stylesheet.html save-log block). z-index 500 sits above
+         normal scrolling content but below the header/log-sheet/passport/toast tiers (1000/999/1000/2000)
+         so those overlays still visually cover it while open.
+         CONFIDENCE PASS (owner feedback 22/07, round 2): "something's off, needs a more defining colour, but
+         the app benefits from being minimalist" — resolved WITHOUT a new hue, on the recommendation that a
+         flat/equal-to-every-other-control look, not the lack of colour, was the actual problem. --bg-elevated/
+         --border-elevated (one step lighter than --bg-input/--border-input, same neutral slate family) reads
+         as its own tier rather than sharing the control tier with ordinary buttons; a deeper bespoke shadow
+         (matching the app's existing "floating overlay" shadow idiom — log-sheet, modal — rather than the
+         flatter --shadow-lg card token) and a 56→60px size bump complete the "this one thing floats highest
+         and is lit brightest" read. If this still doesn't land, the next step (not yet built) is a restrained
+         reserved accent colour (muted teal family), never a bold/saturated one. */
+      .log-fab { position: fixed; left: 16px; bottom: calc(16px + var(--safe-area-inset-bottom)); width: 60px;
+        height: 60px; border-radius: var(--r-pill); background: var(--bg-elevated); border: 1px solid var(--border-elevated);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3); color: var(--text-main); display: flex; align-items: center; justify-content: center;
         cursor: pointer; z-index: 500; transition: opacity 0.25s ease, transform 0.25s ease; }
-      .log-fab svg { width: 24px; height: 24px; }
+      .log-fab svg { width: 26px; height: 26px; }
       /* Scroll-down compacts (shrink + fade) rather than vanishing — stays reachable, just quieter, while
          reading a long list; scroll-up/idle restores it (handleFabScroll, Js-UI.html). */
       .log-fab.fab-compact { opacity: 0.55; transform: scale(0.8); }
@@ -1801,7 +1812,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.13</span>
+        <span class="header-version">v8.15</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2103,7 +2114,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.13 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.15 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
