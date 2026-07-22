@@ -916,6 +916,9 @@
       .dev-h { font-size: var(--fs-sm); font-weight: 700; letter-spacing: var(--ls-tight); text-transform: uppercase; color: var(--text-muted); margin: 0 0 8px; }
       .dev-kv { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: var(--fs-sm); color: var(--text-main); line-height: 1.7; }
       .dev-kv .k { color: var(--text-muted); }
+      /* Retry/rate-limit sub-line under a Log-speed path row (renderLatencyStats) — only rendered when it
+         actually happened, so it reads as a flag, not routine noise. Smaller + more muted than the parent line. */
+      .dev-kv .dev-sub { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.5; margin: 0 0 6px 8px; }
       .dev-links { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
       .dev-links a { color: var(--color-go); font-size: var(--fs-sm); text-decoration: none; }
       .dev-note { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.5; margin: 0 0 10px; }
@@ -1782,7 +1785,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.07</span>
+        <span class="header-version">v8.08</span>
         <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
              "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
              a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
@@ -2088,7 +2091,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.07 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.08 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -5562,9 +5565,25 @@ if (typeof module !== 'undefined' && module.exports) {
             const rows = order.filter(function (p) { return s.paths[p]; }).map(function (p) {
               const d = s.paths[p];
               const share = d.medianTotalMs ? Math.round((d.medianGemMs / d.medianTotalMs) * 100) : 0;
-              return '<div><span class="k">' + (LABELS[p] || p) + ':</span> ' + secs(d.medianTotalMs)
+              let line = '<div><span class="k">' + (LABELS[p] || p) + ':</span> ' + secs(d.medianTotalMs)
                 + ' typical (' + share + '% Gemini) · slowest ' + secs(d.maxTotalMs)
                 + ' · ' + d.n + ' log' + (d.n === 1 ? '' : 's') + '</div>';
+              // Retry/throttling visibility (22/07 fitness review): this data was already computed
+              // server-side (deriveLatencyStats) but never rendered — the one signal that would have shown
+              // WHY a call ran slow (a 429/503 fallback cascade) sat invisible in the same gauge the owner
+              // already reads. Quiet on a clean day (0 retries, 0 rate-limit hits): only shown when it
+              // actually happened, so the common case stays uncluttered.
+              const retried = d.maxGemRetries > 0;
+              const rl = d.rateLimitCounts || {};
+              const has429 = (rl[429] || 0) > 0, has503 = (rl[503] || 0) > 0;
+              if (retried || has429 || has503) {
+                const bits = [];
+                if (retried) bits.push('retries: median ' + d.medianGemRetries + ', worst ' + d.maxGemRetries);
+                if (has429) bits.push((rl[429]) + ' × 429 rate-limited');
+                if (has503) bits.push((rl[503]) + ' × 503 overloaded');
+                line += '<div class="dev-sub">' + bits.join(' · ') + '</div>';
+              }
+              return line;
             });
             box.innerHTML = rows.join('') || 'No logs measured yet.';
           })
