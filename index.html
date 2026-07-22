@@ -284,7 +284,8 @@
       .log-fab { position: fixed; left: 24px; bottom: calc(16px + var(--safe-area-inset-bottom)); width: 60px;
         height: 60px; border-radius: var(--r-pill); background: var(--bg-elevated); border: 1px solid var(--border-elevated);
         box-shadow: 0 14px 36px rgba(0,0,0,0.6), 0 4px 10px rgba(0,0,0,0.45); color: var(--text-main); display: flex; align-items: center; justify-content: center;
-        cursor: pointer; z-index: 500; transition: opacity 0.25s ease, transform 0.25s ease; }
+        cursor: pointer; z-index: 500; transition: opacity 0.25s ease, transform 0.25s ease;
+        -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
       .log-fab svg { width: 26px; height: 26px; }
       /* Scroll-down compacts (shrink + fade) rather than vanishing — stays reachable, just quieter, while
          reading a long list; scroll-up/idle restores it (handleFabScroll, Js-UI.html). */
@@ -1843,7 +1844,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.24</span>
+        <span class="header-version">v8.25</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2145,7 +2146,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.24 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.25 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3138,8 +3139,11 @@
          creates a new entry). NOT the polychrome #card-log hero icon (Dashboard "Log activity" card), which
          is reserved for hero surfaces and isn't restylable to white (ICON-SYSTEM two-tier rule). Shrinks/
          fades on scroll-down and restores on scroll-up/idle (handleFabScroll, Js-UI.html) so it stays out of
-         the way while reading a long list (e.g. Garden) without disappearing entirely. -->
-    <button type="button" id="logFab" class="log-fab" onclick="openLogSheet()" aria-label="Log activity" title="Log activity">
+         the way while reading a long list (e.g. Garden) without disappearing entirely. A held press (owner,
+         22/07: "I usually take a photo first then write something" — long-press matches that actual order)
+         opens the camera directly instead of the sheet; wireFabLongPress (Js-UI.html) owns both the tap AND
+         the long-press, so there's no inline onclick here any more — see that function for why. -->
+    <button type="button" id="logFab" class="log-fab" aria-label="Log activity" title="Log activity">
       <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#ui-log-entry" xlink:href="#ui-log-entry"></use></svg>
     </button>
 
@@ -3200,7 +3204,7 @@
       <video id="cameraVideo" class="camera-video" autoplay playsinline muted></video>
       <canvas id="cameraCanvas" style="display:none;"></canvas>
       <div class="camera-controls">
-        <button type="button" class="camera-cancel" onclick="closeCamera()" aria-label="Cancel">✕</button>
+        <button type="button" class="camera-cancel" onclick="cancelCamera()" aria-label="Cancel">✕</button>
         <button type="button" class="camera-snap" onclick="snapPhoto()" aria-label="Take photo"></button>
         <span class="camera-spacer" aria-hidden="true"></span>
       </div>
@@ -6647,10 +6651,19 @@ if (typeof module !== 'undefined' && module.exports) {
         img.src = dataUrl;
       }
 
+      // Set by the FAB long-press (Js-UI.html, wireFabLongPress) right before it opens the camera —
+      // photo-first flow, so once handlePhotoFile below lands the shot it opens the sheet FOR you rather
+      // than leaving you stranded on the Dashboard with an attached photo and nowhere to type the note.
+      // Consumed (read + cleared) exactly once by handlePhotoFile so it can never leak into a later,
+      // unrelated Upload/paste; cancelCamera() also clears it if the hold is aborted before a photo lands.
+      let _cameraViaFabLongPress = false;
+
       // Photo handling — one pipeline shared by the camera ('photoInput', capture) and the photo
       // library ('photoUploadInput', no capture) so a shot taken earlier can be attached later.
       function handlePhotoFile(file) {
         if (!file) return;
+        const openSheetAfter = _cameraViaFabLongPress;
+        _cameraViaFabLongPress = false;
         const reader = new FileReader();
         reader.onload = function(event) {
           downscaleImage(event.target.result, function(scaled) {
@@ -6659,6 +6672,11 @@ if (typeof module !== 'undefined' && module.exports) {
             preview.src = currentPhotoData;
             preview.style.display = 'block';
             if (typeof syncLogEntryState === 'function') syncLogEntryState(); // enable Log (one-button): a photo counts as content
+            if (openSheetAfter && typeof openLogSheet === 'function') {
+              openLogSheet();
+              const ta = document.getElementById('logTextarea');
+              if (ta) ta.focus();
+            }
           });
         };
         reader.readAsDataURL(file);
@@ -6696,6 +6714,14 @@ if (typeof module !== 'undefined' && module.exports) {
           _cameraStream = null;
         }
         document.getElementById('cameraOverlay').style.display = 'none';
+      }
+      // The ✕ button's handler — NOT snapPhoto's. Cancelling (vs. snapping) means no photo is ever coming,
+      // so the FAB-long-press "open the sheet after" intent has to be dropped here rather than left for
+      // handlePhotoFile to consume (which never runs on a cancel — it would otherwise silently attach to
+      // whatever photo action happens next).
+      function cancelCamera() {
+        _cameraViaFabLongPress = false;
+        closeCamera();
       }
       function snapPhoto() {
         const video = document.getElementById('cameraVideo');
@@ -9143,6 +9169,56 @@ if (typeof module !== 'undefined' && module.exports) {
           if (ov && ov.style.display !== 'none') closeLogSheet();
         }
       });
+
+      // Log FAB: short tap opens the sheet (unchanged); a HELD press opens the camera directly instead
+      // (owner, 22/07 — photo-first is the actual order of use, this matches it). Deliberately owns the
+      // tap too (no inline onclick left on #logFab) so one flag (_fabLongPressed) can gate a single click
+      // handler rather than fighting a separate inline handler over which one "wins" a given press.
+      // openCamera()/cancelCamera() and the "open the sheet after a FAB-triggered capture" flag live in
+      // Js-State.html next to the rest of the photo pipeline.
+      const FAB_LONGPRESS_MS = 450;      // standard hold threshold (matches iOS quick-action feel)
+      const FAB_MOVE_CANCEL_PX = 10;     // a held finger sliding this far reads as a scroll, not a hold
+      let _fabPressTimer = null;
+      let _fabPressStart = null;
+      let _fabLongPressed = false;
+      function fabPressStart(e) {
+        _fabLongPressed = false;
+        const pt = e.touches ? e.touches[0] : e;
+        _fabPressStart = { x: pt.clientX, y: pt.clientY };
+        _fabPressTimer = setTimeout(function() {
+          _fabLongPressed = true;
+          if (navigator.vibrate) navigator.vibrate(15); // quiet haptic confirm — no visible chrome added
+          _cameraViaFabLongPress = true;
+          openCamera();
+        }, FAB_LONGPRESS_MS);
+      }
+      function fabPressMove(e) {
+        if (!_fabPressTimer || !_fabPressStart) return;
+        const pt = e.touches ? e.touches[0] : e;
+        const dx = pt.clientX - _fabPressStart.x, dy = pt.clientY - _fabPressStart.y;
+        if (Math.sqrt(dx * dx + dy * dy) > FAB_MOVE_CANCEL_PX) fabPressCancel();
+      }
+      function fabPressCancel() {
+        if (_fabPressTimer) { clearTimeout(_fabPressTimer); _fabPressTimer = null; }
+      }
+      function fabClick() {
+        fabPressCancel();
+        if (_fabLongPressed) { _fabLongPressed = false; return; } // swallow the click a handled hold leaves behind
+        openLogSheet();
+      }
+      (function wireFabLongPress() {
+        const fab = document.getElementById('logFab');
+        if (!fab) return;
+        fab.addEventListener('touchstart', fabPressStart, { passive: true });
+        fab.addEventListener('touchmove', fabPressMove, { passive: true });
+        fab.addEventListener('touchend', fabPressCancel);
+        fab.addEventListener('touchcancel', fabPressCancel);
+        fab.addEventListener('mousedown', fabPressStart);
+        fab.addEventListener('mousemove', fabPressMove);
+        fab.addEventListener('mouseup', fabPressCancel);
+        fab.addEventListener('mouseleave', fabPressCancel);
+        fab.addEventListener('click', fabClick);
+      })();
 
       // Log FAB scroll behaviour (FAB-LOG-ENTRY brief): compact (shrink+fade) on scroll-down, restore on
       // scroll-up OR once scrolling goes idle for 600ms — so it never fully disappears, just quiets down
