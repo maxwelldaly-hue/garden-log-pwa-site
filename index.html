@@ -43,12 +43,12 @@
         --text-muted: #94a3b8;
         --border-color: #334155;
         --border-input: #3f4d61;   /* a hair lighter than --bg-input so input/neutral-control borders read (STYLE-AUDIT #3); cards keep --border-color for soft edges */
-        --bg-elevated: #475569;    /* one step lighter than --bg-input — same neutral slate family, next
-                                      rung up (STYLE-AUDIT elevation ramp: ground/card/control/elevated).
-                                      Reserved for the log FAB (owner feedback 22/07: wanted more visual
-                                      confidence without a new colour) — the app's one always-on, most-tapped
-                                      control, so it earns its own tier rather than sharing --bg-input. */
-        --border-elevated: #64748b;
+        --bg-elevated: #64748b;    /* round 3 (owner feedback 22/07): #475569 still read too close to some
+                                      card/bed-header tones on-device — bumped a full step further (slate
+                                      family, ground/card/control/elevated ramp) so it's unambiguously lighter
+                                      than ANY surface it floats over, not just the plain card tone. Reserved
+                                      for the log FAB — the app's one always-on, most-tapped control. */
+        --border-elevated: #94a3b8;
 
         /* Inset-pot surfaces — the nested white-alpha tints for a "pot within a pot" (a plant
            row inside a bed card, a stat box inside a panel, a badge on a card). One numbered
@@ -137,7 +137,11 @@
         background-color: var(--bg-primary);
         color: var(--text-main);
         margin: 0;
-        padding: calc(70px + var(--safe-area-inset-top)) 0 calc(20px + var(--safe-area-inset-bottom)) 0;
+        /* Bottom padding cleared to 96px (owner feedback 22/07 round 3): the FAB (60px + 16px offset) was
+           sitting directly on top of the last card in every list with no gap — read as a rendering glitch,
+           not a floating element. 96px = FAB height + its own offset + a clear breathing gap, so nothing in
+           any tab's content can ever land underneath it. */
+        padding: calc(70px + var(--safe-area-inset-top)) 0 calc(96px + var(--safe-area-inset-bottom)) 0;
         min-height: 100vh;
         display: flex;
         flex-direction: column;
@@ -262,18 +266,21 @@
          one-button Log action already follows (Stylesheet.html save-log block). z-index 500 sits above
          normal scrolling content but below the header/log-sheet/passport/toast tiers (1000/999/1000/2000)
          so those overlays still visually cover it while open.
-         CONFIDENCE PASS (owner feedback 22/07, round 2): "something's off, needs a more defining colour, but
-         the app benefits from being minimalist" — resolved WITHOUT a new hue, on the recommendation that a
-         flat/equal-to-every-other-control look, not the lack of colour, was the actual problem. --bg-elevated/
-         --border-elevated (one step lighter than --bg-input/--border-input, same neutral slate family) reads
-         as its own tier rather than sharing the control tier with ordinary buttons; a deeper bespoke shadow
-         (matching the app's existing "floating overlay" shadow idiom — log-sheet, modal — rather than the
-         flatter --shadow-lg card token) and a 56→60px size bump complete the "this one thing floats highest
-         and is lit brightest" read. If this still doesn't land, the next step (not yet built) is a restrained
-         reserved accent colour (muted teal family), never a bold/saturated one. */
+         CONFIDENCE PASS, round 3 (owner feedback 22/07, on-device photos): round 2's --bg-elevated/shadow
+         still read as flush with the content behind it — no visible gap, so it looked like a rendering bug,
+         not a floating element. Two compounding causes: (1) the body's bottom padding didn't clear the FAB's
+         own footprint, so the last card in every list sat directly behind/under it (fixed below, body rule).
+         (2) a BLACK box-shadow has very little visible contrast on this app's near-black --bg-primary ground
+         — the standard shadow-darkens-to-show-elevation trick barely works on a dark theme, which is why a
+         bigger dark shadow alone wasn't enough. Fix leans harder on LUMINANCE instead (this app's own documented
+         rule: dark theme elevation runs "higher = lighter", not "higher = shadowed") — --bg-elevated bumped a
+         full step further so it's unambiguously lighter than any card/bed-header tone it might sit over, plus
+         the shadow bumped again for what contrast it does add at the edges. Still neutral slate, no new hue —
+         if THIS still doesn't land, the next step is a restrained reserved accent colour (muted teal), not a
+         bolder shadow or a third lightness tweak. */
       .log-fab { position: fixed; left: 16px; bottom: calc(16px + var(--safe-area-inset-bottom)); width: 60px;
         height: 60px; border-radius: var(--r-pill); background: var(--bg-elevated); border: 1px solid var(--border-elevated);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3); color: var(--text-main); display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 14px 36px rgba(0,0,0,0.6), 0 4px 10px rgba(0,0,0,0.45); color: var(--text-main); display: flex; align-items: center; justify-content: center;
         cursor: pointer; z-index: 500; transition: opacity 0.25s ease, transform 0.25s ease; }
       .log-fab svg { width: 26px; height: 26px; }
       /* Scroll-down compacts (shrink + fade) rather than vanishing — stays reachable, just quieter, while
@@ -1812,7 +1819,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.16</span>
+        <span class="header-version">v8.18</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2114,7 +2121,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.16 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.18 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
