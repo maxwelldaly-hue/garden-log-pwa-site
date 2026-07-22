@@ -663,8 +663,12 @@
       /* Glanceable plant-row lines (Tier A): muted by default; green reserved for "go". */
       .plant-meta { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
       .pl-line { font-size: var(--fs-sm); color: var(--text-muted); }
+      /* The SECOND ledger line is the current-status headline (origin line stays small/muted context above
+         it) — a size step up gives it the weight the eye should land on first, without adding colour to
+         the estimate-reached case (still deliberately "no green", owner 17/07 — see pl-harvest-check). */
+      .pl-line:not(.pl-planted) { font-size: var(--fs-base); }
       .pl-countdown { color: var(--text-muted); }                    /* growing — muted, never green */
-      .pl-harvest-check { color: var(--text-muted); font-weight: 600; } /* estimate reached — a quiet "go look" nudge, muted (no green) */
+      .pl-harvest-check { color: var(--text-main); font-weight: 600; } /* estimate reached — a quiet "go look" nudge, muted (no green) but brighter than the origin line */
       .pl-ready { color: var(--color-go); font-weight: 600; }         /* "✓ Ready to plant" — the sanctioned green: an actionable GO, not a nudge */
       .pl-cold  { color: var(--blue-400); }                           /* "❄ N° too cold to plant" — same blue+frost language as the dashboard soil panel's cold gap */
       .pl-hot   { color: var(--color-plant); }                        /* "N° too hot to plant" — heat spell ahead cooks a fresh transplant; warm amber, the heat side of the cold gap */
@@ -1095,12 +1099,15 @@
       /* Remove control (SCOPE-PASSPORT-ACTIONS.md ask 3): a QUIET foot-of-card button (never a loud CTA — this
          is a user-initiated correction). Tapping it swaps in the harvest/removal choice; both file a log note. */
       .pp-remove { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--surface-inset-03); }
+      /* A resting-state affordance (design pass, 23/07 — the old border matched the card background so
+         closely it only read as a button on hover). A dim warm-red tint marks it as the one
+         leaving-the-garden control on the card without turning it into a loud delete button. */
       .pp-remove-btn {
-        width: 100%; background: none; border: 1px solid var(--surface-inset-03);
-        color: var(--text-muted); border-radius: var(--r-sm);
-        font-size: var(--fs-sm); padding: 9px 14px; cursor: pointer;
+        width: 100%; background: none; border: 1px solid rgba(239, 68, 68, 0.22);
+        color: var(--red-300); opacity: 0.8; border-radius: var(--r-sm);
+        font-size: var(--fs-sm); font-weight: 600; padding: 9px 14px; cursor: pointer;
       }
-      .pp-remove-btn:hover { border-color: var(--text-muted); }
+      .pp-remove-btn:hover { border-color: rgba(239, 68, 68, 0.45); opacity: 1; }
       .pp-remove-q { font-size: var(--fs-sm); color: var(--text-main); margin-bottom: 10px; }
       .pp-remove-choices { display: flex; flex-direction: column; gap: 8px; }
       .pp-remove-choice {
@@ -1165,6 +1172,9 @@
         font-size: var(--fs-2xs); letter-spacing: var(--ls-wide); text-transform: uppercase;
         color: var(--text-muted); margin-bottom: 8px;
       }
+      /* About: prose, not a fact — a lead sentence that sits above the grid instead of fighting a
+         label/value row for space (design pass, 23/07). */
+      .pp-about { font-size: var(--fs-base); color: var(--text-soft); line-height: 1.5; margin: 0 0 12px; }
       .pp-facts {
         background: var(--surface-inset-02); border: 1px solid var(--surface-inset-03);
         border-radius: var(--r-md); padding: 4px 12px;
@@ -1174,6 +1184,10 @@
         border-top: 1px solid var(--surface-inset-02); font-size: var(--fs-sm);
       }
       .pp-fact:first-child { border-top: 0; }
+      /* Cluster spacing (design pass, 23/07): needs / growth outlook / outcome+placement read as three
+         ideas, not nine equal rows — a touch of extra air before each cluster's first row, nothing else
+         changes (no rule, no label — stays quiet). Never fires on the literal first row. */
+      .pp-fact-group:not(:first-child) { margin-top: 10px; }
       /* One consistent treatment (owner, 17/07): the KEY is the quiet label (muted, slightly dimmed),
          the VALUE reads a touch brighter but is NOT stark white — the old white Sun/Height values popped
          for no reason. Every value the same tone; hierarchy comes from key-vs-value, not from colour. */
@@ -1862,7 +1876,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.33</span>
+        <span class="header-version">v8.34</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2172,7 +2186,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.33 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.34 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11085,7 +11099,8 @@ if (typeof module !== 'undefined' && module.exports) {
         if (remove) body.appendChild(remove);
       }
 
-      // "Remove from garden" → a quiet foot-of-card button that, on tap, swaps in the two-way harvest/removal
+      // "Pull up" (was "Remove from garden", design pass 23/07 — more gardener's-voice) → a quiet foot-of-card
+      // button that, on tap, swaps in the two-way harvest/removal
       // choice. Both file a normal log note through the shared submit path (the scribe tombstones the row and
       // the nightly flush clears it); the choice is only which of the scribe's two categories/sentiments to
       // record — Harvested (positive) vs Removed (bolted/died/cleared). See the confirm copy note in the scope.
@@ -11096,7 +11111,7 @@ if (typeof module !== 'undefined' && module.exports) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'pp-remove-btn';
-        btn.textContent = 'Remove from garden';
+        btn.textContent = 'Pull up';
         btn.onclick = function () { ppRemoveConfirm(wrap, p, bedName); };
         wrap.appendChild(btn);
         return wrap;
@@ -11547,9 +11562,14 @@ if (typeof module !== 'undefined' && module.exports) {
       // is carried by that one typographic tell, nothing louder. `includeReference` is the plant card
       // (species fallback fills the gaps a label left); the shed card passes its own fuller spec and no
       // reference. Renders if EITHER captured or filler rows exist (a label-less plant is reference-only).
-      function ppFactRow(label, value, isRef) {
+      // Group-start keys: the first fact of each of the three clusters a gardener actually parses as one
+      // idea — needs (Sun/Water/Feeder), growth outlook (Maturity/Spacing/Height), outcome+placement
+      // (Harvest/Companion/Avoid/Usage). CSS-only (:not(:first-child)) so it never adds a gap above the
+      // literal first row, whichever tier that row came from.
+      const PP_FACT_GROUP_STARTS = { sun: true, maturity: true, harvest: true };
+      function ppFactRow(label, value, isRef, key) {
         const row = document.createElement('div');
-        row.className = 'pp-fact' + (isRef ? ' pp-fact-ref' : '');
+        row.className = 'pp-fact' + (isRef ? ' pp-fact-ref' : '') + (key && PP_FACT_GROUP_STARTS[key] ? ' pp-fact-group' : '');
         const k = document.createElement('div'); k.className = 'pp-fact-k'; k.textContent = label;
         const val = String(value == null ? '' : value).trim();
         // A live "go" reading (the Sow line's "✓ Ready to sow") earns the one green — same signal as the
@@ -11562,21 +11582,39 @@ if (typeof module !== 'undefined' && module.exports) {
       }
       function ppFactsEl(p, displaySpec, includeReference) {
         const f = p.labelFacts || {};
-        const captured = (displaySpec || PP_FACT_DISPLAY).filter(function (spec) { return String(f[spec[0]] || '').trim(); });
+        const spec = displaySpec || PP_FACT_DISPLAY;
+        // About is prose, not a label/value fact — pulled out of the grid to read as a lead sentence.
+        // Same precedence as every other fact (a real capture beats the species-reference filler).
+        const captured = spec.filter(function (s) { return s[0] !== 'description' && String(f[s[0]] || '').trim(); });
         // Reference filler (plant card only, Filler toggle on): species values for the keys NO label
         // captured — never overrides a real capture; its rows render italic to stay honestly borrowed.
         let refRows = [];
-        if (includeReference && fillerEnabled() && p.reference) {
-          refRows = PP_REF_DISPLAY.filter(function (spec) {
-            return p.reference[spec[0]] && !String(f[spec[0]] || '').trim();
+        const refOn = includeReference && fillerEnabled() && p.reference;
+        if (refOn) {
+          refRows = PP_REF_DISPLAY.filter(function (s) {
+            return s[0] !== 'description' && p.reference[s[0]] && !String(f[s[0]] || '').trim();
           });
         }
-        if (!captured.length && !refRows.length) return null;
+        const aboutText = String(f.description || '').trim() || (refOn && String(p.reference.description || '').trim()) || '';
+        if (!aboutText && !captured.length && !refRows.length) return null;
         const sec = document.createElement('div');
-        const box = document.createElement('div'); box.className = 'pp-facts';
-        captured.forEach(function (spec) { box.appendChild(ppFactRow(spec[1], f[spec[0]], false)); });
-        refRows.forEach(function (spec) { box.appendChild(ppFactRow(spec[1], p.reference[spec[0]], true)); });
-        sec.appendChild(box);
+        if (aboutText) {
+          const about = document.createElement('div');
+          about.className = 'pp-about';
+          about.textContent = aboutText;
+          sec.appendChild(about);
+        }
+        if (captured.length || refRows.length) {
+          const box = document.createElement('div'); box.className = 'pp-facts';
+          captured.forEach(function (s) { box.appendChild(ppFactRow(s[1], f[s[0]], false, s[0])); });
+          refRows.forEach(function (s) {
+            let val = p.reference[s[0]];
+            // FeederClass is a controlled lowercase vocab (heavy/medium/light) — capitalize for display only.
+            if (s[0] === 'feederClass' && val) val = val.charAt(0).toUpperCase() + val.slice(1);
+            box.appendChild(ppFactRow(s[1], val, true, s[0]));
+          });
+          sec.appendChild(box);
+        }
         return sec;
       }
 
@@ -11584,7 +11622,7 @@ if (typeof module !== 'undefined' && module.exports) {
       // so a gifted cutting isn't a bare card. Folded into ppFactsEl above (one shared box), gap-fill only
       // (a captured fact always wins), gated by the Filler toggle, and marked as borrowed by italic value
       // alone (`.pp-fact-ref`) — no separate box, no header (owner, 17/07: "consistency in approach").
-      const PP_REF_DISPLAY = [['sun', 'Sun'], ['water', 'Water'], ['feederClass', 'Feeder'], ['maturity', 'Maturity'], ['spacing', 'Spacing'], ['height', 'Height'], ['harvest', 'Harvest'], ['helps', 'Companion'], ['avoid', 'Avoid']];
+      const PP_REF_DISPLAY = [['description', 'About'], ['sun', 'Sun'], ['water', 'Water'], ['feederClass', 'Feeder'], ['maturity', 'Maturity'], ['spacing', 'Spacing'], ['height', 'Height'], ['harvest', 'Harvest'], ['helps', 'Companion'], ['avoid', 'Avoid'], ['usage', 'Usage']];
 
       // Story — lifecycle turns + harvests only, in the Recent-row register. Marks reuse the feed's
       // two-tier icon grammar (seeds/sprout for plantings, mono #ui-* for the rest).
