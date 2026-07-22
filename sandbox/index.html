@@ -216,25 +216,25 @@
       .login-pin { width: 100%; padding: 13px 14px; border-radius: var(--r-sm); border: 1px solid var(--border-input); background: var(--bg-input); color: var(--text-main); font-size: var(--fs-lg); letter-spacing: 0.3em; text-align: center; box-sizing: border-box; }
       .login-pin:focus { outline: none; border-color: var(--color-sage); }
 
-      /* Summoned capture panel (Slice: log-in-header). A quiet header ✎ trigger + a panel that DROPS DOWN
-         from the top and BORROWS the Dashboard's single #logInputContainer (reparented in/out), so there is
-         no duplicate input and no change to submitLog. Scrim reuses the resolve-overlay idiom.
-         align-items:flex-start + translateY(-100%) makes it slide down from the header (where the pencil is)
-         rather than up from the opposite edge, which read as disconnected (owner, on-phone 17/07). */
-      /* header-log-btn RETIRED (FAB-LOG-ENTRY brief) — superseded by .log-fab below. */
+      /* Summoned capture panel — BORROWS the Dashboard's single #logInputContainer (reparented in/out), so
+         there is no duplicate input and no change to submitLog. Scrim reuses the resolve-overlay idiom.
+         RE-ANCHORED to the BOTTOM (FAB-LOG-ENTRY brief, owner feedback 22/07): originally a top drop-down
+         built for the retired header ✎ trigger, it now rises from the bottom because the FAB it opens FROM
+         lives bottom-left — a sheet that opens from the opposite edge of its own trigger read as spatially
+         disconnected. align-items:flex-end + translateY(100%) slides it up from the bottom edge instead. */
       .log-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex;
-        align-items: flex-start; justify-content: center; z-index: 999; }
-      /* Hangs flush BELOW the header (margin-top = header height) with rounded BOTTOM corners, like a shade
-         pulled down out of the header bar. z-index 999 keeps it UNDER the lit header (z 1000), so the header +
-         its ✎ stay bright above the dim and the panel visibly emerges from behind the pencil; tapping the
-         dimmed area below closes it (owner pref, 17/07). max-height tracks the space below the header and
-         shrinks with the keyboard (interactive-widget=resizes-content), so the rounded bottom stays visible
-         above the keyboard instead of being clipped. */
-      .log-sheet { width: 100%; max-width: 480px; margin-top: calc(70px + var(--safe-area-inset-top));
-        background: var(--bg-card); border: 1px solid var(--border-color); border-top: none;
-        border-radius: 0 0 18px 18px; padding: 14px 16px 16px; box-shadow: 0 14px 40px rgba(0,0,0,0.5);
+        align-items: flex-end; justify-content: center; z-index: 999; }
+      /* Hangs flush off the BOTTOM edge with rounded TOP corners, like a shade pulled UP from where the FAB
+         sits — z-index 999 keeps it under the FAB's own tier isn't relevant any more (FAB is z 500, well
+         under this overlay, so it's simply covered while the sheet is open, same as any modal). max-height
+         still caps it well short of the header so it never reads as full-screen; padding-bottom clears the
+         safe-area inset instead of the old margin-top-from-header offset. */
+      .log-sheet { width: 100%; max-width: 480px;
+        background: var(--bg-card); border: 1px solid var(--border-color); border-bottom: none;
+        border-radius: 18px 18px 0 0; padding: 14px 16px calc(16px + var(--safe-area-inset-bottom));
+        box-shadow: 0 -14px 40px rgba(0,0,0,0.5);
         max-height: calc(100vh - 70px - var(--safe-area-inset-top)); overflow-y: auto;
-        transform: translateY(-100%); transition: transform 0.22s ease; }
+        transform: translateY(100%); transition: transform 0.22s ease; }
       .log-sheet-overlay.open .log-sheet { transform: translateY(0); }
       .log-sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
       .log-sheet-title { font-size: var(--fs-md); font-weight: 700; color: var(--text-main); }
@@ -251,14 +251,17 @@
       .rbtn-full { flex-basis: 100%; }
 
       /* Log FAB (FAB-LOG-ENTRY brief) — persistent bottom-left trigger for openLogSheet(), replacing the
-         retired header ✎. Card-styled on purpose (--bg-card/--border-color/--shadow-lg — no new shadow, no
-         new surface): a circle is the only new shape. Deliberately NEUTRAL slate, not --color-sage (reserved
-         for foliage) or --amber-* (reserved for needs-attention states like #tidyBanner) — same "colour stays
-         reserved" rule the one-button Log action already follows (Stylesheet.html save-log block). z-index
-         500 sits above normal scrolling content but below the header/log-sheet/passport/toast tiers (1000/
-         999/1000/2000) so those overlays still visually cover it while open. */
+         retired header ✎. Deliberately NEUTRAL slate, not --color-sage (reserved for foliage) or --amber-*
+         (reserved for needs-attention states like #tidyBanner) — same "colour stays reserved" rule the
+         one-button Log action already follows (Stylesheet.html save-log block). CONTROL tier, not card tier
+         (owner feedback 22/07): --bg-card/--border-color made it read as just another item in the card stack
+         behind it, since it's the identical surface. --bg-input/--border-input is the one-step-lighter
+         "interactive/raised" tone the app already reserves for buttons/inputs (STYLE-AUDIT elevation ramp
+         L2) — still fully neutral, no new colour, but now visibly separate from the content it floats over.
+         z-index 500 sits above normal scrolling content but below the header/log-sheet/passport/toast tiers
+         (1000/999/1000/2000) so those overlays still visually cover it while open. */
       .log-fab { position: fixed; left: 16px; bottom: calc(16px + var(--safe-area-inset-bottom)); width: 56px;
-        height: 56px; border-radius: var(--r-pill); background: var(--bg-card); border: 1px solid var(--border-color);
+        height: 56px; border-radius: var(--r-pill); background: var(--bg-input); border: 1px solid var(--border-input);
         box-shadow: var(--shadow-lg); color: var(--text-main); display: flex; align-items: center; justify-content: center;
         cursor: pointer; z-index: 500; transition: opacity 0.25s ease, transform 0.25s ease; }
       .log-fab svg { width: 24px; height: 24px; }
@@ -1803,7 +1806,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.09</span>
+        <span class="header-version">v8.11</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2104,7 +2107,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.09 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.11 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3229,12 +3232,14 @@
       </div>
     </div>
 
-    <!-- Summoned capture panel (Slice: log-in-header). The header ✎ REPARENTS the single #logInputContainer
-         into #logSheetSlot on open and returns it to #logPanelBody on close — ONE input instance, so all
-         submitLog / photo / mic / syncLogEntryState wiring stays intact and the Dashboard #logPanel keeps
-         working unchanged when the panel is closed. DROPS DOWN from the top (CSS align-items:flex-start +
-         translateY), so it emerges from the header where the pencil lives — not from the opposite edge (which
-         read as disconnected). Dismiss: ✕ / scrim / Esc. openLogSheet() / closeLogSheet() in Js-UI.html. -->
+    <!-- Summoned capture panel. The log FAB (or the passport-bar scoped ✎) REPARENTS the single
+         #logInputContainer into #logSheetSlot on open and returns it to #logPanelBody on close — ONE input
+         instance, so all submitLog / photo / mic / syncLogEntryState wiring stays intact and the Dashboard
+         #logPanel keeps working unchanged when the panel is closed. RISES UP FROM THE BOTTOM (CSS
+         align-items:flex-end + translateY, Stylesheet.html) so it emerges from where the FAB lives — this
+         used to drop down from the top for the retired header-✎ trigger; re-anchored so the sheet opens from
+         the same edge as its trigger (owner feedback 22/07). Dismiss: ✕ / scrim / Esc. openLogSheet() /
+         closeLogSheet() in Js-UI.html. -->
     <div id="logSheetOverlay" class="log-sheet-overlay" style="display:none;" onclick="if(event.target===this)closeLogSheet()">
       <div class="log-sheet" role="dialog" aria-modal="true" aria-label="Log activity">
         <div class="log-sheet-head">
