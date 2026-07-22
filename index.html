@@ -1851,7 +1851,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.28</span>
+        <span class="header-version">v8.29</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2156,7 +2156,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.28 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.29 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9266,7 +9266,7 @@ if (typeof module !== 'undefined' && module.exports) {
       // handler rather than fighting a separate inline handler over which one "wins" a given press.
       // openCamera()/cancelCamera() and the "open the sheet after a FAB-triggered capture" flag live in
       // Js-State.html next to the rest of the photo pipeline.
-      const FAB_LONGPRESS_MS = 450;      // standard hold threshold (matches iOS quick-action feel)
+      const FAB_LONGPRESS_MS = 320;      // owner (22/07): 450ms felt slow — shortened toward "quick hold" territory
       const FAB_MOVE_CANCEL_PX = 10;     // a held finger sliding this far reads as a scroll, not a hold
       let _fabPressTimer = null;
       let _fabPressStart = null;
@@ -9277,7 +9277,9 @@ if (typeof module !== 'undefined' && module.exports) {
         _fabPressStart = { x: pt.clientX, y: pt.clientY };
         _fabPressTimer = setTimeout(function() {
           _fabLongPressed = true;
-          if (navigator.vibrate) navigator.vibrate(15); // quiet haptic confirm — no visible chrome added
+          // owner (22/07) didn't feel the original 15ms tick — bumped toward the low end of what Android's
+          // vibrator motor can reliably render as a distinct pulse rather than getting lost as a soft thud.
+          if (navigator.vibrate) navigator.vibrate(25);
           _cameraViaFabLongPress = true;
           openCamera();
         }, FAB_LONGPRESS_MS);
