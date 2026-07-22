@@ -1844,7 +1844,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.26</span>
+        <span class="header-version">v8.27</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2146,7 +2146,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.26 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.27 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6702,17 +6702,13 @@ if (typeof module !== 'undefined' && module.exports) {
             video.srcObject = stream;
             document.getElementById('cameraOverlay').style.display = 'flex';
           })
-          .catch(function(err) {
-            // Permission denied / no camera / any other getUserMedia failure — fall back to the file-input
-            // picker rather than stranding the user on a dead Camera button. TEMP (22/07, debugging a
-            // reported regression): surface the actual DOMException name/message via toast, since the
-            // silent catch here was hiding whether this is a permission block, a constraint mismatch, or
-            // something else — there's no remote devtools access to the owner's phone. Remove once the
-            // real cause is confirmed and fixed; this isn't meant to be permanent UX.
-            console.error('[camera] getUserMedia failed:', err && err.name, err && err.message);
-            if (typeof showToast === 'function') {
-              showToast('Camera diagnostic', (err && err.name || 'Unknown') + ': ' + (err && err.message || String(err)));
-            }
+          .catch(function() {
+            // Permission denied / no camera / any other getUserMedia failure — fall back silently to the
+            // file-input picker rather than stranding the user on a dead Camera button. (22/07: a reported
+            // regression here turned out to be Chrome's per-site camera permission stuck on "Block" from
+            // an earlier denied prompt — a device setting, not a code bug — confirmed via a temporary
+            // diagnostic toast, since reverted. NotAllowedError specifically means check chrome://settings
+            // → site permissions → Camera before assuming this code changed.)
             document.getElementById('photoInput').click();
           });
       }
