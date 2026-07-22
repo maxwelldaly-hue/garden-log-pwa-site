@@ -221,11 +221,7 @@
          no duplicate input and no change to submitLog. Scrim reuses the resolve-overlay idiom.
          align-items:flex-start + translateY(-100%) makes it slide down from the header (where the pencil is)
          rather than up from the opposite edge, which read as disconnected (owner, on-phone 17/07). */
-      /* Bare glyph, no button box — reads as part of the header, not a control parked in the corner. */
-      .header-log-btn { flex: none; width: 40px; height: 40px; min-width: 40px; padding: 0; cursor: pointer;
-        display: inline-flex; align-items: center; justify-content: center;
-        background: none; border: none; color: var(--text-main); }
-      .header-log-btn svg { width: 22px; height: 22px; }
+      /* header-log-btn RETIRED (FAB-LOG-ENTRY brief) — superseded by .log-fab below. */
       .log-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex;
         align-items: flex-start; justify-content: center; z-index: 999; }
       /* Hangs flush BELOW the header (margin-top = header height) with rounded BOTTOM corners, like a shade
@@ -253,6 +249,22 @@
       .log-sheet-slot textarea { min-height: 96px; }
       .login-error { margin-top: 10px; font-size: var(--fs-sm); color: var(--red-500); }
       .rbtn-full { flex-basis: 100%; }
+
+      /* Log FAB (FAB-LOG-ENTRY brief) — persistent bottom-left trigger for openLogSheet(), replacing the
+         retired header ✎. Card-styled on purpose (--bg-card/--border-color/--shadow-lg — no new shadow, no
+         new surface): a circle is the only new shape. Deliberately NEUTRAL slate, not --color-sage (reserved
+         for foliage) or --amber-* (reserved for needs-attention states like #tidyBanner) — same "colour stays
+         reserved" rule the one-button Log action already follows (Stylesheet.html save-log block). z-index
+         500 sits above normal scrolling content but below the header/log-sheet/passport/toast tiers (1000/
+         999/1000/2000) so those overlays still visually cover it while open. */
+      .log-fab { position: fixed; left: 16px; bottom: calc(16px + var(--safe-area-inset-bottom)); width: 56px;
+        height: 56px; border-radius: var(--r-pill); background: var(--bg-card); border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-lg); color: var(--text-main); display: flex; align-items: center; justify-content: center;
+        cursor: pointer; z-index: 500; transition: opacity 0.25s ease, transform 0.25s ease; }
+      .log-fab svg { width: 24px; height: 24px; }
+      /* Scroll-down compacts (shrink + fade) rather than vanishing — stays reachable, just quieter, while
+         reading a long list; scroll-up/idle restores it (handleFabScroll, Js-UI.html). */
+      .log-fab.fab-compact { opacity: 0.55; transform: scale(0.8); }
 
       /* First-run Playground welcome — reuses the resolve modal frame, with an amber 🚧 accent edge. */
       .pw-card { border-left: 3px solid var(--amber-500); }
@@ -1032,8 +1044,8 @@
         color: var(--text-muted); border-radius: var(--r-xs);
         font-size: var(--fs-md); line-height: 1; padding: 6px 10px; cursor: pointer;
       }
-      /* Bar actions (SCOPE-PASSPORT-ACTIONS.md): the scoped-log ✎ sits LEFT of the ✕, mirroring the header's
-         pencil-then-status-dot order. The ✎ is a bare glyph (like .header-log-btn), the ✕ keeps its inset chip. */
+      /* Bar actions (SCOPE-PASSPORT-ACTIONS.md): the scoped-log ✎ sits LEFT of the ✕. The ✎ is a bare glyph
+         (shares #ui-pencil with .log-fab, the retired .header-log-btn's successor), the ✕ keeps its inset chip. */
       .pp-bar-actions { display: flex; align-items: center; gap: 8px; }
       .pp-log {
         background: none; border: none; color: var(--text-muted); cursor: pointer;
@@ -1450,6 +1462,12 @@
       <path fill="currentColor" d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/>
     </symbol>
 
+    <!-- ui-pencil — the ONE bare edit/log-capture glyph: header ✎, passport-bar ✎, and the log FAB all
+         `<use>` this so the three copy-pasted raw-path instances (pre-FAB) can't drift apart. -->
+    <symbol id="ui-pencil" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+    </symbol>
+
     <!-- ui-howitworks — "How it works" header (replaces 📖): open book. -->
     <symbol id="ui-howitworks" viewBox="0 0 24 24">
       <path fill="currentColor" d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"/>
@@ -1785,17 +1803,12 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.08</span>
-        <!-- Persistent capture trigger (Slice: log-in-header). Quiet ✎ (not a "+" — that reads as generic
-             "create record"); opens the log panel from ANY tab. Sits LEFT of the status dot and is styled as
-             a BARE glyph (no button box) so it reads as part of the header, not a control parked in the
-             corner. The panel DROPS DOWN from the top (CSS), so it emerges from up here where the pencil is —
-             not from the opposite edge. Opens only; dismiss via ✕ / scrim / Esc (openLogSheet in Js-UI.html).
-             ADDITIVE — it BORROWS the one #logInputContainer, so the Dashboard #logPanel path still works
-             unchanged. Removing the Dashboard panel is a later "replace" slice, not this one. -->
-        <button type="button" class="header-log-btn" onclick="openLogSheet()" aria-label="Log activity" title="Log activity">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-        </button>
+        <span class="header-version">v8.09</span>
+        <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
+             is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
+             slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
+             this header trigger button is gone. The passport-bar scoped ✎ (.pp-log) is untouched — it prefills
+             plant context first, a different job than the general composer. -->
         <div class="status-container">
           <div id="connectionIndicator" class="status-indicator" title="Online"></div>
         </div>
@@ -2091,7 +2104,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.08 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.09 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3108,6 +3121,18 @@
 
     </main>
 
+    <!-- Log FAB (FAB-LOG-ENTRY brief): the single persistent, from-any-tab entry point into the log
+         composer, replacing the retired header ✎ (see comment above in .header-right) as the "open from
+         anywhere" trigger. Bottom-LEFT (brief spec) so it never competes with the bottom-right/centred
+         toast stack (.toast-container, Stylesheet.html). Reuses the bare #ui-pencil glyph (UiMarks.html) —
+         NOT the polychrome #card-log hero icon (Dashboard "Log activity" card), which is reserved for hero
+         surfaces and isn't restylable to white (ICON-SYSTEM two-tier rule). Shrinks/fades on scroll-down and
+         restores on scroll-up/idle (handleFabScroll, Js-UI.html) so it stays out of the way while reading a
+         long list (e.g. Garden) without disappearing entirely. -->
+    <button type="button" id="logFab" class="log-fab" onclick="openLogSheet()" aria-label="Log activity" title="Log activity">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#ui-pencil" xlink:href="#ui-pencil"></use></svg>
+    </button>
+
     <!-- Plant passport (docs/SCOPE-PLANT-HISTORY.md): tap a Garden plant row → this full-screen overlay.
          Same open/close mechanics as #plotFullscreen (fixed inset:0, scroll lock, Esc/✕). The body is
          built per plant in Js-Passport.html (openPassport); top half from the cached model, story async. -->
@@ -3115,11 +3140,11 @@
       <div class="pp-bar">
         <span id="ppCrumb" class="pp-crumb"></span>
         <div class="pp-bar-actions">
-          <!-- Scoped capture (SCOPE-PASSPORT-ACTIONS.md ask 1): the SAME pencil glyph as the header ✎, in the
-               same top-right spot, so it reads as the identical control. Prefills the capture sheet with this
-               plant/packet then hands off to the normal log flow (openPassportLog). -->
+          <!-- Scoped capture (SCOPE-PASSPORT-ACTIONS.md ask 1): the SAME pencil glyph as the log FAB (#ui-pencil,
+               UiMarks.html), in the top-right spot, so it reads as the identical control. Prefills the capture
+               sheet with this plant/packet then hands off to the normal log flow (openPassportLog). -->
           <button type="button" class="pp-log" onclick="openPassportLog()" aria-label="Log about this plant" title="Log about this plant">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#ui-pencil" xlink:href="#ui-pencil"></use></svg>
           </button>
           <button type="button" class="pp-close" onclick="closePassport()" aria-label="Close passport">✕</button>
         </div>
@@ -9055,6 +9080,27 @@ if (typeof module !== 'undefined' && module.exports) {
           if (ov && ov.style.display !== 'none') closeLogSheet();
         }
       });
+
+      // Log FAB scroll behaviour (FAB-LOG-ENTRY brief): compact (shrink+fade) on scroll-down, restore on
+      // scroll-up OR once scrolling goes idle for 600ms — so it never fully disappears, just quiets down
+      // while reading a long list. No prior show/hide-on-scroll pattern existed to mirror; this is new.
+      let fabLastY = window.scrollY;
+      let fabIdleTimer = null;
+      function handleFabScroll() {
+        const fab = document.getElementById('logFab');
+        if (!fab) return;
+        const y = window.scrollY;
+        const delta = y - fabLastY;
+        if (delta > 4 && y > 0) {
+          fab.classList.add('fab-compact');
+        } else if (delta < -4 || y <= 0) {
+          fab.classList.remove('fab-compact');
+        }
+        fabLastY = y;
+        if (fabIdleTimer) clearTimeout(fabIdleTimer);
+        fabIdleTimer = setTimeout(() => fab.classList.remove('fab-compact'), 600);
+      }
+      window.addEventListener('scroll', handleFabScroll, { passive: true });
 
       // Restore a card's collapse state on load (defaultCollapsed used when nothing stored yet).
       function restorePanel(panelId, storageKey, defaultCollapsed) {
