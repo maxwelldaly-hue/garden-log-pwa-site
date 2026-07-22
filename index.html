@@ -290,6 +290,19 @@
          reading a long list; scroll-up/idle restores it (handleFabScroll, Js-UI.html). */
       .log-fab.fab-compact { opacity: 0.55; transform: scale(0.8); }
 
+      /* Live camera viewfinder (C2 Phase 5, 22/07) — full-bleed, above everything else (z-index above the
+         resolve modal's 1000; only one overlay is ever open at a time so no real stacking conflict). */
+      .camera-overlay { position: fixed; inset: 0; background: var(--bg-primary); z-index: 1001;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; }
+      .camera-video { width: 100%; height: 100%; object-fit: cover; }
+      .camera-controls { position: absolute; left: 0; right: 0; bottom: calc(28px + var(--safe-area-inset-bottom));
+        display: flex; align-items: center; justify-content: space-between; padding: 0 32px; }
+      .camera-snap { width: 70px; height: 70px; border-radius: var(--r-pill); background: #fff;
+        border: 4px solid var(--border-elevated); cursor: pointer; padding: 0; }
+      .camera-cancel { width: 44px; height: 44px; border-radius: var(--r-pill); background: rgba(0,0,0,0.45);
+        border: none; color: #fff; font-size: var(--fs-lg); line-height: 1; cursor: pointer; }
+      .camera-spacer { width: 44px; }
+
       /* First-run Playground welcome — reuses the resolve modal frame, with an amber 🚧 accent edge. */
       .pw-card { border-left: 3px solid var(--amber-500); }
       .pw-body { margin: 8px 0 0; display: flex; flex-direction: column; gap: 10px; }
@@ -1830,7 +1843,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.22</span>
+        <span class="header-version">v8.23</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -1912,12 +1925,29 @@
           <input type="file" id="photoInput" accept="image/*,android/allowCamera" capture="environment" style="display: none;">
           <input type="file" id="photoUploadInput" accept="image/*" style="display: none;">
 
+          <!-- C2 Phase 5 (22/07): the static client runs on a real top-level HTTPS origin (GitHub Pages), not
+               the Apps Script iframe that killed the v2.99 getUserMedia attempt (DEBUGGING.md §3.8 — that
+               reasoning is iframe-specific and no longer applies here). openCamera() (Js-State.html) tries a
+               live rear-camera viewfinder first — single tap, no OS chooser — and falls back to the
+               #photoInput file input (still capture="environment" + the Android 14/15 accept hack) if
+               getUserMedia is unavailable, denied, or errors. Upload is untouched: a capture-less file input
+               is already the spec-correct "gallery only" config. -->
+          <div id="cameraOverlay" class="camera-overlay" style="display:none;">
+            <video id="cameraVideo" class="camera-video" autoplay playsinline muted></video>
+            <canvas id="cameraCanvas" style="display:none;"></canvas>
+            <div class="camera-controls">
+              <button type="button" class="camera-cancel" onclick="closeCamera()" aria-label="Cancel">✕</button>
+              <button type="button" class="camera-snap" onclick="snapPhoto()" aria-label="Take photo"></button>
+              <span class="camera-spacer" aria-hidden="true"></span>
+            </div>
+          </div>
+
           <div class="controls-row">
             <button id="micBtn" class="mic-btn">
               <svg class="icon icon-sm" viewBox="0 0 24 24"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
               Dictate
             </button>
-            <button id="addPhotoBtn" class="photo-btn" onclick="document.getElementById('photoInput').click()">
+            <button id="addPhotoBtn" class="photo-btn" onclick="openCamera()">
               <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M4 4h3l2-2h6l2 2h3c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zm8 3c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3z"/></svg>
               Camera
             </button>
@@ -2132,7 +2162,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.22 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.23 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6630,6 +6660,49 @@ if (typeof module !== 'undefined' && module.exports) {
       }
       document.getElementById('photoInput').addEventListener('change', function(e) { handlePhotoFile(e.target.files[0]); });
       document.getElementById('photoUploadInput').addEventListener('change', function(e) { handlePhotoFile(e.target.files[0]); });
+
+      // Live camera (C2 Phase 5, 22/07) — single-tap rear-camera viewfinder on the static origin, replacing
+      // the Android 14/15 "Camera" button that fell through to Chrome's generic 3-tile chooser
+      // (docs/SCOPE-CAMERA-PICKER.md). Falls back to the #photoInput file input (still wired, still capture=
+      // "environment") for any browser/origin where getUserMedia is missing, denied, or errors — so this can
+      // never leave the Camera button dead.
+      let _cameraStream = null;
+      function openCamera() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          document.getElementById('photoInput').click();
+          return;
+        }
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+          .then(function(stream) {
+            _cameraStream = stream;
+            const video = document.getElementById('cameraVideo');
+            video.srcObject = stream;
+            document.getElementById('cameraOverlay').style.display = 'flex';
+          })
+          .catch(function() {
+            // Permission denied / no camera / any other getUserMedia failure — fall back silently to the
+            // file-input picker rather than stranding the user on a dead Camera button.
+            document.getElementById('photoInput').click();
+          });
+      }
+      function closeCamera() {
+        if (_cameraStream) {
+          _cameraStream.getTracks().forEach(function(t) { t.stop(); });
+          _cameraStream = null;
+        }
+        document.getElementById('cameraOverlay').style.display = 'none';
+      }
+      function snapPhoto() {
+        const video = document.getElementById('cameraVideo');
+        const canvas = document.getElementById('cameraCanvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(function(blob) {
+          closeCamera();
+          if (blob) handlePhotoFile(blob);
+        }, 'image/jpeg', 0.92);
+      }
 
       // Desktop paste: a copied image (Google Photos "Copy image", or a screenshot) pasted into the
       // note box rides the very same funnel as the Photo / Upload buttons — handlePhotoFile is
