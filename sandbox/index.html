@@ -1862,7 +1862,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.31</span>
+        <span class="header-version">v8.32</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2172,7 +2172,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.31 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.32 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2436,7 +2436,7 @@
               <li>The word <strong>"seeds"</strong> makes it a sow: "planted tomato <em>seeds</em>" (or "sowed …") starts the plant at Germination with a <strong>sprout-by date</strong> — read off the matching seed packet in your Shed when there's exactly one (two varieties → it asks which), else a built-in table. A sow never ticks a seed packet down. "The window" / "inside" means the indoor seed-raising spot.</li>
               <li>Say they're <strong>up</strong> ("the tomato seeds sprouted") and it marks them Seedling and records the emergence date.</li>
               <li>Plant out only <strong>some</strong> ("moved 3 of the tomatoes to the Long Bed") and it splits the batch — 3 land in the bed stamped with their plant-out date, the rest stay put. The ↩ on that move puts them back. No number said = the whole lot moves.</li>
-              <li>It <strong>prefers the plant you already have</strong>: a photo or note with no planting verb is treated as your existing plant, not a brand-new one, so it won't quietly add a duplicate. Say "new" or "existing" and it takes you at your word; if it truly can't tell, it asks.</li>
+              <li>It <strong>prefers the plant you already have</strong>: a photo or note with no planting verb is treated as your existing plant, not a brand-new one, so it won't quietly add a duplicate. Say "new" or "existing" and it takes you at your word; if it truly can't tell, it asks. This only decides whether to reuse a row or start a new one — it <strong>never overrides which crop you named</strong>, even if a different crop already occupies that bed.</li>
               <li>It resolves "last Monday" and similar to real dates; no date given → today.</li>
               <li>The <strong>Shed</strong> save button uses a separate reader for supplies: it files a purchase into the shed, restocks a match, tracks when you <strong>use one up</strong> ("used the last seaweed tonic", "used 2 stakes" → counts down, "the last" → empties it), routes seeds/seedlings to "Seeds &amp; Seedlings", and parks anything it's unsure about as a "⚠ To confirm" draft. If you save a garden <em>activity</em> here by mistake ("planted the lettuce"), it flags it to move back to the Garden instead of filing a phantom supply. Its <strong>categories are a closed list</strong> drawn from your Shed tab (like beds come from the Blueprint) — it picks one or abstains, never invents one; add a new category by typing it when you confirm a draft. Photograph a <strong>fertiliser label</strong> and it also reads the <strong>N-P-K, dilution rate, and feeding frequency</strong> into the Shed — marking any it's unsure of (a fine-print dosing table) with a ⚠ rather than trusting it.</li>
             </ul>
@@ -3524,10 +3524,33 @@ const CROP_ICON_SYNONYMS = [
   [/geranium/, 'generic-flower'],
   [/catmint/, 'mint'],                         // same family look as the baked mint icon
   [/lemon ?balm/, 'generic-plant'],            // 'lemon-balm' manifest id exists but has no baked art
-  [/\bclover\b/, 'generic-plant']              // cover crop, no dedicated art
+  [/\bclover\b/, 'generic-plant'],             // cover crop, no dedicated art
+  // Fruit gap batch (22/07, owner-confirmed) — Open Crop Icons genuinely has none of these (verbatim
+  // upstream copy; PROVENANCE.md notes "no citrus, grape, banana, or fig"). Hand-drawn in CropIconArt.html,
+  // same convention as the other customs above. Anchored to the BARE crop name (^...$) so these never
+  // shadow a multi-word crop that happens to contain the same word (e.g. "Lemon Thyme", "Lemon balm").
+  // ci-grape is promoted from the legacy #plot-ic-grape symbol (real art, was just never wired here).
+  [/^fig$/, 'fig'],
+  [/^quince$/, 'quince'],
+  [/^persimmon$/, 'persimmon'],
+  [/^pomegranate$/, 'pomegranate'],
+  [/^mulberry$/, 'mulberry'],
+  [/^walnut$/, 'walnut'],
+  [/^chestnut$/, 'chestnut'],
+  [/^pecan$/, 'pecan'],
+  [/^hazelnut$/, 'hazelnut'],
+  [/^grape$/, 'grape'],
+  [/^kiwifruit$/, 'kiwifruit'],
+  [/^lemon$/, 'lemon'],
+  [/^orange$/, 'orange'],
+  [/^olive$/, 'olive'],
+  [/^currant$/, 'currant'],
+  [/^gooseberry$/, 'gooseberry']
 ];
 // Custom (non-Open-Crop) icon ids that resolveCropIcon can return — drawn/ported in CropIconArt.html.
-const CROP_ICON_CUSTOM = ['blood-lily', 'salvia', 'jasmine', 'redbud', 'succulent', 'tree', 'lebanese-cucumber', 'oregano-sprig'];
+const CROP_ICON_CUSTOM = ['blood-lily', 'salvia', 'jasmine', 'redbud', 'succulent', 'tree', 'lebanese-cucumber', 'oregano-sprig',
+  'fig', 'quince', 'persimmon', 'pomegranate', 'mulberry', 'walnut', 'chestnut', 'pecan', 'hazelnut', 'grape', 'kiwifruit',
+  'lemon', 'orange', 'olive', 'currant', 'gooseberry'];
 
 // --- DEFAULTS: bare-word fallbacks, tried ONLY AFTER the manifest match (matched LAST). ------
 // A bare crop word with no cultivar picks a representative icon; but "sweet potato",
@@ -3541,7 +3564,10 @@ const CROP_ICON_DEFAULTS = [
   [/\bpepper\b/, 'green-bell-pepper'],
   [/\bsquash\b/, 'butternut-squash'],       // bare "Hard Squash" -> representative winter squash (owner pick 18/07)
   [/\bmelons?\b/, 'cantaloupe'],            // bare "Melons" -> representative melon (specific melons win via manifest first)
-  [/\bradish\b/, 'cherry-bell-radish']     // bare "Radish" -> classic round red radish
+  [/\bradish\b/, 'cherry-bell-radish'],    // bare "Radish" -> classic round red radish
+  [/\bapples?\b/, 'generic-apple'],        // bare "Apple" -> baked generic-apple art (real icon, not the generic-plant placeholder)
+  [/\bcherr(y|ies)\b/, 'bing-cherry'],     // bare "Cherry" -> representative cherry (specific cultivars win via manifest first)
+  [/\bpears?\b/, 'green-bartlett-pear']    // bare "Pear" -> representative pear (specific cultivars win via manifest first)
 ];
 
 // Resolve a plant name to an available icon id. Returns {id, matched, via}:
