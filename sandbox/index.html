@@ -1862,7 +1862,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.32</span>
+        <span class="header-version">v8.33</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2172,7 +2172,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.32 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.33 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2428,7 +2428,7 @@
               <li>Plants <strong>lost to pests, weather, or disease</strong> ("snails got 3 seedlings", "frost hit the tomatoes") are recorded as an <strong>observation</strong> of the damage — it never wipes the plant from your garden. Deliberately pulling a plant <em>out</em> is a Removal; losing some to snails is not.</li>
               <li>Snap a seed tag or label and it reads the <strong>variety</strong> plus facts (spacing, maturity) onto the plant.</li>
               <li>Successions: the same crop in the same bed on different dates are separate plantings; it only picks one when you say which ("the oldest").</li>
-              <li>Unsure about the crop, category, or date — or the "crop" isn't plausibly a real plant ("planted the candle")? It <strong>abstains</strong> and parks a To-confirm card rather than add a bogus plant.</li>
+              <li>Unsure about the crop, category, or date — or the "crop" isn't plausibly a real plant ("planted the candle", or an arithmetic/formula-looking scrap like "=2+2")? It <strong>abstains</strong> and parks a To-confirm card rather than add a bogus plant or evaluate the sum.</li>
               <li>Mention <strong>buying</strong> a supply ("bought snail pellets", "got compost") and it flags it as <em>"looks like a supply — move it to the Shed?"</em> instead of filing it as a planting. (Using a supply — "planted the seeds", "fed the tomatoes" — is still a normal garden action.) "<strong>Picked</strong>" and "picked up" count as <em>harvesting</em>, not buying ("picked up the tomatoes" = a harvest). If you both buy <em>and</em> plant in one note ("bought seedlings and planted them"), it splits them — the purchase is flagged for the Shed, the planting stays a normal garden action.</li>
               <li>Tell it a ready date ("tomatoes ready in March") and it sets the harvest estimate — not a new planting.</li>
               <li>State a standing total ("there are 4 garlic") and it corrects the stored count.</li>
