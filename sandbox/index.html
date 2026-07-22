@@ -278,7 +278,10 @@
          the shadow bumped again for what contrast it does add at the edges. Still neutral slate, no new hue —
          if THIS still doesn't land, the next step is a restrained reserved accent colour (muted teal), not a
          bolder shadow or a third lightness tweak. */
-      .log-fab { position: fixed; left: 16px; bottom: calc(16px + var(--safe-area-inset-bottom)); width: 60px;
+      /* Left inset bumped 16px->24px (owner feedback 22/07, round 4, on-device photos): 16px of the SAME
+         near-black ground colour on both sides gave the eye no cue a gap existed at all — it just read as
+         "more dark", i.e. flush. 24px reads as an unambiguous, intentional margin instead. */
+      .log-fab { position: fixed; left: 24px; bottom: calc(16px + var(--safe-area-inset-bottom)); width: 60px;
         height: 60px; border-radius: var(--r-pill); background: var(--bg-elevated); border: 1px solid var(--border-elevated);
         box-shadow: 0 14px 36px rgba(0,0,0,0.6), 0 4px 10px rgba(0,0,0,0.45); color: var(--text-main); display: flex; align-items: center; justify-content: center;
         cursor: pointer; z-index: 500; transition: opacity 0.25s ease, transform 0.25s ease; }
@@ -1827,7 +1830,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.19</span>
+        <span class="header-version">v8.21</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2129,7 +2132,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.19 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.21 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
