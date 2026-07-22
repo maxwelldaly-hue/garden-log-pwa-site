@@ -1843,7 +1843,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.23</span>
+        <span class="header-version">v8.24</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -1924,23 +1924,6 @@
                least the option is there again). Harmless no-op on unaffected browsers. -->
           <input type="file" id="photoInput" accept="image/*,android/allowCamera" capture="environment" style="display: none;">
           <input type="file" id="photoUploadInput" accept="image/*" style="display: none;">
-
-          <!-- C2 Phase 5 (22/07): the static client runs on a real top-level HTTPS origin (GitHub Pages), not
-               the Apps Script iframe that killed the v2.99 getUserMedia attempt (DEBUGGING.md §3.8 — that
-               reasoning is iframe-specific and no longer applies here). openCamera() (Js-State.html) tries a
-               live rear-camera viewfinder first — single tap, no OS chooser — and falls back to the
-               #photoInput file input (still capture="environment" + the Android 14/15 accept hack) if
-               getUserMedia is unavailable, denied, or errors. Upload is untouched: a capture-less file input
-               is already the spec-correct "gallery only" config. -->
-          <div id="cameraOverlay" class="camera-overlay" style="display:none;">
-            <video id="cameraVideo" class="camera-video" autoplay playsinline muted></video>
-            <canvas id="cameraCanvas" style="display:none;"></canvas>
-            <div class="camera-controls">
-              <button type="button" class="camera-cancel" onclick="closeCamera()" aria-label="Cancel">✕</button>
-              <button type="button" class="camera-snap" onclick="snapPhoto()" aria-label="Take photo"></button>
-              <span class="camera-spacer" aria-hidden="true"></span>
-            </div>
-          </div>
 
           <div class="controls-row">
             <button id="micBtn" class="mic-btn">
@@ -2162,7 +2145,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.23 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.24 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3231,6 +3214,28 @@
         <label class="is-filter"><input type="checkbox" class="is-filter-cb" data-cat="flower" checked onchange="isToggleFilter('flower', this.checked)"> Flowers</label>
       </div>
       <div id="inSeasonBody" class="pp-body" role="dialog" aria-modal="true"></div>
+    </div>
+
+    <!-- Live camera (C2 Phase 5, 22/07). Deliberately a BODY-LEVEL sibling, not inside #logInputContainer:
+         that container gets appendChild'd into the sliding .log-sheet card (openLogSheet, Js-UI.html), which
+         carries a CSS `transform` — a transformed ancestor becomes the containing block for `position:fixed`
+         descendants, so a fixed overlay nested inside it renders clipped to the CARD instead of the real
+         viewport (confirmed on-device: the viewfinder rendered boxed inside the Log sheet). Living here keeps
+         it a true fixed sibling of <body> regardless of which panel opened it. openCamera()/closeCamera()/
+         snapPhoto() (Js-State.html) reference these ids directly — no DOM relationship to the composer is
+         needed, it just needs to exist once. Falls back to #photoInput (still capture="environment" + the
+         Android 14/15 accept hack) if getUserMedia is unavailable, denied, or errors, so the Camera button
+         can never end up dead. Upload is untouched: a capture-less file input is already the spec-correct
+         "gallery only" config; the OS still choosing its 3-way chooser over the dedicated Photo Picker there
+         is a separate, not-yet-understood Chrome/Android behaviour (docs/SCOPE-CAMERA-PICKER.md). -->
+    <div id="cameraOverlay" class="camera-overlay" style="display:none;">
+      <video id="cameraVideo" class="camera-video" autoplay playsinline muted></video>
+      <canvas id="cameraCanvas" style="display:none;"></canvas>
+      <div class="camera-controls">
+        <button type="button" class="camera-cancel" onclick="closeCamera()" aria-label="Cancel">✕</button>
+        <button type="button" class="camera-snap" onclick="snapPhoto()" aria-label="Take photo"></button>
+        <span class="camera-spacer" aria-hidden="true"></span>
+      </div>
     </div>
 
     <!-- Shared resolve dialog: ONE modal frame for confirming a garden "⚠ to confirm" card (tap a banner
