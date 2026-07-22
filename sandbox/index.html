@@ -303,6 +303,13 @@
       .camera-cancel { width: 44px; height: 44px; border-radius: var(--r-pill); background: rgba(0,0,0,0.45);
         border: none; color: #fff; font-size: var(--fs-lg); line-height: 1; cursor: pointer; }
       .camera-spacer { width: 44px; }
+      /* Review step (22/07): Retake / Use photo, shown after a snap instead of the live-view controls
+         above. Reuses .rbtn-primary/.rbtn-secondary (Stylesheet.html resolve-dialog buttons) for the
+         buttons themselves — this just owns the row layout + safe-area bottom padding, matching
+         .camera-controls' own positioning. */
+      .camera-review-actions { position: absolute; left: 0; right: 0; bottom: calc(28px + var(--safe-area-inset-bottom));
+        display: flex; gap: 12px; padding: 0 32px; }
+      .camera-review-actions button { flex: 1; padding: 13px 10px; border-radius: var(--r-sm); font-size: var(--fs-base); font-weight: 600; cursor: pointer; }
 
       /* First-run Playground welcome — reuses the resolve modal frame, with an amber 🚧 accent edge. */
       .pw-card { border-left: 3px solid var(--amber-500); }
@@ -408,7 +415,7 @@
       .mic-btn.recording { background-color: var(--rec-red); animation: pulseRecording 1.5s infinite; }
       .mic-btn.disabled { opacity: 0.45; } /* Web Speech unsupported — still tappable to explain why */
       .photo-btn { flex: 1; background-color: var(--bg-input); border: 1px solid var(--border-input); color: var(--text-main); border-radius: var(--r-lg); padding: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
-      .photo-preview { display: none; width: 100%; max-height: 150px; object-fit: cover; border-radius: var(--r-sm); border: 1px solid var(--border-color); margin-top: 10px; }
+      .photo-preview { display: none; width: 100%; max-height: 150px; object-fit: cover; border-radius: var(--r-sm); border: 1px solid var(--border-color); margin-top: 10px; cursor: pointer; }
       
       @keyframes pulseRecording { 0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); } }
 
@@ -1844,7 +1851,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.27</span>
+        <span class="header-version">v8.28</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -1915,7 +1922,10 @@
             <textarea id="logTextarea" placeholder="What did you do? (e.g. 'watered Peach Bed', 'bought snail pellets')" autocomplete="on" autocorrect="on" autocapitalize="sentences" spellcheck="true"></textarea>
           </form>
 
-          <img id="photoPreview" class="photo-preview" />
+          <!-- Tap to view full-size (22/07: a small in-composer thumbnail with no way to actually look at
+               the photo before saving). openPhotoPreviewLightbox() reuses the same body-level lightbox
+               pattern as the camera overlay below. -->
+          <img id="photoPreview" class="photo-preview" onclick="openPhotoPreviewLightbox()" />
           <!-- Two inputs: 'photoInput' forces the camera (capture); 'photoUploadInput' opens the
                photo library (no capture) for a shot taken earlier. Both feed the same handler.
                The 'android/allowCamera' MIME token is a known workaround for a Chrome-on-Android
@@ -2146,7 +2156,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.27 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.28 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3234,12 +3244,29 @@
          is a separate, not-yet-understood Chrome/Android behaviour (docs/SCOPE-CAMERA-PICKER.md). -->
     <div id="cameraOverlay" class="camera-overlay" style="display:none;">
       <video id="cameraVideo" class="camera-video" autoplay playsinline muted></video>
+      <!-- Review frame (22/07): snapPhoto() no longer attaches straight away — it freezes the shot here
+           first so there's an actual look-before-you-commit step, matching what the native camera app's
+           own confirm screen always gave for free before this replaced it. object-fit:cover to match the
+           live video above (WYSIWYG — see snapPhoto's crop math, Js-State.html). -->
+      <img id="cameraReview" class="camera-video" style="display:none;" alt="Captured photo">
       <canvas id="cameraCanvas" style="display:none;"></canvas>
-      <div class="camera-controls">
+      <div id="cameraControlsLive" class="camera-controls">
         <button type="button" class="camera-cancel" onclick="cancelCamera()" aria-label="Cancel">✕</button>
         <button type="button" class="camera-snap" onclick="snapPhoto()" aria-label="Take photo"></button>
         <span class="camera-spacer" aria-hidden="true"></span>
       </div>
+      <div id="cameraControlsReview" class="camera-review-actions" style="display:none;">
+        <button type="button" class="rbtn-secondary" onclick="retakePhoto()">Retake</button>
+        <button type="button" class="rbtn-primary" onclick="useCapturedPhoto()">Use photo</button>
+      </div>
+    </div>
+
+    <!-- Full-size photo lightbox (22/07): tapping the composer's small #photoPreview thumbnail opens the
+         actual attached photo here — object-fit:contain (not cover, unlike the camera views above) so the
+         WHOLE image is visible, nothing cropped, since this is purely for review. Body-level sibling for
+         the same reason as #cameraOverlay above (escapes the log-sheet's transform). -->
+    <div id="photoLightbox" class="camera-overlay" style="display:none;" onclick="closePhotoLightbox()">
+      <img id="photoLightboxImg" class="camera-video" style="object-fit:contain;" alt="Photo preview">
     </div>
 
     <!-- Shared resolve dialog: ONE modal frame for confirming a garden "⚠ to confirm" card (tap a banner
@@ -6761,12 +6788,23 @@ if (typeof module !== 'undefined' && module.exports) {
             document.getElementById('photoInput').click();
           });
       }
+      let _cameraCapturedBlob = null;
       function closeCamera() {
         if (_cameraStream) {
           _cameraStream.getTracks().forEach(function(t) { t.stop(); });
           _cameraStream = null;
         }
         document.getElementById('cameraOverlay').style.display = 'none';
+        // Reset back to the live-view state regardless of which screen (live or review) we're closing
+        // from, so the NEXT openCamera() never opens on a stale frozen frame or stale controls.
+        const review = document.getElementById('cameraReview');
+        if (review.src) URL.revokeObjectURL(review.src);
+        review.src = '';
+        review.style.display = 'none';
+        document.getElementById('cameraVideo').style.display = 'block';
+        document.getElementById('cameraControlsReview').style.display = 'none';
+        document.getElementById('cameraControlsLive').style.display = 'flex';
+        _cameraCapturedBlob = null;
       }
       // The ✕ button's handler — NOT snapPhoto's. Cancelling (vs. snapping) means no photo is ever coming,
       // so the FAB-long-press "open the sheet after" intent has to be dropped here rather than left for
@@ -6779,13 +6817,61 @@ if (typeof module !== 'undefined' && module.exports) {
       function snapPhoto() {
         const video = document.getElementById('cameraVideo');
         const canvas = document.getElementById('cameraCanvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        // WYSIWYG crop (22/07, owner: the attached photo didn't match what the viewfinder framed): the
+        // <video> is displayed with CSS object-fit:cover, which crops it to the overlay's aspect ratio —
+        // but drawImage(video,0,0,w,h) with no source rect grabs the FULL native sensor frame regardless,
+        // so a portrait phone screen cropping a landscape sensor produced a photo showing more (and
+        // differently-framed) content than what was actually on screen. Replicate the same cover-crop math
+        // here so the captured region is exactly the visible region.
+        const overlay = document.getElementById('cameraOverlay');
+        const boxW = overlay.clientWidth, boxH = overlay.clientHeight;
+        const vw = video.videoWidth, vh = video.videoHeight;
+        const videoAspect = vw / vh, boxAspect = boxW / boxH;
+        let sx, sy, sw, sh;
+        if (videoAspect > boxAspect) { sh = vh; sw = vh * boxAspect; sx = (vw - sw) / 2; sy = 0; }
+        else { sw = vw; sh = vw / boxAspect; sx = 0; sy = (vh - sh) / 2; }
+        canvas.width = sw;
+        canvas.height = sh;
+        canvas.getContext('2d').drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
         canvas.toBlob(function(blob) {
-          closeCamera();
-          if (blob) handlePhotoFile(blob);
+          if (!blob) return;
+          _cameraCapturedBlob = blob;
+          const review = document.getElementById('cameraReview');
+          review.src = URL.createObjectURL(blob);
+          video.style.display = 'none';
+          review.style.display = 'block';
+          document.getElementById('cameraControlsLive').style.display = 'none';
+          document.getElementById('cameraControlsReview').style.display = 'flex';
         }, 'image/jpeg', 0.92);
+      }
+      // Review step (22/07): snap freezes the frame here instead of attaching immediately, so there's an
+      // actual look-before-you-commit step — the native camera app always gave this for free; the custom
+      // getUserMedia viewfinder didn't, until now.
+      function retakePhoto() {
+        const review = document.getElementById('cameraReview');
+        if (review.src) URL.revokeObjectURL(review.src);
+        review.src = '';
+        review.style.display = 'none';
+        document.getElementById('cameraVideo').style.display = 'block';
+        document.getElementById('cameraControlsReview').style.display = 'none';
+        document.getElementById('cameraControlsLive').style.display = 'flex';
+        _cameraCapturedBlob = null;
+      }
+      function useCapturedPhoto() {
+        const blob = _cameraCapturedBlob;
+        closeCamera(); // also revokes the review object URL and resets the overlay's internal state
+        if (blob) handlePhotoFile(blob);
+      }
+
+      // Full-size photo lightbox (22/07): tap the composer's small #photoPreview thumbnail to actually see
+      // the attached photo before saving — it had no click handler at all before this.
+      function openPhotoPreviewLightbox() {
+        if (!currentPhotoData) return;
+        document.getElementById('photoLightboxImg').src = currentPhotoData;
+        document.getElementById('photoLightbox').style.display = 'flex';
+      }
+      function closePhotoLightbox() {
+        document.getElementById('photoLightbox').style.display = 'none';
       }
 
       // Desktop paste: a copied image (Google Photos "Copy image", or a screenshot) pasted into the
