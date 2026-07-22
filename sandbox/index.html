@@ -1196,9 +1196,10 @@
       .pp-latin { color: var(--text-muted); font-size: var(--fs-xs); font-style: italic; margin-top: 2px; opacity: 0.85; }
       /* Reference filler — species knowledge, NOT this garden's measurements. Shares the ONE facts box
          (same border, same background, same value tone); the sole tell that a row is borrowed-not-captured
-         is its value being *italic* (owner, 17/07: "italicised only"). Provenance by one typographic
-         signal, nothing louder — no dashed border, no wash, no header. */
-      .pp-fact-ref .pp-fact-v { font-style: italic; }
+         is the value sitting a step dimmer (was italic — read oddly on short fragments like "30cm",
+         design pass 23/07). Still one typographic signal, nothing louder — no dashed border, no wash,
+         no header — just quieter on the same brightness scale the key/value split already uses. */
+      .pp-fact-ref .pp-fact-v { opacity: 0.62; }
       /* Story milestones + photo rows: the Recent-row register (mark · text · short date). */
       .pp-ms-row {
         display: flex; gap: 10px; padding: 7px 2px; align-items: baseline;
@@ -1872,7 +1873,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.35</span>
+        <span class="header-version">v8.36</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2182,7 +2183,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.35 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.36 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
