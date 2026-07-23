@@ -1929,7 +1929,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.43</span>
+        <span class="header-version">v8.44</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2239,7 +2239,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.43 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.44 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -7861,12 +7861,19 @@ if (typeof module !== 'undefined' && module.exports) {
       // and no photo rides along; when absent this reads the box exactly as before. Everything downstream (queue,
       // chip, optimistic row, sync) is shared — one submit path.
       //
+      // `structuredItem` (optional, only ever set alongside `explicitText`): the passport action's own
+      // pre-built scribe-shaped item ({zone, category, crop, count?, …} — GardenDoc.js normalizeStructuredItem
+      // documents the exact shape). When present it rides the queue and the server (handleLogAction) skips the
+      // Gemini classification step entirely — the passport already knows the fact, so there is nothing to
+      // classify. `explicitText` still carries through as `rawText` for the Log row's readable text either way.
+      //
       // The one-button cutover (v7.15) made the server (partitionForRouting, GardenDoc.js) the sole decider of
       // garden vs shed, so there was never a caller-chosen destination after that; a `dest` param survived
       // purely as legacy shape until the pre-cutover shed-replay compat was retired (v8.07, ROADMAP) — this
-      // function now takes only `explicitText`. Verifying a to-confirm card is NOT done here — that's the
-      // resolve dialog (resolveCard), which never touches this box, so leftover text can never be mis-sent.
-      function submitLog(explicitText) {
+      // function now takes only `explicitText` (+ the structured-item bypass above). Verifying a to-confirm
+      // card is NOT done here — that's the resolve dialog (resolveCard), which never touches this box, so
+      // leftover text can never be mis-sent.
+      function submitLog(explicitText, structuredItem) {
         const programmatic = (typeof explicitText === 'string');
         let text = (programmatic ? explicitText : document.getElementById('logTextarea').value).trim();
         const pin = localStorage.getItem('garden_log_pin');
@@ -7885,6 +7892,9 @@ if (typeof module !== 'undefined' && module.exports) {
           id: logId,
           rawText: text,
           photoData: programmatic ? null : currentPhotoData,
+          // Never set on a manual (non-programmatic) submit — a hand-typed note always goes through the
+          // scribe, structured items are only ever passed by a passport action alongside explicitText.
+          structuredItem: (programmatic && structuredItem) ? structuredItem : null,
           timestamp: Date.now()
         };
 
@@ -7971,7 +7981,11 @@ if (typeof module !== 'undefined' && module.exports) {
             action: 'logAction', // the one-button router (partitionForRouting, GardenDoc.js) decides garden vs shed server-side
             logId: currentLog.id, // idempotency key — lets the server reject a re-sent log (see handleLogAction)
             rawText: currentLog.rawText,
-            photoData: currentLog.photoData
+            photoData: currentLog.photoData,
+            // A passport quick-tap action's pre-built scribe-shaped item (submitLog) — present only for those,
+            // absent (undefined -> null on the queued record) for every ordinary hand-typed log. handleLogAction
+            // skips the Gemini scribe entirely when this rides along (GardenDoc.js normalizeStructuredItem).
+            structuredItem: currentLog.structuredItem || null
           };
 
           google.script.run
@@ -11141,7 +11155,27 @@ if (typeof module !== 'undefined' && module.exports) {
         const stillSeedOrSeedling = p.phase
           ? (p.phase === 'Sown' || p.phase === 'Sprouted')
           : (p.stage === 'Germination' || (p.stage === 'Seedling' && !p.transplanted));
-        if (!stillSeedOrSeedling) {
+        // Still an unsprouted seed (phase 'Sown') — nothing to harvest yet, but "it came up" is a real,
+        // common shortcut worth a dedicated button rather than making the owner type it (owner, 23/07).
+        if (p.phase === 'Sown') {
+          const sprouted = document.createElement('button');
+          sprouted.type = 'button'; sprouted.className = 'pp-action-btn pp-action-harvest';
+          sprouted.textContent = 'Sprouted';
+          sprouted.onclick = function () { ppSproutedTap(p, bedName); };
+          actions.appendChild(sprouted);
+        // A sprouted seedling still raised under cover (House Window etc, not yet transplanted) — the
+        // shortcut here is "plant it out", not "harvest it" (owner, 23/07). raisingUnderCover already
+        // encodes exactly this: sprouted + no Transplanted date + a nursery zone (GardenSheet.js).
+        } else if (p.raisingUnderCover) {
+          const moved = document.createElement('button');
+          moved.type = 'button'; moved.className = 'pp-action-btn pp-action-harvest';
+          moved.textContent = 'Moved outside';
+          moved.onclick = function () { ppOpenMovedOutside(p, bedName); };
+          actions.appendChild(moved);
+        // Flowering ornamentals (CROP_FLOWERING — lavender, roses, marigolds…) are never harvested in
+        // this garden's workflow; Harvest stays hidden for them same as for a still-seed/seedling plant
+        // (owner, 23/07). Pull out stays available regardless — it can still expire or die.
+        } else if (!stillSeedOrSeedling && !p.flowering) {
           const harvest = document.createElement('button');
           harvest.type = 'button'; harvest.className = 'pp-action-btn pp-action-harvest';
           harvest.textContent = 'Harvest';
@@ -11206,15 +11240,32 @@ if (typeof module !== 'undefined' && module.exports) {
         const text = (n >= total)
           ? ('Harvested all of the ' + p.name + from)
           : ('Harvested ' + n + ' of the ' + base + from + ' (x' + n + ')');
+        // Structured bypass (skips the Gemini scribe — GardenDoc.js handleLogAction/normalizeStructuredItem):
+        // the picker already knows the exact crop/bed/count, so hand the deterministic pipeline the fact
+        // directly instead of re-classifying `text` back into it. `count` is omitted on a full pick (n>=total)
+        // so the SAME no-count branch fires as the old free-text phrasing (applyLogToState's one_shot harvest
+        // tombstones when no count is tracked/stated); a partial pick sets count=n for the partial-decrement
+        // branch. `text` still rides as the Log row's readable Action text (rawText fallback).
+        const item = { zone: bedName || 'Unspecified', category: 'Harvesting', crop: p.name };
+        if (n < total) item.count = String(n);
         closePassport();
-        if (typeof submitLog === 'function') submitLog(text);
+        if (typeof submitLog === 'function') submitLog(text, item);
+        // Passport actions close straight back to the beds page (SCOPE-PASSPORT-ACTIONS.md), which is
+        // BEHIND the log-composer's own inline chip — so without an explicit toast here the tap looks
+        // like it did nothing (owner, 23/07).
+        if (typeof showToast === 'function') showToast('Harvested', text);
       }
       // Ongoing crop: "Harvest" — repeatable, no quantity, just logs a pick. Deliberately no count so it
       // lands on the existing no-count Harvesting branch (StateUpdate.js) — accrues yield, never tombstones.
       function ppHarvestPick(p, bedName) {
         const from = bedName ? ' from ' + bedName : '';
+        const text = 'Harvested the ' + p.name + from;
+        // Structured bypass — see ppSubmitHarvestQuantity above. No count here either: an ongoing pick
+        // always accrues yield and never tombstones, exactly like the free-text phrasing it replaces.
+        const item = { zone: bedName || 'Unspecified', category: 'Harvesting', crop: p.name };
         closePassport();
-        if (typeof submitLog === 'function') submitLog('Harvested the ' + p.name + from);
+        if (typeof submitLog === 'function') submitLog(text, item);
+        if (typeof showToast === 'function') showToast('Harvested', text);
       }
       // "Pull out" — universal, every plant, always ends the record early (expired/died, never a harvest).
       // Reason is a set of directly-tappable choices (round 2 fix — was a <select> dropdown, which hid the
@@ -11247,8 +11298,70 @@ if (typeof module !== 'undefined' && module.exports) {
         let text = 'Removed the ' + p.name + from;
         if (reason === 'expired') text += ' — crop expired';
         else if (reason === 'died') text += ' — plant died';
+        // Structured bypass — see ppSubmitHarvestQuantity above. No count: a Pull-out is always the whole
+        // plant (never a partial removal), matching the free-text phrasing's no-count-token tombstone path.
+        // The reason (expired/died) is Log-row colour only — StateUpdate.js has no structured reason field,
+        // it rides solely in `text`/details, exactly as it did in the old scribe-parsed phrasing.
+        const item = { zone: bedName || 'Unspecified', category: 'Removal', crop: p.name };
         closePassport();
-        if (typeof submitLog === 'function') submitLog(text);
+        if (typeof submitLog === 'function') submitLog(text, item);
+        if (typeof showToast === 'function') showToast('Pulled out', text);
+      }
+
+      // "Sprouted" — the still-a-seed shortcut (ppRemoveEl, phase 'Sown' only). Logs the exact phrasing
+      // RULE 14 (Synthesis.js/StateUpdate.js) already recognises as an Observation that advances stage to
+      // Seedling and stamps Sprouted — same deterministic outcome as if the owner had typed it, just one tap.
+      // Structured bypass (see ppSubmitHarvestQuantity): category Observation + stage 'Seedling' is exactly
+      // what a free-text "the X sprouted" scribes to (stampSproutedOnStage, StateUpdate.js) — skips Gemini,
+      // same deterministic outcome.
+      function ppSproutedTap(p, bedName) {
+        const base = ppSplitName(p.name)[0];
+        const where = bedName ? ' in ' + bedName : '';
+        const text = 'The ' + base + ' sprouted' + where;
+        const item = { zone: bedName || 'Unspecified', category: 'Observation', crop: p.name, stage: 'Seedling' };
+        closePassport();
+        if (typeof submitLog === 'function') submitLog(text, item);
+        if (typeof showToast === 'function') showToast('Sprouted', text);
+      }
+
+      // "Moved outside" — the raised-under-cover shortcut (ppRemoveEl, raisingUnderCover only). Opens a
+      // plain bed-choice list (same shell/CSS as ppOpenPullOutConfirm's reason choices) and submits a
+      // straight Relocation note through the normal submitLog path — relocateForward + stampTransplantOnMove
+      // (StateUpdate.js) already turn "moved the X to Y" into a plant-out for a still-nursery-stage row, so
+      // no new server logic is needed here.
+      function ppOpenMovedOutside(p, bedName) {
+        const base = ppSplitName(p.name)[0];
+        document.getElementById('resolveTitle').textContent = 'Move the ' + base + ' outside?';
+        document.getElementById('resolveSub').textContent = 'Pick the bed it went into.';
+        const body = document.getElementById('resolveBody'); body.innerHTML = '';
+        const actions = document.getElementById('resolveActions'); actions.innerHTML = '';
+        const beds = (typeof getKnownBeds === 'function') ? getKnownBeds() : [];
+        const choices = document.createElement('div');
+        choices.className = 'pp-reason-choices';
+        beds.filter(function (b) { return b !== bedName; }).forEach(function (b) {
+          const btn = document.createElement('button');
+          btn.type = 'button'; btn.className = 'pp-reason-choice';
+          btn.textContent = b;
+          btn.onclick = function () {
+            closeResolve();
+            ppSubmitMovedOutside(p, bedName, b);
+          };
+          choices.appendChild(btn);
+        });
+        body.appendChild(choices);
+        actions.appendChild(rButton('Cancel', 'rbtn-secondary', closeResolve));
+        presentResolveModal();
+      }
+      // Structured bypass (see ppSubmitHarvestQuantity): category Relocation with the known source
+      // (fromZone) + target (zone) is exactly what relocateForward (StateUpdate.js) derives from a
+      // free-text "moved the X to Y" — skips Gemini, same plant-out stamp on a still-nursery-stage row.
+      function ppSubmitMovedOutside(p, fromBed, targetBed) {
+        const base = ppSplitName(p.name)[0];
+        const text = 'Moved the ' + base + ' to ' + targetBed;
+        const item = { zone: targetBed, category: 'Relocation', crop: p.name, fromZone: fromBed || '' };
+        closePassport();
+        if (typeof submitLog === 'function') submitLog(text, item);
+        if (typeof showToast === 'function') showToast('Moved outside', text);
       }
 
       // RIGHT-hand status tile (owner: "the missing visual piece") — reads a plant's stage/place at a glance,
