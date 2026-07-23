@@ -1939,7 +1939,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.49</span>
+        <span class="header-version">v8.50</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2249,7 +2249,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.49 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.50 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11741,38 +11741,36 @@ if (typeof module !== 'undefined' && module.exports) {
         } else if (estDate && !established) {
           const days = daysUntil(estDate);
           if (days !== null && days <= 0) {
-            // Snoozed ("Not ready", design pass 23/07): stay quiet entirely rather than show a second
-            // kind of calendar nudge (e.g. "checking again from…") — matches the app's existing texture
-            // of an absent line being a normal, handled state, not a lesser nag.
-            const snoozeGap = daysUntil(p.harvestSnoozeUntil);
-            if (snoozeGap !== null && snoozeGap > 0) {
-              // quiet — no line, no button, until the snooze lapses
-            } else {
-              // Status text + "Not ready" share ONE row (design pass 23/07 round 2 — was stacked on its
-              // own line below, oversized and disconnected). Built directly here rather than via line()
-              // since it needs the button alongside it, right-aligned, sized as a secondary action.
-              const row = document.createElement('div');
-              row.className = 'pl-line-row';
-              const s = document.createElement('span');
-              s.className = 'pl-line pl-harvest-check';
-              s.textContent = 'Check for harvest';
-              row.appendChild(s);
-              if (p.plantId) {
-                const btn = document.createElement('button');
-                btn.type = 'button'; btn.className = 'pp-check-btn'; btn.textContent = 'Not ready';
-                btn.onclick = function () { ppSnoozeHarvestCheck(p, btn); };
-                row.appendChild(btn);
-              }
-              wrap.appendChild(row);
+            // Past its est-harvest, nothing picked yet. No separate "snoozed" state any more (design pass
+            // 23/07 round 3) — "Not ready" pushes EstHarvest itself out 7 days (see ppSnoozeHarvestCheck),
+            // so this branch simply stops being true for a week and the countdown branch below takes over
+            // on its own; nothing to track or go quiet about here. Matches the Garden-tab card's identical
+            // "Check for harvest" nudge (Js-State.html), which reads the same EstHarvest field — the two
+            // surfaces can no longer disagree.
+            const row = document.createElement('div');
+            row.className = 'pl-line-row';
+            const s = document.createElement('span');
+            s.className = 'pl-line pl-harvest-check';
+            s.textContent = 'Check for harvest';
+            row.appendChild(s);
+            if (p.plantId) {
+              const btn = document.createElement('button');
+              btn.type = 'button'; btn.className = 'pp-check-btn'; btn.textContent = 'Not ready';
+              btn.onclick = function () { ppSnoozeHarvestCheck(p, btn); };
+              row.appendChild(btn);
             }
+            wrap.appendChild(row);
           } else {
             line('pl-countdown', (days !== null) ? ('Est. harvest in ' + days + (days === 1 ? ' day' : ' days')) : ('Est. harvest ' + estDate));
           }
         }
         return wrap.children.length ? wrap : null;
       }
-      // "Not ready" tap (design pass 23/07) — direct structured action (snoozeHarvestCheck), not the
-      // log/scribe pipeline (this is deterministic UI intent).
+      // "Not ready" tap (design pass 23/07, round 3) — direct structured action (snoozeHarvestCheck), not
+      // the log/scribe pipeline (this is deterministic UI intent). Pushes EstHarvest itself out 7 days
+      // server-side, so the honest optimistic guess is exactly the ordinary countdown line every other
+      // plant already shows — not a bespoke "Not ready" confirmation string that would then need to be
+      // reconciled with the real countdown later.
       // Genuinely optimistic (owner, 23/07: the round-trip to Apps Script is a real few seconds — a plain
       // Sheets write, nothing to do with the AI/Gemini side — and waiting for it back before showing
       // anything read as "the tap did nothing" all over again). The row is patched the instant you tap,
@@ -11793,19 +11791,19 @@ if (typeof module !== 'undefined' && module.exports) {
         if (row) {
           row.innerHTML = '';
           const s = document.createElement('span');
-          s.className = 'pl-line pl-harvest-check';
-          s.textContent = 'Not ready — checking again in 7 days';
+          s.className = 'pl-line pl-countdown';
+          s.textContent = 'Est. harvest in 7 days';
           row.appendChild(s);
         } else if (btn) { btn.disabled = true; }
         google.script.run
           .withSuccessHandler(function (resStr) {
             let res = null; try { res = JSON.parse(resStr); } catch (e) {}
             if (res && res.status === 'success' && res.data && res.data.snoozed) {
-              p.harvestSnoozeUntil = res.data.until || '';
-              if (_ppLast && _ppLast.p) _ppLast.p.harvestSnoozeUntil = p.harvestSnoozeUntil;
+              p.estHarvest = res.data.until || p.estHarvest;
+              if (_ppLast && _ppLast.p) _ppLast.p.estHarvest = p.estHarvest;
               try {
                 const cached = _ppCache[ppCurrentKey];
-                if (cached && cached.p) cached.p.harvestSnoozeUntil = p.harvestSnoozeUntil;
+                if (cached && cached.p) cached.p.estHarvest = p.estHarvest;
               } catch (e) {}
             } else { revert(); }
           })
