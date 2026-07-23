@@ -1895,7 +1895,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.37</span>
+        <span class="header-version">v8.38</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2205,7 +2205,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.37 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.38 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11531,14 +11531,17 @@ if (typeof module !== 'undefined' && module.exports) {
         }
         // Lifecycle descriptor (reference/species knowledge, Crop Reference book): a quiet "Perennial" for the
         // plants where it's non-obvious and genuinely useful — a herb-strip rosemary or an orchard tree reads
-        // differently from a season's tomato. PERENNIALS ONLY (an "Annual" tag on a tomato is noise the owner
-        // rejects); Filler-gated like the reference latin, so it's off with the overlay and absent until the book
-        // carries a lifecycle for the crop.
+        // differently from a season's tomato. PERENNIALS ONLY — an "Annual" tag on a tomato is noise the owner
+        // rejects, and (design pass, 23/07) so is "Tender perennial": ppIsEstablished only grants the perennial
+        // treatment for the exact string 'perennial', so a tender-perennial tomato is already treated exactly
+        // like an annual functionally — the tag was decorative text implying a behaviour the app doesn't
+        // actually give it. Filler-gated like the reference latin, so it's off with the overlay and absent
+        // until the book carries a lifecycle for the crop.
         const lc = String(p.lifecycle || '').trim().toLowerCase();
-        if (fillerEnabled() && (lc === 'perennial' || lc === 'tender perennial')) {
+        if (fillerEnabled() && lc === 'perennial') {
           const lcEl = document.createElement('div');
           lcEl.className = 'pp-quiet';
-          lcEl.textContent = lc.charAt(0).toUpperCase() + lc.slice(1);
+          lcEl.textContent = 'Perennial';
           txt.appendChild(lcEl);
         }
         wrap.appendChild(txt);
