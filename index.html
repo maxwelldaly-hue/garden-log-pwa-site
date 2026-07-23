@@ -682,7 +682,15 @@
       .plant-row.optimistic-saving { opacity: 0.72; }
       .plant-row-spin { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--amber-500); box-shadow: 0 0 8px var(--amber-500); animation: pulse 1s infinite alternate; margin-right: 6px; vertical-align: middle; }
       .pl-saving { color: var(--amber-400); }
-      .pl-yield { color: var(--amber-400); }                        /* cropping — amber */
+      /* Bare class (dashboard rows, .plant-meta): muted, not amber (round 2 fix, owner 23/07 — bright amber
+         repeated across every producing row in a long list read as noise, "way too bright for the front
+         page"). Same lesson as .pl-harvest-check earlier this session: a passport-worthy highlight isn't
+         automatically right for the ambient list view. */
+      .pl-yield { color: var(--text-muted); }
+      /* Passport-only override: green, the same --color-go token as a one-shot's "ready to harvest" verdict
+         (.pl-ready/.pp-fact-go) — reusing that established "there's something to act on right now" signal
+         rather than inventing a new one, scoped so it never leaks onto the dashboard (see above). */
+      .pp-lines .pl-yield { color: var(--color-go); font-weight: 600; }
       /* (Life-phase, step 4) the .plant-stage-badge / .stage-* rules were removed with the Stage badge —
          they were already dead (the code used a non-matching `stage-badge` class). Lifecycle now reads from
          the derived phase (nursery icons + harvest/yield lines), not a botanical badge. */
@@ -1111,6 +1119,15 @@
       .pp-action-harvest:hover { border-color: var(--color-sage); background: rgba(45, 138, 96, 0.08); }
       .pp-action-pullout { border: 1px solid rgba(239, 68, 68, 0.4); color: var(--red-300); }
       .pp-action-pullout:hover { border-color: rgba(239, 68, 68, 0.6); background: rgba(239, 68, 68, 0.08); }
+      /* Pull-out reason choices (round 2 — replaces a <select>): plain readable tap targets inside the
+         shared resolve-modal shell, same list-of-buttons idiom the app already uses elsewhere. */
+      .pp-reason-choices { display: flex; flex-direction: column; gap: 8px; }
+      .pp-reason-choice {
+        width: 100%; text-align: left; border-radius: var(--r-sm);
+        font-size: var(--fs-sm); padding: 11px 14px; cursor: pointer;
+        background: var(--surface-inset-01); border: 1px solid var(--surface-inset-03); color: var(--text-main);
+      }
+      .pp-reason-choice:hover { border-color: var(--text-muted); }
       /* One-shot quantity-picker stepper, inside the shared resolve-modal shell. */
       .pp-stepper { display: flex; align-items: center; justify-content: center; gap: 18px; padding: 12px 0; }
       .pp-stepper-btn {
@@ -1185,6 +1202,11 @@
         font-size: var(--fs-2xs); letter-spacing: var(--ls-wide);
         color: var(--text-muted); margin-bottom: 8px;
       }
+      /* Scoped to the "From the label/seed" header only (round 2 fix) — it sits flush-left as a sibling of
+         the boxed .pp-facts table below it, which has its own 12px internal padding; without a matching
+         inset here the header and its own table's first column don't line up. Story/Photos headers stay
+         on the base .pp-sec-h (unpadded) since their content is flush-left too, no box to match. */
+      .pp-sec-h-tab { padding: 0 12px; }
       /* About: prose, not a fact — a lead sentence that sits above the grid instead of fighting a
          label/value row for space (design pass, 23/07). */
       .pp-about { font-size: var(--fs-base); color: var(--text-soft); line-height: 1.5; margin: 0 0 12px; }
@@ -1220,9 +1242,11 @@
          species-generic advice (Harvest method/Companion/Avoid/Usage) — reads as dimmed-as-ONE-unit rows
          (key AND value both --text-muted, unlike .pp-fact-k/.pp-fact-v's two-tone split above). Colour
          alone carries the distinction now — SAME font-size and SAME grid columns as .pp-fact, so a value
-         you actually need to read (companion/avoid planting) never looks like fine print, and both
-         sections' content starts at the same horizontal position. */
-      .pp-ref-group { margin-top: 14px; }
+         you actually need to read (companion/avoid planting) never looks like fine print. The 12px
+         horizontal padding matches .pp-facts's own box padding exactly (round 2 fix — without it the two
+         sections' columns started ~12px apart even with identical grid-template-columns, since the boxed
+         table's inset shifts its content right of an unboxed section's flush-left edge). */
+      .pp-ref-group { margin-top: 14px; padding: 0 12px; }
       .pp-ref-row {
         display: grid; grid-template-columns: 92px 1fr; gap: 10px; padding: 4px 0;
         font-size: var(--fs-sm); line-height: 1.5;
@@ -1902,7 +1926,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.39</span>
+        <span class="header-version">v8.40</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2212,7 +2236,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.39 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.40 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11103,11 +11127,24 @@ if (typeof module !== 'undefined' && module.exports) {
         wrap.className = 'pp-remove';
         const actions = document.createElement('div');
         actions.className = 'pp-remove-actions';
-        const harvest = document.createElement('button');
-        harvest.type = 'button'; harvest.className = 'pp-action-btn pp-action-harvest';
-        harvest.textContent = 'Harvest';
-        harvest.onclick = function () { ppHarvestTap(p, bedName); };
-        actions.appendChild(harvest);
+        // Harvest never appears while the plant is still a seed/seedling (owner, 23/07) — there's nothing
+        // to collect yet, and a stray tap here previously fired a nonsense "Harvested the X" log against
+        // an unsprouted seed. Deliberately NOT plantNurseryPhase (Js-State.html) — that classifier has a
+        // zone override that permanently reads ANY "House Window"/greenhouse plant as seed/sprout for the
+        // status-tile ICON, even once it's actually fruiting there; reusing it here would hide Harvest
+        // forever for a windowsill crop that never gets transplanted out. This checks the plant's real
+        // underlying phase only. Pull out stays available regardless — a seedling can still die and needs
+        // an exit path, just never a "harvest" one.
+        const stillSeedOrSeedling = p.phase
+          ? (p.phase === 'Sown' || p.phase === 'Sprouted')
+          : (p.stage === 'Germination' || (p.stage === 'Seedling' && !p.transplanted));
+        if (!stillSeedOrSeedling) {
+          const harvest = document.createElement('button');
+          harvest.type = 'button'; harvest.className = 'pp-action-btn pp-action-harvest';
+          harvest.textContent = 'Harvest';
+          harvest.onclick = function () { ppHarvestTap(p, bedName); };
+          actions.appendChild(harvest);
+        }
         const pull = document.createElement('button');
         pull.type = 'button'; pull.className = 'pp-action-btn pp-action-pullout';
         pull.textContent = 'Pull out';
@@ -11177,23 +11214,28 @@ if (typeof module !== 'undefined' && module.exports) {
         if (typeof submitLog === 'function') submitLog('Harvested the ' + p.name + from);
       }
       // "Pull out" — universal, every plant, always ends the record early (expired/died, never a harvest).
-      // Confirm dialog with an optional reason, folded into the same removal text ppRemoveSubmit sends.
+      // Reason is a set of directly-tappable choices (round 2 fix — was a <select> dropdown, which hid the
+      // options behind an extra tap instead of just letting the gardener read them). Picking one submits
+      // immediately; no separate Confirm step needed since the choice IS the confirmation.
       function ppOpenPullOutConfirm(p, bedName) {
         const base = ppSplitName(p.name)[0];
         document.getElementById('resolveTitle').textContent = 'Pull out the ' + base + '?';
         document.getElementById('resolveSub').textContent = 'Ends the record for this plant.';
         const body = document.getElementById('resolveBody'); body.innerHTML = '';
         const actions = document.getElementById('resolveActions'); actions.innerHTML = '';
-        const sel = document.createElement('select');
-        [['', '(no reason)'], ['expired', 'Crop expired'], ['died', 'Plant died']].forEach(function (o) {
-          const opt = document.createElement('option'); opt.value = o[0]; opt.textContent = o[1]; sel.appendChild(opt);
+        const choices = document.createElement('div');
+        choices.className = 'pp-reason-choices';
+        [['expired', 'Crop expired'], ['died', 'Plant died'], ['', 'Pull out (no reason)']].forEach(function (o) {
+          const b = document.createElement('button');
+          b.type = 'button'; b.className = 'pp-reason-choice';
+          b.textContent = o[1];
+          b.onclick = function () {
+            closeResolve();
+            ppRemoveSubmit(p, bedName, o[0]);
+          };
+          choices.appendChild(b);
         });
-        body.appendChild(rField('Reason (optional)', sel));
-        actions.appendChild(rButton('Pull out', 'rbtn-danger', function () {
-          const reason = sel.value;
-          closeResolve();
-          ppRemoveSubmit(p, bedName, reason);
-        }));
+        body.appendChild(choices);
         actions.appendChild(rButton('Cancel', 'rbtn-secondary', closeResolve));
         presentResolveModal();
       }
@@ -11735,7 +11777,7 @@ if (typeof module !== 'undefined' && module.exports) {
           // a direct-sow/label-captured planting. Reuses .pp-sec-h — same header voice as General reference.
           const seedOrigin = !!p.estSprout;
           const boxHead = document.createElement('div');
-          boxHead.className = 'pp-sec-h';
+          boxHead.className = 'pp-sec-h pp-sec-h-tab';
           boxHead.textContent = seedOrigin ? 'From the seed' : 'From the label';
           sec.appendChild(boxHead);
           const box = document.createElement('div'); box.className = 'pp-facts';
