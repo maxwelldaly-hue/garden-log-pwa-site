@@ -1939,7 +1939,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.47</span>
+        <span class="header-version">v8.48</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2249,7 +2249,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.47 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.48 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11834,11 +11834,23 @@ if (typeof module !== 'undefined' && module.exports) {
             if (res && res.status === 'success' && res.data && res.data.snoozed) {
               p.harvestSnoozeUntil = res.data.until || '';
               if (_ppLast && _ppLast.p) _ppLast.p.harvestSnoozeUntil = p.harvestSnoozeUntil;
-              try { ppRender(_ppLast.p, _ppLast.bed, _ppCache[ppCurrentKey], false); } catch (e) {}
-              // The check-for-harvest row (button included) simply disappears on success — same silent-tap
-              // problem the other passport actions already got a toast fix for (owner, 23/07): without it,
-              // a tap that worked reads as a tap that did nothing.
-              if (typeof showToast === 'function') showToast('Not ready', 'Checking again in 7 days.');
+              try {
+                const cached = _ppCache[ppCurrentKey];
+                if (cached && cached.p) cached.p.harvestSnoozeUntil = p.harvestSnoozeUntil;
+              } catch (e) {}
+              // Instant on-card confirmation (owner, 23/07: a toast elsewhere on screen wasn't good enough —
+              // the passport itself, right where the tap happened, needs to visibly change). Patches the
+              // row's own text in place rather than a full ppRender, which would otherwise just make the
+              // whole row vanish (its usual quiet-once-snoozed state, correct for the NEXT time this card
+              // opens — see the snoozeGap check above — but not an acceptable response to the tap itself).
+              const row = btn ? btn.closest('.pl-line-row') : null;
+              if (row) {
+                row.innerHTML = '';
+                const s = document.createElement('span');
+                s.className = 'pl-line pl-harvest-check';
+                s.textContent = 'Not ready — checking again in 7 days';
+                row.appendChild(s);
+              }
             } else if (btn) { btn.disabled = false; }
           })
           .withFailureHandler(function () { if (btn) btn.disabled = false; })
