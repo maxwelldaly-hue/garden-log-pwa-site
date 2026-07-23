@@ -1939,7 +1939,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.48</span>
+        <span class="header-version">v8.49</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2249,7 +2249,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.48 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.49 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11821,13 +11821,31 @@ if (typeof module !== 'undefined' && module.exports) {
         return wrap.children.length ? wrap : null;
       }
       // "Not ready" tap (design pass 23/07) — direct structured action (snoozeHarvestCheck), not the
-      // log/scribe pipeline (this is deterministic UI intent). Optimistic patch + local re-render on
-      // success, same shape as ppBeginRename's success handler — no state refetch.
+      // log/scribe pipeline (this is deterministic UI intent).
+      // Genuinely optimistic (owner, 23/07: the round-trip to Apps Script is a real few seconds — a plain
+      // Sheets write, nothing to do with the AI/Gemini side — and waiting for it back before showing
+      // anything read as "the tap did nothing" all over again). The row is patched the instant you tap,
+      // before the request even goes out; low-stakes and freely re-tappable, so on the rare failure it
+      // just reverts to the original row rather than needing a confirm step up front.
       function ppSnoozeHarvestCheck(p, btn) {
         if (!p || !p.plantId) return;
         const pin = localStorage.getItem('garden_log_pin'), token = localStorage.getItem('garden_log_token');
         if (!pin && !token) return;
-        if (btn) btn.disabled = true;
+        const row = btn ? btn.closest('.pl-line-row') : null;
+        // Keep the ORIGINAL nodes (not a serialized copy) so a rollback restores the real button element,
+        // onclick handler intact — innerHTML round-tripping would silently rebuild a dead button.
+        const origChildren = row ? Array.from(row.childNodes) : [];
+        function revert() {
+          if (row) { row.innerHTML = ''; origChildren.forEach(function (n) { row.appendChild(n); }); }
+          else if (btn) { btn.disabled = false; }
+        }
+        if (row) {
+          row.innerHTML = '';
+          const s = document.createElement('span');
+          s.className = 'pl-line pl-harvest-check';
+          s.textContent = 'Not ready — checking again in 7 days';
+          row.appendChild(s);
+        } else if (btn) { btn.disabled = true; }
         google.script.run
           .withSuccessHandler(function (resStr) {
             let res = null; try { res = JSON.parse(resStr); } catch (e) {}
@@ -11838,22 +11856,9 @@ if (typeof module !== 'undefined' && module.exports) {
                 const cached = _ppCache[ppCurrentKey];
                 if (cached && cached.p) cached.p.harvestSnoozeUntil = p.harvestSnoozeUntil;
               } catch (e) {}
-              // Instant on-card confirmation (owner, 23/07: a toast elsewhere on screen wasn't good enough —
-              // the passport itself, right where the tap happened, needs to visibly change). Patches the
-              // row's own text in place rather than a full ppRender, which would otherwise just make the
-              // whole row vanish (its usual quiet-once-snoozed state, correct for the NEXT time this card
-              // opens — see the snoozeGap check above — but not an acceptable response to the tap itself).
-              const row = btn ? btn.closest('.pl-line-row') : null;
-              if (row) {
-                row.innerHTML = '';
-                const s = document.createElement('span');
-                s.className = 'pl-line pl-harvest-check';
-                s.textContent = 'Not ready — checking again in 7 days';
-                row.appendChild(s);
-              }
-            } else if (btn) { btn.disabled = false; }
+            } else { revert(); }
           })
-          .withFailureHandler(function () { if (btn) btn.disabled = false; })
+          .withFailureHandler(revert)
           .processClientRequest(JSON.stringify({ action: 'snoozeHarvestCheck', plantId: p.plantId, token: token, pin: pin }));
       }
       // Which terminal event tombstoned this plant — 'harvest' | 'removal' | '' (unknown yet). Milestones are
