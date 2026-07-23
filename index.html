@@ -1939,7 +1939,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.46</span>
+        <span class="header-version">v8.47</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2249,7 +2249,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.46 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.47 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11786,6 +11786,10 @@ if (typeof module !== 'undefined' && module.exports) {
               p.harvestSnoozeUntil = res.data.until || '';
               if (_ppLast && _ppLast.p) _ppLast.p.harvestSnoozeUntil = p.harvestSnoozeUntil;
               try { ppRender(_ppLast.p, _ppLast.bed, _ppCache[ppCurrentKey], false); } catch (e) {}
+              // The check-for-harvest row (button included) simply disappears on success — same silent-tap
+              // problem the other passport actions already got a toast fix for (owner, 23/07): without it,
+              // a tap that worked reads as a tap that did nothing.
+              if (typeof showToast === 'function') showToast('Not ready', 'Checking again in 7 days.');
             } else if (btn) { btn.disabled = false; }
           })
           .withFailureHandler(function () { if (btn) btn.disabled = false; })
