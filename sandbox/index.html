@@ -173,7 +173,10 @@
       .recent-daygroup { font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted); letter-spacing: 0.03em; padding: 14px 4px 6px; }
       .recent-list > .recent-daygroup:first-child { padding-top: 2px; }
       .recent-main { flex: 1; min-width: 0; }
-      .recent-head { font-size: var(--fs-base); font-weight: 600; color: var(--text-main); line-height: 1.3; }
+      /* 500 to match .plant-title-text / .is-name / .pp-ms-t — same "row title" role across tabs, was 600
+         here only, reading a step bolder on Log than the identical role on Garden/In-season/Passport
+         (design-consistency audit, 23/07). */
+      .recent-head { font-size: var(--fs-base); font-weight: 500; color: var(--text-main); line-height: 1.3; }
       .recent-detail { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.35; margin-top: 2px; }
       /* The AI photo description / OCR'd tag facts — quietest line (machine description, not your word). */
       .recent-photodesc { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.35; margin-top: 3px; }
@@ -1044,7 +1047,9 @@
       .is-row { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-radius: var(--r-sm); }
       .is-ic { width: 30px; height: 30px; flex: 0 0 30px; display: flex; align-items: center; justify-content: center; }
       .is-ic .plant-ic { width: 26px; height: 26px; margin: 0; vertical-align: unset; }
-      .is-name { flex: 1 1 auto; font-size: var(--fs-base); color: var(--text-main); display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+      /* font-weight: 500 — matches .plant-title-text/.recent-head/.pp-ms-t, the same "row title" role
+         elsewhere (design-consistency audit, 23/07; was unweighted/400 here only). */
+      .is-name { flex: 1 1 auto; font-size: var(--fs-base); font-weight: 500; color: var(--text-main); display: flex; align-items: baseline; gap: 8px; min-width: 0; }
       .is-owned { font-size: var(--fs-xs); color: var(--color-sage); white-space: nowrap; }
       .is-lines { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex: 0 0 auto; min-width: 0; }
       .is-line { font-size: var(--fs-sm); font-weight: 500; text-align: right; white-space: nowrap; flex: 0 0 auto; }
@@ -1168,8 +1173,8 @@
       .pp-rename-edit { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
       .pp-rename-input { flex: 1 1 140px; min-width: 120px; padding: 5px 8px; font-size: var(--fs-md);
         color: var(--text-main); background: var(--surface-inset-03); border: 1px solid var(--text-muted);
-        border-radius: 7px; }
-      .pp-rename-ok, .pp-rename-cancel { padding: 4px 9px; border-radius: 7px; border: 1px solid var(--surface-inset-03);
+        border-radius: var(--r-xs); }
+      .pp-rename-ok, .pp-rename-cancel { padding: 4px 9px; border-radius: var(--r-xs); border: 1px solid var(--surface-inset-03);
         background: var(--surface-inset-03); color: var(--text-main); cursor: pointer; font-size: var(--fs-sm); }
       .pp-rename-ok:hover, .pp-rename-cancel:hover { border-color: var(--text-muted); }
       .pp-rename-ok[disabled], .pp-rename-cancel[disabled], .pp-rename-input[disabled] { opacity: 0.55; cursor: default; }
@@ -1198,8 +1203,11 @@
       }
       .pp-lines .pp-check-btn:hover { border-color: var(--color-online); color: var(--color-online); }
       /* Sections: quiet eyebrow + content. Absent data = absent section, never an empty state. */
+      /* Same size as .pp-crumb (the other quiet tracked tag on this screen) — was --fs-2xs, one full
+         type-step smaller than its true sibling, which read as an inconsistent "shrink" between the
+         breadcrumb up top and the section tags below it (design-consistency audit, 23/07). */
       .pp-sec-h {
-        font-size: var(--fs-2xs); letter-spacing: var(--ls-wide);
+        font-size: var(--fs-xs); letter-spacing: var(--ls-wide);
         color: var(--text-muted); margin-bottom: 8px;
       }
       /* Scoped to the "From the label/seed" header only (round 2 fix) — it sits flush-left as a sibling of
@@ -1263,7 +1271,9 @@
       }
       .pp-ms-row:first-child { border-top: 0; }
       .pp-ms-mk { flex: 0 0 18px; text-align: center; }
-      .pp-ms-t { flex: 1 1 auto; color: var(--text-main); min-width: 0; overflow-wrap: anywhere; }
+      /* font-weight: 500 — matches .plant-title-text/.recent-head/.is-name, the same "row title" role
+         elsewhere (design-consistency audit, 23/07; was unweighted/400 here only). */
+      .pp-ms-t { flex: 1 1 auto; font-weight: 500; color: var(--text-main); min-width: 0; overflow-wrap: anywhere; }
       .pp-ms-t small { display: block; color: var(--text-muted); font-size: var(--fs-xs); }
       .pp-ms-when { color: var(--text-muted); font-size: var(--fs-xs); white-space: nowrap; }
       /* Photo journey: an inline thumbnail (base64 from the authenticated backend) + a one-line caption +
@@ -1929,7 +1939,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.45</span>
+        <span class="header-version">v8.46</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2239,7 +2249,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.45 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.46 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
