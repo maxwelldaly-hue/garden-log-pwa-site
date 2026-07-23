@@ -1926,7 +1926,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.40</span>
+        <span class="header-version">v8.41</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2236,7 +2236,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.40 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.41 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11771,14 +11771,15 @@ if (typeof module !== 'undefined' && module.exports) {
           sec.appendChild(about);
         }
         if (labelRows.length) {
-          // Section-1 header, conditional on how THIS plant instance started (design pass, 23/07 round 2):
-          // "From the seed" for anything raised from a tracked seed (p.estSprout set — the same seedOrigin
-          // signal ppLedgerLinesEl already uses for its Sown/Sprouted wording), else "From the label" for
-          // a direct-sow/label-captured planting. Reuses .pp-sec-h — same header voice as General reference.
+          // Section-1 header, conditional on how THIS plant instance started (design pass, 23/07 round 2,
+          // "packet" not "label" per owner correction): "From the seed" for anything raised from a tracked
+          // seed (p.estSprout set — the same seedOrigin signal ppLedgerLinesEl already uses for its
+          // Sown/Sprouted wording), else "From the packet" for a direct-sow/label-captured planting.
+          // Reuses .pp-sec-h — same header voice as General reference.
           const seedOrigin = !!p.estSprout;
           const boxHead = document.createElement('div');
           boxHead.className = 'pp-sec-h pp-sec-h-tab';
-          boxHead.textContent = seedOrigin ? 'From the seed' : 'From the label';
+          boxHead.textContent = seedOrigin ? 'From the seed' : 'From the packet';
           sec.appendChild(boxHead);
           const box = document.createElement('div'); box.className = 'pp-facts';
           labelRows.forEach(function (r) { box.appendChild(ppFactRow(r[1], r[2], false)); });
