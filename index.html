@@ -1193,10 +1193,14 @@
          line carries the current stage (v6.76 — headline + ribbon retired; their .pp-ribbon/.pp-ph/
          .pp-season CSS was removed with them). */
       .pp-lines { display: flex; flex-direction: column; gap: 3px; }
-      /* Status text + "Not ready" share one row (design pass 23/07 round 2 — was stacked on its own row
-         below, disconnected and oversized). Text takes the available space; the button sits inline,
-         right-aligned, sized as a proper secondary action rather than a full block control. */
-      .pp-lines .pl-line-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+      /* Status text + its action button(s) share one row (design pass 23/07 round 2 — was stacked on its
+         own row below, disconnected and oversized; round 5 — the row can now carry TWO buttons, "Not
+         ready" + "First Harvest"/"Harvest" side by side, so justify-content:space-between was dropped —
+         with 3 flex children it would spread the pair apart instead of grouping them). The text span
+         grows to absorb all the slack instead, so any trailing buttons hug the right edge together,
+         separated from each other only by the row's own gap. */
+      .pp-lines .pl-line-row { display: flex; align-items: center; gap: 10px; }
+      .pp-lines .pl-line-row > .pl-line:first-child { flex: 1 1 auto; }
       .pp-lines .pp-check-btn {
         flex: none; white-space: nowrap;
         background: none; border: 1px solid var(--surface-inset-03); color: var(--text-muted);
@@ -1213,8 +1217,8 @@
       }
       .pp-lines .pp-harvest-btn:hover { border-color: var(--color-sage); background: rgba(45, 138, 96, 0.08); }
       /* A harvest-only row (no status text alongside it — e.g. an established perennial/tree with no other
-         ledger line at all) has nothing for justify-content: space-between to push apart, so it would sit
-         at the LEFT edge like plain text; flex-end matches every other row's button, right-aligned. */
+         ledger line at all) has no `.pl-line:first-child` to soak up the slack, so its button would sit at
+         the LEFT edge by default; flex-end matches every other row's button, right-aligned. */
       .pp-lines .pl-line-row-solo { justify-content: flex-end; }
       /* Sections: quiet eyebrow + content. Absent data = absent section, never an empty state. */
       /* Same size as .pp-crumb (the other quiet tracked tag on this screen) — was --fs-2xs, one full
@@ -1953,7 +1957,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.58</span>
+        <span class="header-version">v8.59</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2263,7 +2267,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.58 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.59 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11868,7 +11872,7 @@ if (typeof module !== 'undefined' && module.exports) {
             if (p.plantId) {
               const btn = document.createElement('button');
               btn.type = 'button'; btn.className = 'pp-check-btn'; btn.textContent = 'Not ready';
-              btn.onclick = function () { ppSnoozeHarvestCheck(p, btn); };
+              btn.onclick = function () { ppSnoozeHarvestCheck(p, btn, bedName); };
               row.appendChild(btn);
             }
             wrap.appendChild(row);
@@ -11876,20 +11880,30 @@ if (typeof module !== 'undefined' && module.exports) {
             line('pl-countdown', (days !== null) ? ('Est. harvest in ' + days + (days === 1 ? ' day' : ' days')) : ('Est. harvest ' + estDate));
           }
         }
-        // Harvest button (design pass 23/07 round 4 — moved up from the footer to sit right here, in the
-        // status-line area, exactly where "Not ready" lives above). Deliberately its OWN row rather than
-        // sharing one of the branches above: ppSnoozeHarvestCheck does optimistic DOM surgery on the
-        // check-for-harvest row (replacing its entire innerHTML on tap), and folding Harvest into that same
-        // row would make a "Not ready" tap silently eat the Harvest button along with it. A bare row with
-        // just the button (no text) is fine — .pl-line-row-solo right-aligns it the same as every other
-        // row's button. Covers every plant Harvest applies to, INCLUDING one with no status line at all
-        // above (an established perennial/tree — ppIsEstablished — which otherwise renders nothing here).
+        // Harvest button (design pass 23/07 round 4, fixed round 5 — was landing on its OWN row below
+        // "Check for harvest [Not ready]" instead of sharing it, reading as two disconnected/broken rows
+        // rather than one status with two responses). Joins whichever row is already showing — including
+        // sitting alongside "Not ready" — so ppSnoozeHarvestCheck was fixed (below) to rebuild this button
+        // instead of wiping it on tap. Falls back to a bare solo row only when NOTHING else is showing (an
+        // established perennial/tree — ppIsEstablished — which otherwise renders nothing here).
         const harvestBtn = ppHarvestBtnEl(p, bedName);
         if (harvestBtn) {
-          const hrow = document.createElement('div');
-          hrow.className = 'pl-line-row pl-line-row-solo';
-          hrow.appendChild(harvestBtn);
-          wrap.appendChild(hrow);
+          const last = wrap.lastElementChild;
+          if (last && last.classList.contains('pl-line-row')) {
+            last.appendChild(harvestBtn);
+          } else if (last) {
+            wrap.removeChild(last);
+            const hrow = document.createElement('div');
+            hrow.className = 'pl-line-row';
+            hrow.appendChild(last);
+            hrow.appendChild(harvestBtn);
+            wrap.appendChild(hrow);
+          } else {
+            const hrow = document.createElement('div');
+            hrow.className = 'pl-line-row pl-line-row-solo';
+            hrow.appendChild(harvestBtn);
+            wrap.appendChild(hrow);
+          }
         }
         return wrap.children.length ? wrap : null;
       }
@@ -11903,7 +11917,7 @@ if (typeof module !== 'undefined' && module.exports) {
       // anything read as "the tap did nothing" all over again). The row is patched the instant you tap,
       // before the request even goes out; low-stakes and freely re-tappable, so on the rare failure it
       // just reverts to the original row rather than needing a confirm step up front.
-      function ppSnoozeHarvestCheck(p, btn) {
+      function ppSnoozeHarvestCheck(p, btn, bedName) {
         if (!p || !p.plantId) return;
         const pin = localStorage.getItem('garden_log_pin'), token = localStorage.getItem('garden_log_token');
         if (!pin && !token) return;
@@ -11921,6 +11935,12 @@ if (typeof module !== 'undefined' && module.exports) {
           s.className = 'pl-line pl-countdown';
           s.textContent = 'Est. harvest in 7 days';
           row.appendChild(s);
+          // The Harvest button shares this row (fixed round 5 — it used to sit on its own row below this
+          // one, and this rewrite would silently delete it entirely rather than just leaving it behind).
+          // A rebuild, not a re-parent: snoozing never changes harvest eligibility or the already-started
+          // label, so a fresh ppHarvestBtnEl call is byte-identical to the one this row already had.
+          const freshBtn = ppHarvestBtnEl(p, bedName);
+          if (freshBtn) row.appendChild(freshBtn);
         } else if (btn) { btn.disabled = true; }
         google.script.run
           .withSuccessHandler(function (resStr) {
