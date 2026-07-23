@@ -1207,9 +1207,12 @@
          inset here the header and its own table's first column don't line up. Story/Photos headers stay
          on the base .pp-sec-h (unpadded) since their content is flush-left too, no box to match. */
       .pp-sec-h-tab { padding: 0 12px; }
-      /* About: prose, not a fact — a lead sentence that sits above the grid instead of fighting a
-         label/value row for space (design pass, 23/07). */
-      .pp-about { font-size: var(--fs-base); color: var(--text-soft); line-height: 1.5; margin: 0 0 12px; }
+      /* About: prose, not a fact — sits above the grid instead of fighting a label/value row for space
+         (design pass 23/07). Same --fs-sm as the rest of the card (round 2 follow-up) — the original
+         lead-sentence size bump kept reading as a bug across several rounds of feedback rather than a
+         deliberate flourish, so full uniformity won; position (first, above everything) already signals
+         "this is the intro" without needing a size difference too. */
+      .pp-about { font-size: var(--fs-sm); color: var(--text-soft); line-height: 1.5; margin: 0 0 12px; }
       .pp-facts {
         background: var(--surface-inset-02); border: 1px solid var(--surface-inset-03);
         border-radius: var(--r-md); padding: 4px 12px;
@@ -1926,7 +1929,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.41</span>
+        <span class="header-version">v8.42</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2236,7 +2239,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.41 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.42 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
