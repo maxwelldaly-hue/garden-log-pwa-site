@@ -1929,7 +1929,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.44</span>
+        <span class="header-version">v8.45</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2239,7 +2239,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.44 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.45 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -10330,6 +10330,11 @@ if (typeof module !== 'undefined' && module.exports) {
           .withSuccessHandler((resStr) => {
             let res; try { res = JSON.parse(resStr); } catch (e) { res = null; }
             if (res && res.status === 'success' && res.data && res.data.token) {
+              // Persist the PIN alongside the token (mirrors submitLogin/saveSettings) — without this the
+              // SANDBOX_OPEN auto-unlock path (openProbe, pin='open') left garden_log_pin permanently unset,
+              // so a token existed but every submitLog() call silently no-op'd on its `if (!pin) return` gate
+              // (found live-testing the passport quick-tap actions on beta, 23/07 — taps did nothing, no error).
+              localStorage.setItem('garden_log_pin', pin);
               localStorage.setItem('garden_log_token', res.data.token);
               const pinField = document.getElementById('pinInput'); if (pinField) pinField.value = pin;
               bootAfterAuth();
