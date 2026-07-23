@@ -1110,14 +1110,15 @@
       /* Bar actions: just the ✕ now — the scoped-log control moved out of the bar and is restyled as
          #ppLogFab (reuses .log-fab verbatim, bottom-left) so it reads as the same persistent button. */
       .pp-bar-actions { display: flex; align-items: center; gap: 8px; }
-      /* Action buttons (design pass 23/07, revised round 2): two always-present, always-both concepts on
-         EVERY plant — green "Harvest" (collecting yield; behaviour branches by harvestType internally,
-         same colour either way) and red "Pull out" (universal, always ends the plant early — colour alone
-         signals this is the negative path, not wording). No more per-harvestType button SET switching. */
+      /* Footer action row (design pass 23/07 round 4): Harvest moved UP into the status-line row (.pp-lines
+         .pp-harvest-btn below) — this footer now carries only the universal red "Pull out" (always ends the
+         plant early — colour alone signals this is the negative path) plus the rare Sown/raising-under-cover
+         shortcuts. A lone button no longer needs to split the row 50/50, so it's centred at a comfortable
+         width rather than stretching into a full-width bar. */
       .pp-remove { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--surface-inset-03); }
-      .pp-remove-actions { display: flex; gap: 8px; }
+      .pp-remove-actions { display: flex; gap: 8px; justify-content: center; }
       .pp-action-btn {
-        flex: 1 1 0; border-radius: var(--r-sm); font-size: var(--fs-sm); font-weight: 600;
+        flex: 0 1 220px; border-radius: var(--r-sm); font-size: var(--fs-sm); font-weight: 600;
         padding: 9px 14px; cursor: pointer; background: none;
       }
       .pp-action-harvest { border: 1px solid rgba(45, 138, 96, 0.4); color: var(--color-sage); }
@@ -1202,6 +1203,19 @@
         border-radius: var(--r-sm); font-size: var(--fs-xs); padding: 3px 9px; cursor: pointer;
       }
       .pp-lines .pp-check-btn:hover { border-color: var(--color-online); color: var(--color-online); }
+      /* Harvest, relocated inline (design pass 23/07 round 4 — was a full-width footer button, now sits in
+         the status-line area, same tap-target size/register as .pp-check-btn's "Not ready" but coloured
+         sage/green like the old .pp-action-harvest — this IS the positive action, not a muted secondary. */
+      .pp-lines .pp-harvest-btn {
+        flex: none; white-space: nowrap;
+        background: none; border: 1px solid rgba(45, 138, 96, 0.4); color: var(--color-sage);
+        border-radius: var(--r-sm); font-size: var(--fs-xs); font-weight: 600; padding: 3px 9px; cursor: pointer;
+      }
+      .pp-lines .pp-harvest-btn:hover { border-color: var(--color-sage); background: rgba(45, 138, 96, 0.08); }
+      /* A harvest-only row (no status text alongside it — e.g. an established perennial/tree with no other
+         ledger line at all) has nothing for justify-content: space-between to push apart, so it would sit
+         at the LEFT edge like plain text; flex-end matches every other row's button, right-aligned. */
+      .pp-lines .pl-line-row-solo { justify-content: flex-end; }
       /* Sections: quiet eyebrow + content. Absent data = absent section, never an empty state. */
       /* Same size as .pp-crumb (the other quiet tracked tag on this screen) — was --fs-2xs, one full
          type-step smaller than its true sibling, which read as an inconsistent "shrink" between the
@@ -1939,7 +1953,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.52</span>
+        <span class="header-version">v8.53</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2249,7 +2263,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.52 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.53 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11127,7 +11141,7 @@ if (typeof module !== 'undefined' && module.exports) {
         // journey is the reward (owner, 15/07). The v1 stage headline (ppStageEl) and the two-line ribbon
         // (ppRibbonEl) are both gone. The status line reads the story for its "since" date, so it
         // sharpens in place when the async story lands.
-        const lines = ppLedgerLinesEl(p, story);
+        const lines = ppLedgerLinesEl(p, story, bedName);
         if (lines) body.appendChild(lines);
 
         const storyEl = ppStoryEl(p, story, pending);
@@ -11145,31 +11159,36 @@ if (typeof module !== 'undefined' && module.exports) {
         if (remove) body.appendChild(remove);
       }
 
-      // Action buttons (design pass 23/07 round 2 — supersedes round 1's "one-hit vs repeat decides which
-      // buttons show" framing). Two separate, always-available concepts, present on EVERY plant regardless
-      // of harvestType: green "Harvest" always means collecting yield (behaviour branches by harvestType
-      // internally — one_shot opens a quantity picker, ongoing just logs a pick — same label/colour either
-      // way, invisible to the user); red "Pull out" is universal and always means ending the plant early
-      // (expired/died, never a harvest action — colour carries that distinction, not wording). This closes
-      // a real gap round 1 had: a one_shot crop like Beetroot previously had no way to record "it died
-      // before I got to harvest it" separately from the harvest flow itself.
+      // Shared eligibility gate for the Harvest action (design pass 23/07 round 4) — used both here (to
+      // decide the Sprouted/Moved-outside shortcuts) and by ppLedgerLinesEl (which now renders the button
+      // itself, inline in the status-line row — see ppHarvestBtnEl below). Harvest never appears while the
+      // plant is still a seed/seedling — there's nothing to collect yet, and a stray tap here previously
+      // fired a nonsense "Harvested the X" log against an unsprouted seed. Deliberately NOT plantNurseryPhase
+      // (Js-State.html) — that classifier has a zone override that permanently reads ANY "House Window"/
+      // greenhouse plant as seed/sprout for the status-tile ICON, even once it's actually fruiting there;
+      // reusing it here would hide Harvest forever for a windowsill crop that never gets transplanted out.
+      // This checks the plant's real underlying phase only. Flowering ornamentals (CROP_FLOWERING — lavender,
+      // roses, marigolds…) are never harvested in this garden's workflow, so they're excluded too.
+      function ppHarvestEligible(p) {
+        if (!p || p.isTombstone || p.isEmpty) return false;
+        if (p.phase === 'Sown' || p.raisingUnderCover) return false;
+        const stillSeedOrSeedling = p.phase
+          ? (p.phase === 'Sown' || p.phase === 'Sprouted')
+          : (p.stage === 'Germination' || (p.stage === 'Seedling' && !p.transplanted));
+        return !stillSeedOrSeedling && !p.flowering;
+      }
+      // Footer action row (design pass 23/07 round 4 — supersedes round 2/3's "Harvest + Pull out share the
+      // footer" layout). "Harvest" has moved UP into the status-line row (ppLedgerLinesEl, where "Not ready"
+      // used to sit alone — owner ask: it belongs beside the status it acts on, not buried below the whole
+      // card). This footer now carries only the universal exit path: red "Pull out" always means ending the
+      // plant early (expired/died, never a harvest action — colour carries that distinction, not wording),
+      // plus the two seed/seedling shortcuts that were never really "harvest" actions to begin with.
       function ppRemoveEl(p, bedName) {
         if (!p || p.isTombstone || p.isEmpty) return null;
         const wrap = document.createElement('div');
         wrap.className = 'pp-remove';
         const actions = document.createElement('div');
         actions.className = 'pp-remove-actions';
-        // Harvest never appears while the plant is still a seed/seedling (owner, 23/07) — there's nothing
-        // to collect yet, and a stray tap here previously fired a nonsense "Harvested the X" log against
-        // an unsprouted seed. Deliberately NOT plantNurseryPhase (Js-State.html) — that classifier has a
-        // zone override that permanently reads ANY "House Window"/greenhouse plant as seed/sprout for the
-        // status-tile ICON, even once it's actually fruiting there; reusing it here would hide Harvest
-        // forever for a windowsill crop that never gets transplanted out. This checks the plant's real
-        // underlying phase only. Pull out stays available regardless — a seedling can still die and needs
-        // an exit path, just never a "harvest" one.
-        const stillSeedOrSeedling = p.phase
-          ? (p.phase === 'Sown' || p.phase === 'Sprouted')
-          : (p.stage === 'Germination' || (p.stage === 'Seedling' && !p.transplanted));
         // Still an unsprouted seed (phase 'Sown') — nothing to harvest yet, but "it came up" is a real,
         // common shortcut worth a dedicated button rather than making the owner type it (owner, 23/07).
         if (p.phase === 'Sown') {
@@ -11187,15 +11206,6 @@ if (typeof module !== 'undefined' && module.exports) {
           moved.textContent = 'Moved outside';
           moved.onclick = function () { ppOpenMovedOutside(p, bedName); };
           actions.appendChild(moved);
-        // Flowering ornamentals (CROP_FLOWERING — lavender, roses, marigolds…) are never harvested in
-        // this garden's workflow; Harvest stays hidden for them same as for a still-seed/seedling plant
-        // (owner, 23/07). Pull out stays available regardless — it can still expire or die.
-        } else if (!stillSeedOrSeedling && !p.flowering) {
-          const harvest = document.createElement('button');
-          harvest.type = 'button'; harvest.className = 'pp-action-btn pp-action-harvest';
-          harvest.textContent = 'Harvest';
-          harvest.onclick = function () { ppHarvestTap(p, bedName); };
-          actions.appendChild(harvest);
         }
         const pull = document.createElement('button');
         pull.type = 'button'; pull.className = 'pp-action-btn pp-action-pullout';
@@ -11205,13 +11215,30 @@ if (typeof module !== 'undefined' && module.exports) {
         wrap.appendChild(actions);
         return wrap;
       }
+      // The Harvest button itself (design pass 23/07 round 4) — reads "First Harvest" until this planting
+      // has ever actually been picked, then "Harvest" from then on (owner ask: the wording should mark the
+      // moment a plant crosses from "still growing" into "now in harvest", not read as a generic
+      // always-there label). "Already harvesting" reuses the EXACT test the status line above uses to
+      // decide the Harvesting/Producing state (yield present, or phase/stage already flipped) — the two can
+      // never disagree. A one_shot crop never actually sees "Harvest": its single pick tombstones the row,
+      // which is the correct, honest label for a once-ever action. Returns null when Harvest doesn't apply
+      // (ppHarvestEligible) so the caller can skip the row/button entirely.
+      function ppHarvestBtnEl(p, bedName) {
+        if (!ppHarvestEligible(p)) return null;
+        const already = !!(p.yield || p.phase === 'Producing' || String(p.stage || '').trim() === 'Harvesting');
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'pp-harvest-btn';
+        btn.textContent = already ? 'Harvest' : 'First Harvest';
+        btn.onclick = function () { ppHarvestTap(p, bedName); };
+        return btn;
+      }
       // "Harvest" tap — branches on harvestType (GardenSheet.js; already a per-crop field, no data-model
       // gap here). one_shot (a head/root/bulb — harvesting takes the whole plant) opens the quantity
-      // picker; ongoing (fruit/pods/cut-and-come) just logs a pick and stays active, no decrement.
+      // picker; ongoing (fruit/pods/cut-and-come) opens the personalised pick-count popup (round 4).
       function ppHarvestTap(p, bedName) {
         const oneShot = (String(p.harvestType || 'ongoing') === 'one_shot');
         if (oneShot) ppOpenQuantityPicker(p, bedName);
-        else ppHarvestPick(p, bedName);
+        else ppOpenHarvestPickPopup(p, bedName);
       }
       // One-shot "Harvest": how many of the ×N did you actually pull? Reuses the shared resolve-modal
       // shell (same one the shed merge/category flows use). Confirm submits a log string routed through
@@ -11275,15 +11302,48 @@ if (typeof module !== 'undefined' && module.exports) {
         // like it did nothing (owner, 23/07).
         if (typeof showToast === 'function') showToast('Harvested', text);
       }
-      // Ongoing crop: "Harvest" — repeatable, no quantity, just logs a pick. Deliberately no count so it
-      // lands on the existing no-count Harvesting branch (StateUpdate.js) — accrues yield, never tombstones.
-      function ppHarvestPick(p, bedName) {
+      // Ongoing crop: "Harvest" (design pass 23/07 round 4, owner ask — "personalised, record count not
+      // weight"). Asks HOW MANY in the crop's own word (p.harvestUnit — "tomatoes"/"zucchinis"/"leaves",
+      // Crops book HarvestUnit column via lookupHarvestUnit, GardenSheet.js) rather than a bare weight; a
+      // crop with no configured word yet falls back to a generic "pieces" (owner: always ask, never skip
+      // the popup) so every pick still records a real number. Reuses the shared resolve-modal shell exactly
+      // like ppOpenQuantityPicker, but UNBOUNDED — an ongoing cropper never tracks a total to pick down
+      // from, so there's no "of N" cap.
+      function ppOpenHarvestPickPopup(p, bedName) {
+        const unit = (p.harvestUnit && String(p.harvestUnit).trim()) || 'pieces';
+        document.getElementById('resolveTitle').textContent = 'How many ' + unit + ' did you pick?';
+        document.getElementById('resolveSub').textContent = ppSplitName(p.name)[0];
+        const body = document.getElementById('resolveBody'); body.innerHTML = '';
+        const actions = document.getElementById('resolveActions'); actions.innerHTML = '';
+        let val = 1;
+        const stepper = document.createElement('div'); stepper.className = 'pp-stepper';
+        const minus = document.createElement('button'); minus.type = 'button'; minus.className = 'pp-stepper-btn'; minus.textContent = '−';
+        const disp = document.createElement('span'); disp.className = 'pp-stepper-val'; disp.textContent = String(val);
+        const plus = document.createElement('button'); plus.type = 'button'; plus.className = 'pp-stepper-btn'; plus.textContent = '+';
+        const render = function () { disp.textContent = String(val); minus.disabled = val <= 0; };
+        minus.onclick = function () { if (val > 0) { val--; render(); } };
+        plus.onclick = function () { val++; render(); };
+        render();
+        stepper.appendChild(minus); stepper.appendChild(disp); stepper.appendChild(plus);
+        body.appendChild(stepper);
+        actions.appendChild(rButton('Confirm', 'rbtn-primary', function () {
+          closeResolve();
+          // 0 is a no-op — an accidental open-then-confirm shouldn't log a phantom pick.
+          if (val > 0) ppSubmitHarvestPick(p, bedName, val, unit);
+        }));
+        actions.appendChild(rButton('Cancel', 'rbtn-secondary', closeResolve));
+        presentResolveModal();
+      }
+      function ppSubmitHarvestPick(p, bedName, n, unit) {
+        const base = ppSplitName(p.name)[0];
         const from = bedName ? ' from ' + bedName : '';
-        const text = 'Harvested the ' + p.name + from;
-        // Structured bypass — see ppSubmitHarvestQuantity above. No count here either: an ongoing pick
-        // always accrues yield and never tombstones, exactly like the free-text phrasing it replaces.
+        const text = 'Picked ' + n + ' ' + unit + ' of the ' + base + from;
+        // Structured bypass (see ppSubmitHarvestQuantity above): count + harvestUnit ride through untouched
+        // (GardenDoc.js normalizeStructuredItem, StateUpdate.js's ongoing-Harvesting branch), so the accrual
+        // is an exact integer sum in the crop's own word ("14 tomatoes") — never a free-text guess, since
+        // extractYield only understands weight/volume/bunch/punnet, never an arbitrary per-crop noun.
         // batchHint: p.planted — see ppSubmitHarvestQuantity's comment (the passport-tap disambiguation fix).
-        const item = { zone: bedName || 'Unspecified', category: 'Harvesting', crop: p.name, batchHint: p.planted || '' };
+        const item = { zone: bedName || 'Unspecified', category: 'Harvesting', crop: p.name, batchHint: p.planted || '', count: String(n), harvestUnit: unit };
         closePassport();
         if (typeof submitLog === 'function') submitLog(text, item);
         if (typeof showToast === 'function') showToast('Harvested', text);
@@ -11690,7 +11750,7 @@ if (typeof module !== 'undefined' && module.exports) {
       // show: a bought seedling (no estSprout) has no Sown line, and the early stage words (Germination/
       // Seedling/Vegetative) show as no line at all — the origin date + the Story already carry that
       // stretch ("Growing" is filler; the vegetative gap stays unlabeled, owner 15/07).
-      function ppLedgerLinesEl(p, story) {
+      function ppLedgerLinesEl(p, story, bedName) {
         const wrap = document.createElement('div');
         wrap.className = 'pp-lines';
         const line = function (cls, text) {
@@ -11772,6 +11832,21 @@ if (typeof module !== 'undefined' && module.exports) {
           } else {
             line('pl-countdown', (days !== null) ? ('Est. harvest in ' + days + (days === 1 ? ' day' : ' days')) : ('Est. harvest ' + estDate));
           }
+        }
+        // Harvest button (design pass 23/07 round 4 — moved up from the footer to sit right here, in the
+        // status-line area, exactly where "Not ready" lives above). Deliberately its OWN row rather than
+        // sharing one of the branches above: ppSnoozeHarvestCheck does optimistic DOM surgery on the
+        // check-for-harvest row (replacing its entire innerHTML on tap), and folding Harvest into that same
+        // row would make a "Not ready" tap silently eat the Harvest button along with it. A bare row with
+        // just the button (no text) is fine — .pl-line-row-solo right-aligns it the same as every other
+        // row's button. Covers every plant Harvest applies to, INCLUDING one with no status line at all
+        // above (an established perennial/tree — ppIsEstablished — which otherwise renders nothing here).
+        const harvestBtn = ppHarvestBtnEl(p, bedName);
+        if (harvestBtn) {
+          const hrow = document.createElement('div');
+          hrow.className = 'pl-line-row pl-line-row-solo';
+          hrow.appendChild(harvestBtn);
+          wrap.appendChild(hrow);
         }
         return wrap.children.length ? wrap : null;
       }
