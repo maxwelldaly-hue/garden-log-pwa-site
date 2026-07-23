@@ -1953,7 +1953,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.53</span>
+        <span class="header-version">v8.54</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2263,7 +2263,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.53 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.54 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11220,12 +11220,14 @@ if (typeof module !== 'undefined' && module.exports) {
       // moment a plant crosses from "still growing" into "now in harvest", not read as a generic
       // always-there label). "Already harvesting" reuses the EXACT test the status line above uses to
       // decide the Harvesting/Producing state (yield present, or phase/stage already flipped) — the two can
-      // never disagree. A one_shot crop never actually sees "Harvest": its single pick tombstones the row,
-      // which is the correct, honest label for a once-ever action. Returns null when Harvest doesn't apply
-      // (ppHarvestEligible) so the caller can skip the row/button entirely.
+      // never disagree. A one_shot crop (a head/root/bulb — Lettuce, Beetroot) is forced to "Harvest"
+      // always: there is no "first of many" for a single whole-plant pull, so "First Harvest" would be a
+      // false promise of a second one to come. Returns null when Harvest doesn't apply (ppHarvestEligible)
+      // so the caller can skip the row/button entirely.
       function ppHarvestBtnEl(p, bedName) {
         if (!ppHarvestEligible(p)) return null;
-        const already = !!(p.yield || p.phase === 'Producing' || String(p.stage || '').trim() === 'Harvesting');
+        const oneShot = (String(p.harvestType || 'ongoing') === 'one_shot');
+        const already = oneShot || !!(p.yield || p.phase === 'Producing' || String(p.stage || '').trim() === 'Harvesting');
         const btn = document.createElement('button');
         btn.type = 'button'; btn.className = 'pp-harvest-btn';
         btn.textContent = already ? 'Harvest' : 'First Harvest';
@@ -11334,6 +11336,18 @@ if (typeof module !== 'undefined' && module.exports) {
         actions.appendChild(rButton('Cancel', 'rbtn-secondary', closeResolve));
         presentResolveModal();
       }
+      // Client-side mirror of StateUpdate.js's accumulatePieceYield — used ONLY for the optimistic in-place
+      // patch below. The server run is the real source of truth; the next story refetch reconciles any drift.
+      function ppAccumulatePieceYieldClient(existing, n, unit) {
+        if (!n || n <= 0) return existing || '';
+        const cur = String(existing || '').trim();
+        const m = cur.match(/^(\d+(?:\.\d+)?)\s+(.+)$/);
+        if (m && m[2].trim().toLowerCase() === String(unit).trim().toLowerCase()) {
+          return (parseFloat(m[1]) + n) + ' ' + unit;
+        }
+        if (!cur) return n + ' ' + unit;
+        return cur + ' + ' + n + ' ' + unit;
+      }
       function ppSubmitHarvestPick(p, bedName, n, unit) {
         const base = ppSplitName(p.name)[0];
         const from = bedName ? ' from ' + bedName : '';
@@ -11344,9 +11358,24 @@ if (typeof module !== 'undefined' && module.exports) {
         // extractYield only understands weight/volume/bunch/punnet, never an arbitrary per-crop noun.
         // batchHint: p.planted — see ppSubmitHarvestQuantity's comment (the passport-tap disambiguation fix).
         const item = { zone: bedName || 'Unspecified', category: 'Harvesting', crop: p.name, batchHint: p.planted || '', count: String(n), harvestUnit: unit };
-        closePassport();
         if (typeof submitLog === 'function') submitLog(text, item);
         if (typeof showToast === 'function') showToast('Harvested', text);
+        // Stay OPEN and patch in place (design pass 23/07 round 4 sense-check) — every OTHER passport action
+        // closes on submit, but this is the one you're likely to tap again in a minute (an ongoing cropper),
+        // and closing would hide the exact confirmation this popup exists to give: the "First Harvest" button
+        // visibly flipping to "Harvest" and the running total updating right there. Same "assume it lands"
+        // confidence the batchHint disambiguation already relies on for this tap (it names the exact planting,
+        // so there's nothing left to resolve ambiguously) — not a tracked round-trip like ppSnoozeHarvestCheck's
+        // direct RPC (submitLog is a fire-and-forget durable queue, no per-call success/failure to hook), so
+        // there's no revert path here; a rare server-side disagreement is caught by the next story refetch.
+        p.stage = 'Harvesting';
+        p.yield = ppAccumulatePieceYieldClient(p.yield, n, unit);
+        if (_ppLast && _ppLast.p) { _ppLast.p.stage = p.stage; _ppLast.p.yield = p.yield; }
+        try {
+          const cached = _ppCache[ppCurrentKey];
+          if (cached && cached.p) { cached.p.stage = p.stage; cached.p.yield = p.yield; }
+        } catch (e) {}
+        ppRender(p, bedName, _ppCache[ppCurrentKey], false);
       }
       // "Pull out" — universal, every plant, always ends the record early (expired/died, never a harvest).
       // Reason is a set of directly-tappable choices (round 2 fix — was a <select> dropdown, which hid the
