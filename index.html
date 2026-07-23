@@ -1939,7 +1939,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.50</span>
+        <span class="header-version">v8.51</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2249,7 +2249,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.50 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.51 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11260,8 +11260,13 @@ if (typeof module !== 'undefined' && module.exports) {
         // directly instead of re-classifying `text` back into it. `count` is omitted on a full pick (n>=total)
         // so the SAME no-count branch fires as the old free-text phrasing (applyLogToState's one_shot harvest
         // tombstones when no count is tracked/stated); a partial pick sets count=n for the partial-decrement
-        // branch. `text` still rides as the Log row's readable Action text (rawText fallback).
-        const item = { zone: bedName || 'Unspecified', category: 'Harvesting', crop: p.name };
+        // branch. `text` still rides as the Log row's readable Action text (rawText fallback). `batchHint:
+        // p.planted` (owner, 23/07 — "asked for confirmation" on a Harvest tap): the passport already knows
+        // EXACTLY which planting this is, but without a hint applyLogToState re-matches by crop+bed alone —
+        // if the same crop has another planting in the same bed, that's a genuine ambiguity from a free-text
+        // note but a FALSE one here, since the tap can only mean this instance. The exact planted date is
+        // resolveBatch's (StateUpdate.js) existing date-hint arm — no server change needed.
+        const item = { zone: bedName || 'Unspecified', category: 'Harvesting', crop: p.name, batchHint: p.planted || '' };
         if (n < total) item.count = String(n);
         closePassport();
         if (typeof submitLog === 'function') submitLog(text, item);
@@ -11277,7 +11282,8 @@ if (typeof module !== 'undefined' && module.exports) {
         const text = 'Harvested the ' + p.name + from;
         // Structured bypass — see ppSubmitHarvestQuantity above. No count here either: an ongoing pick
         // always accrues yield and never tombstones, exactly like the free-text phrasing it replaces.
-        const item = { zone: bedName || 'Unspecified', category: 'Harvesting', crop: p.name };
+        // batchHint: p.planted — see ppSubmitHarvestQuantity's comment (the passport-tap disambiguation fix).
+        const item = { zone: bedName || 'Unspecified', category: 'Harvesting', crop: p.name, batchHint: p.planted || '' };
         closePassport();
         if (typeof submitLog === 'function') submitLog(text, item);
         if (typeof showToast === 'function') showToast('Harvested', text);
@@ -11317,7 +11323,8 @@ if (typeof module !== 'undefined' && module.exports) {
         // plant (never a partial removal), matching the free-text phrasing's no-count-token tombstone path.
         // The reason (expired/died) is Log-row colour only — StateUpdate.js has no structured reason field,
         // it rides solely in `text`/details, exactly as it did in the old scribe-parsed phrasing.
-        const item = { zone: bedName || 'Unspecified', category: 'Removal', crop: p.name };
+        // batchHint: p.planted — see ppSubmitHarvestQuantity's comment (the passport-tap disambiguation fix).
+        const item = { zone: bedName || 'Unspecified', category: 'Removal', crop: p.name, batchHint: p.planted || '' };
         closePassport();
         if (typeof submitLog === 'function') submitLog(text, item);
         if (typeof showToast === 'function') showToast('Pulled out', text);
@@ -11333,7 +11340,8 @@ if (typeof module !== 'undefined' && module.exports) {
         const base = ppSplitName(p.name)[0];
         const where = bedName ? ' in ' + bedName : '';
         const text = 'The ' + base + ' sprouted' + where;
-        const item = { zone: bedName || 'Unspecified', category: 'Observation', crop: p.name, stage: 'Seedling' };
+        // batchHint: p.planted — see ppSubmitHarvestQuantity's comment (the passport-tap disambiguation fix).
+        const item = { zone: bedName || 'Unspecified', category: 'Observation', crop: p.name, stage: 'Seedling', batchHint: p.planted || '' };
         closePassport();
         if (typeof submitLog === 'function') submitLog(text, item);
         if (typeof showToast === 'function') showToast('Sprouted', text);
@@ -11373,7 +11381,8 @@ if (typeof module !== 'undefined' && module.exports) {
       function ppSubmitMovedOutside(p, fromBed, targetBed) {
         const base = ppSplitName(p.name)[0];
         const text = 'Moved the ' + base + ' to ' + targetBed;
-        const item = { zone: targetBed, category: 'Relocation', crop: p.name, fromZone: fromBed || '' };
+        // batchHint: p.planted — see ppSubmitHarvestQuantity's comment (the passport-tap disambiguation fix).
+        const item = { zone: targetBed, category: 'Relocation', crop: p.name, fromZone: fromBed || '', batchHint: p.planted || '' };
         closePassport();
         if (typeof submitLog === 'function') submitLog(text, item);
         if (typeof showToast === 'function') showToast('Moved outside', text);
