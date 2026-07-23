@@ -1097,21 +1097,20 @@
       /* Bar actions: just the ✕ now — the scoped-log control moved out of the bar and is restyled as
          #ppLogFab (reuses .log-fab verbatim, bottom-left) so it reads as the same persistent button. */
       .pp-bar-actions { display: flex; align-items: center; gap: 8px; }
-      /* Action buttons (design pass, 23/07 — dev brief section C, superseding the old single-button/
-         in-card-swap flow above). Harvest-type-aware: one_shot gets a single green Pull-up (harvesting
-         IS the removal here); ongoing gets green Harvest (repeatable) + red Pull-up (ends early). */
+      /* Action buttons (design pass 23/07, revised round 2): two always-present, always-both concepts on
+         EVERY plant — green "Harvest" (collecting yield; behaviour branches by harvestType internally,
+         same colour either way) and red "Pull out" (universal, always ends the plant early — colour alone
+         signals this is the negative path, not wording). No more per-harvestType button SET switching. */
       .pp-remove { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--surface-inset-03); }
       .pp-remove-actions { display: flex; gap: 8px; }
       .pp-action-btn {
         flex: 1 1 0; border-radius: var(--r-sm); font-size: var(--fs-sm); font-weight: 600;
         padding: 9px 14px; cursor: pointer; background: none;
       }
-      .pp-action-harvest, .pp-action-pullup-green {
-        border: 1px solid rgba(45, 138, 96, 0.4); color: var(--color-sage);
-      }
-      .pp-action-harvest:hover, .pp-action-pullup-green:hover { border-color: var(--color-sage); background: rgba(45, 138, 96, 0.08); }
-      .pp-action-pullup-red { border: 1px solid rgba(239, 68, 68, 0.4); color: var(--red-300); }
-      .pp-action-pullup-red:hover { border-color: rgba(239, 68, 68, 0.6); background: rgba(239, 68, 68, 0.08); }
+      .pp-action-harvest { border: 1px solid rgba(45, 138, 96, 0.4); color: var(--color-sage); }
+      .pp-action-harvest:hover { border-color: var(--color-sage); background: rgba(45, 138, 96, 0.08); }
+      .pp-action-pullout { border: 1px solid rgba(239, 68, 68, 0.4); color: var(--red-300); }
+      .pp-action-pullout:hover { border-color: rgba(239, 68, 68, 0.6); background: rgba(239, 68, 68, 0.08); }
       /* One-shot quantity-picker stepper, inside the shared resolve-modal shell. */
       .pp-stepper { display: flex; align-items: center; justify-content: center; gap: 18px; padding: 12px 0; }
       .pp-stepper-btn {
@@ -1171,17 +1170,19 @@
          line carries the current stage (v6.76 — headline + ribbon retired; their .pp-ribbon/.pp-ph/
          .pp-season CSS was removed with them). */
       .pp-lines { display: flex; flex-direction: column; gap: 3px; }
-      /* "Not ready" snooze button (design pass, 23/07) — appears only alongside a due-and-not-snoozed
-         "Check for harvest" line. Quiet at rest, picks up the same teal on hover as the line it answers. */
+      /* Status text + "Not ready" share one row (design pass 23/07 round 2 — was stacked on its own row
+         below, disconnected and oversized). Text takes the available space; the button sits inline,
+         right-aligned, sized as a proper secondary action rather than a full block control. */
+      .pp-lines .pl-line-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
       .pp-lines .pp-check-btn {
-        margin-top: 4px; align-self: flex-start;
+        flex: none; white-space: nowrap;
         background: none; border: 1px solid var(--surface-inset-03); color: var(--text-muted);
-        border-radius: var(--r-sm); font-size: var(--fs-xs); padding: 4px 10px; cursor: pointer;
+        border-radius: var(--r-sm); font-size: var(--fs-xs); padding: 3px 9px; cursor: pointer;
       }
       .pp-lines .pp-check-btn:hover { border-color: var(--color-online); color: var(--color-online); }
-      /* Sections: quiet uppercase eyebrow + content. Absent data = absent section, never an empty state. */
+      /* Sections: quiet eyebrow + content. Absent data = absent section, never an empty state. */
       .pp-sec-h {
-        font-size: var(--fs-2xs); letter-spacing: var(--ls-wide); text-transform: uppercase;
+        font-size: var(--fs-2xs); letter-spacing: var(--ls-wide);
         color: var(--text-muted); margin-bottom: 8px;
       }
       /* About: prose, not a fact — a lead sentence that sits above the grid instead of fighting a
@@ -1196,10 +1197,13 @@
         border-top: 1px solid var(--surface-inset-02); font-size: var(--fs-sm);
       }
       .pp-fact:first-child { border-top: 0; }
-      /* One consistent treatment (owner, 17/07): the KEY is the quiet label (muted, slightly dimmed),
-         the VALUE reads a touch brighter but is NOT stark white — the old white Sun/Height values popped
-         for no reason. Every value the same tone; hierarchy comes from key-vs-value, not from colour. */
-      .pp-fact-k { color: var(--text-muted); opacity: 0.8; }
+      /* One consistent treatment (owner, 17/07): the KEY is the quiet label (muted), the VALUE reads a
+         touch brighter but is NOT stark white — the old white Sun/Height values popped for no reason.
+         Every value the same tone; hierarchy comes from key-vs-value, not from colour. Solid tokens, no
+         opacity fractions (design pass, 23/07 round 2 — collapsed the grey audit's opacity proliferation
+         down to the two tokens the design system already has: --text-muted for labels/quiet content,
+         --text-soft for readable secondary content). */
+      .pp-fact-k { color: var(--text-muted); }
       .pp-fact-v { color: var(--text-soft); overflow-wrap: anywhere; }
       /* The one LIVE "go" fact (✓ Ready to sow) earns the sanctioned green — so a green tick means the same
          thing on the packet as on the seedling card + soil panel. Every not-ready/static value stays soft. */
@@ -1212,16 +1216,19 @@
          design pass 23/07). Still one typographic signal, nothing louder — no dashed border, no wash,
          no header — just quieter on the same brightness scale the key/value split already uses. */
       .pp-fact-ref .pp-fact-v { opacity: 0.62; }
-      /* General reference group (design pass, 23/07): the plant card's second group — species-generic
-         advice (Harvest method/Companion/Avoid/Usage) — reads as dimmed-as-ONE-unit prose lines, not
-         table rows; label and value share one muted tone (unlike .pp-fact-k/.pp-fact-v's two-tone split,
-         which still applies to the "From the label" box above it). */
+      /* General reference group (design pass 23/07, revised round 2): the plant card's second group —
+         species-generic advice (Harvest method/Companion/Avoid/Usage) — reads as dimmed-as-ONE-unit rows
+         (key AND value both --text-muted, unlike .pp-fact-k/.pp-fact-v's two-tone split above). Colour
+         alone carries the distinction now — SAME font-size and SAME grid columns as .pp-fact, so a value
+         you actually need to read (companion/avoid planting) never looks like fine print, and both
+         sections' content starts at the same horizontal position. */
       .pp-ref-group { margin-top: 14px; }
-      .pp-ref-line {
-        font-size: var(--fs-sm); color: var(--text-muted); opacity: 0.75;
-        line-height: 1.5; margin: 0 0 4px;
+      .pp-ref-row {
+        display: grid; grid-template-columns: 92px 1fr; gap: 10px; padding: 4px 0;
+        font-size: var(--fs-sm); line-height: 1.5;
       }
-      .pp-ref-line:last-child { margin-bottom: 0; }
+      .pp-ref-k, .pp-ref-v { color: var(--text-muted); }
+      .pp-ref-v { overflow-wrap: anywhere; }
       /* Story milestones + photo rows: the Recent-row register (mark · text · short date). */
       .pp-ms-row {
         display: flex; gap: 10px; padding: 7px 2px; align-items: baseline;
@@ -1895,7 +1902,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.38</span>
+        <span class="header-version">v8.39</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2205,7 +2212,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.38 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.39 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11113,16 +11120,8 @@ if (typeof module !== 'undefined' && module.exports) {
         // journey is the reward (owner, 15/07). The v1 stage headline (ppStageEl) and the two-line ribbon
         // (ppRibbonEl) are both gone. The status line reads the story for its "since" date, so it
         // sharpens in place when the async story lands.
-        const ledger = ppLedgerLinesEl(p, story);
-        if (ledger.el) body.appendChild(ledger.el);
-        // dueUnsnoozed can only be true when the "Check for harvest" line was actually added, so ledger.el
-        // is guaranteed non-null here (wrap.children.length > 0) — no fallback wrapper needed.
-        if (ledger.dueUnsnoozed && p.plantId) {
-          const btn = document.createElement('button');
-          btn.type = 'button'; btn.className = 'pp-check-btn'; btn.textContent = 'Not ready';
-          btn.onclick = function () { ppSnoozeHarvestCheck(p, btn); };
-          ledger.el.appendChild(btn);
-        }
+        const lines = ppLedgerLinesEl(p, story);
+        if (lines) body.appendChild(lines);
 
         const storyEl = ppStoryEl(p, story, pending);
         if (storyEl) body.appendChild(storyEl);
@@ -11139,43 +11138,42 @@ if (typeof module !== 'undefined' && module.exports) {
         if (remove) body.appendChild(remove);
       }
 
-      // Action buttons (design pass 23/07 — dev brief section C), harvest-type-aware AT RENDER TIME (was:
-      // one "Pull up" button always, branching only after tap). "Harvested" means different things (the
-      // owner's lingo point, 19/07): a one_shot crop (beetroot/lettuce/root/head) — harvesting IS the
-      // removal, one pick takes the whole plant — gets a single green "Pull up" that opens a quantity
-      // picker. An ongoing cropper (tomato/beans/cut-and-come) never ends on a pick, so it gets TWO
-      // buttons: green "Harvest" (repeatable, just logs a pick) and red "Pull up" (ends the record early,
-      // confirm-with-reason). `p.harvestType` rides the model (GardenSheet.js), defaults to 'ongoing' —
-      // the safe side (never mis-frames a pull as a final harvest).
+      // Action buttons (design pass 23/07 round 2 — supersedes round 1's "one-hit vs repeat decides which
+      // buttons show" framing). Two separate, always-available concepts, present on EVERY plant regardless
+      // of harvestType: green "Harvest" always means collecting yield (behaviour branches by harvestType
+      // internally — one_shot opens a quantity picker, ongoing just logs a pick — same label/colour either
+      // way, invisible to the user); red "Pull out" is universal and always means ending the plant early
+      // (expired/died, never a harvest action — colour carries that distinction, not wording). This closes
+      // a real gap round 1 had: a one_shot crop like Beetroot previously had no way to record "it died
+      // before I got to harvest it" separately from the harvest flow itself.
       function ppRemoveEl(p, bedName) {
         if (!p || p.isTombstone || p.isEmpty) return null;
         const wrap = document.createElement('div');
         wrap.className = 'pp-remove';
         const actions = document.createElement('div');
         actions.className = 'pp-remove-actions';
-        const oneShot = (String(p.harvestType || 'ongoing') === 'one_shot');
-        if (oneShot) {
-          const pull = document.createElement('button');
-          pull.type = 'button'; pull.className = 'pp-action-btn pp-action-pullup-green';
-          pull.textContent = 'Pull up';
-          pull.onclick = function () { ppOpenQuantityPicker(p, bedName); };
-          actions.appendChild(pull);
-        } else {
-          const harvest = document.createElement('button');
-          harvest.type = 'button'; harvest.className = 'pp-action-btn pp-action-harvest';
-          harvest.textContent = 'Harvest';
-          harvest.onclick = function () { ppHarvestPick(p, bedName); };
-          actions.appendChild(harvest);
-          const pull = document.createElement('button');
-          pull.type = 'button'; pull.className = 'pp-action-btn pp-action-pullup-red';
-          pull.textContent = 'Pull up';
-          pull.onclick = function () { ppOpenPullUpConfirm(p, bedName); };
-          actions.appendChild(pull);
-        }
+        const harvest = document.createElement('button');
+        harvest.type = 'button'; harvest.className = 'pp-action-btn pp-action-harvest';
+        harvest.textContent = 'Harvest';
+        harvest.onclick = function () { ppHarvestTap(p, bedName); };
+        actions.appendChild(harvest);
+        const pull = document.createElement('button');
+        pull.type = 'button'; pull.className = 'pp-action-btn pp-action-pullout';
+        pull.textContent = 'Pull out';
+        pull.onclick = function () { ppOpenPullOutConfirm(p, bedName); };
+        actions.appendChild(pull);
         wrap.appendChild(actions);
         return wrap;
       }
-      // One-shot "Pull up": how many of the ×N did you actually pull? Reuses the shared resolve-modal
+      // "Harvest" tap — branches on harvestType (GardenSheet.js; already a per-crop field, no data-model
+      // gap here). one_shot (a head/root/bulb — harvesting takes the whole plant) opens the quantity
+      // picker; ongoing (fruit/pods/cut-and-come) just logs a pick and stays active, no decrement.
+      function ppHarvestTap(p, bedName) {
+        const oneShot = (String(p.harvestType || 'ongoing') === 'one_shot');
+        if (oneShot) ppOpenQuantityPicker(p, bedName);
+        else ppHarvestPick(p, bedName);
+      }
+      // One-shot "Harvest": how many of the ×N did you actually pull? Reuses the shared resolve-modal
       // shell (same one the shed merge/category flows use). Confirm submits a log string routed through
       // the EXISTING submitLog queued path — the partial-decrement state machine (StateUpdate.js) already
       // handles both the "some picked" and "all picked" outcomes; no new server logic needed here.
@@ -11202,12 +11200,12 @@ if (typeof module !== 'undefined' && module.exports) {
           // 0 picked is a no-op, not a submit — the server's partial-decrement branch only fires for
           // picked > 0; a picked=0 log line would otherwise fall through to the "harvested all" tombstone
           // branch, the opposite of what choosing 0 should mean.
-          if (val > 0) ppSubmitPullUpQuantity(p, bedName, val, n);
+          if (val > 0) ppSubmitHarvestQuantity(p, bedName, val, n);
         }));
         actions.appendChild(rButton('Cancel', 'rbtn-secondary', closeResolve));
         presentResolveModal();
       }
-      function ppSubmitPullUpQuantity(p, bedName, n, total) {
+      function ppSubmitHarvestQuantity(p, bedName, n, total) {
         const base = ppSplitName(p.name)[0];
         const from = bedName ? ' from ' + bedName : '';
         // Reaching the full count is byte-identical to the old whole-lot phrasing (no count token needed —
@@ -11227,11 +11225,11 @@ if (typeof module !== 'undefined' && module.exports) {
         closePassport();
         if (typeof submitLog === 'function') submitLog('Harvested the ' + p.name + from);
       }
-      // Ongoing crop: "Pull up" — ends the record early. Confirm dialog with an optional reason, folded
-      // into the same removal text ppRemoveSubmit already sends (extended, not duplicated).
-      function ppOpenPullUpConfirm(p, bedName) {
+      // "Pull out" — universal, every plant, always ends the record early (expired/died, never a harvest).
+      // Confirm dialog with an optional reason, folded into the same removal text ppRemoveSubmit sends.
+      function ppOpenPullOutConfirm(p, bedName) {
         const base = ppSplitName(p.name)[0];
-        document.getElementById('resolveTitle').textContent = 'Pull up the ' + base + '?';
+        document.getElementById('resolveTitle').textContent = 'Pull out the ' + base + '?';
         document.getElementById('resolveSub').textContent = 'Ends the record for this plant.';
         const body = document.getElementById('resolveBody'); body.innerHTML = '';
         const actions = document.getElementById('resolveActions'); actions.innerHTML = '';
@@ -11240,7 +11238,7 @@ if (typeof module !== 'undefined' && module.exports) {
           const opt = document.createElement('option'); opt.value = o[0]; opt.textContent = o[1]; sel.appendChild(opt);
         });
         body.appendChild(rField('Reason (optional)', sel));
-        actions.appendChild(rButton('Pull up', 'rbtn-danger', function () {
+        actions.appendChild(rButton('Pull out', 'rbtn-danger', function () {
           const reason = sel.value;
           closeResolve();
           ppRemoveSubmit(p, bedName, reason);
@@ -11559,13 +11557,9 @@ if (typeof module !== 'undefined' && module.exports) {
       // show: a bought seedling (no estSprout) has no Sown line, and the early stage words (Germination/
       // Seedling/Vegetative) show as no line at all — the origin date + the Story already carry that
       // stretch ("Growing" is filler; the vegetative gap stays unlabeled, owner 15/07).
-      // Returns {el, dueUnsnoozed} — dueUnsnoozed is true only when the harvest estimate has passed AND
-      // no active "Not ready" snooze covers it, i.e. exactly when the "Not ready" button itself should
-      // show (design pass 23/07). Caller (ppRender) appends the button after this block using that flag.
       function ppLedgerLinesEl(p, story) {
         const wrap = document.createElement('div');
         wrap.className = 'pp-lines';
-        let dueUnsnoozed = false;
         const line = function (cls, text) {
           const s = document.createElement('span');
           s.className = cls ? 'pl-line ' + cls : 'pl-line';
@@ -11630,14 +11624,28 @@ if (typeof module !== 'undefined' && module.exports) {
             if (snoozeGap !== null && snoozeGap > 0) {
               // quiet — no line, no button, until the snooze lapses
             } else {
-              line('pl-harvest-check', 'Check for harvest');
-              dueUnsnoozed = true;
+              // Status text + "Not ready" share ONE row (design pass 23/07 round 2 — was stacked on its
+              // own line below, oversized and disconnected). Built directly here rather than via line()
+              // since it needs the button alongside it, right-aligned, sized as a secondary action.
+              const row = document.createElement('div');
+              row.className = 'pl-line-row';
+              const s = document.createElement('span');
+              s.className = 'pl-line pl-harvest-check';
+              s.textContent = 'Check for harvest';
+              row.appendChild(s);
+              if (p.plantId) {
+                const btn = document.createElement('button');
+                btn.type = 'button'; btn.className = 'pp-check-btn'; btn.textContent = 'Not ready';
+                btn.onclick = function () { ppSnoozeHarvestCheck(p, btn); };
+                row.appendChild(btn);
+              }
+              wrap.appendChild(row);
             }
           } else {
             line('pl-countdown', (days !== null) ? ('Est. harvest in ' + days + (days === 1 ? ' day' : ' days')) : ('Est. harvest ' + estDate));
           }
         }
-        return { el: wrap.children.length ? wrap : null, dueUnsnoozed: dueUnsnoozed };
+        return wrap.children.length ? wrap : null;
       }
       // "Not ready" tap (design pass 23/07) — direct structured action (snoozeHarvestCheck), not the
       // log/scribe pipeline (this is deterministic UI intent). Optimistic patch + local re-render on
@@ -11770,6 +11778,15 @@ if (typeof module !== 'undefined' && module.exports) {
           sec.appendChild(about);
         }
         if (labelRows.length) {
+          // Section-1 header, conditional on how THIS plant instance started (design pass, 23/07 round 2):
+          // "From the seed" for anything raised from a tracked seed (p.estSprout set — the same seedOrigin
+          // signal ppLedgerLinesEl already uses for its Sown/Sprouted wording), else "From the label" for
+          // a direct-sow/label-captured planting. Reuses .pp-sec-h — same header voice as General reference.
+          const seedOrigin = !!p.estSprout;
+          const boxHead = document.createElement('div');
+          boxHead.className = 'pp-sec-h';
+          boxHead.textContent = seedOrigin ? 'From the seed' : 'From the label';
+          sec.appendChild(boxHead);
           const box = document.createElement('div'); box.className = 'pp-facts';
           labelRows.forEach(function (r) { box.appendChild(ppFactRow(r[1], r[2], false)); });
           sec.appendChild(box);
@@ -11779,9 +11796,11 @@ if (typeof module !== 'undefined' && module.exports) {
           const h = document.createElement('div'); h.className = 'pp-sec-h'; h.textContent = 'General reference';
           refSec.appendChild(h);
           refRows.forEach(function (r) {
-            const line = document.createElement('div'); line.className = 'pp-ref-line';
-            line.textContent = r[1] + ': ' + r[2] + (/[.!?]$/.test(r[2]) ? '' : '.');
-            refSec.appendChild(line);
+            const row = document.createElement('div'); row.className = 'pp-ref-row';
+            const k = document.createElement('div'); k.className = 'pp-ref-k'; k.textContent = r[1];
+            const v = document.createElement('div'); v.className = 'pp-ref-v'; v.textContent = r[2];
+            row.appendChild(k); row.appendChild(v);
+            refSec.appendChild(row);
           });
           sec.appendChild(refSec);
         }
