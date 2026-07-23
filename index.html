@@ -1953,7 +1953,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.55</span>
+        <span class="header-version">v8.56</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2263,7 +2263,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.55 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.56 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11168,14 +11168,19 @@ if (typeof module !== 'undefined' && module.exports) {
       // greenhouse plant as seed/sprout for the status-tile ICON, even once it's actually fruiting there;
       // reusing it here would hide Harvest forever for a windowsill crop that never gets transplanted out.
       // This checks the plant's real underlying phase only. Flowering ornamentals (CROP_FLOWERING — lavender,
-      // roses, marigolds…) are never harvested in this garden's workflow, so they're excluded too.
+      // roses, marigolds…) are never harvested in this garden's workflow, so they're excluded too. Culinary
+      // HERBS (Category 'herb' — rosemary, basil, parsley, mint…) get the same exclusion (owner, 23/07): a
+      // snip-as-you-go garnish herb isn't something worth a dedicated Harvest ceremony, and the owner said
+      // outright they'd never bother logging one. Vegetables/fruit that happen to share the "leaves" pick
+      // word (spinach, kale, silverbeet — Category 'vegetable') are NOT excluded; the gate is the Category
+      // bucket, not the harvest-unit word, so a real food crop keeps its Harvest button regardless of noun.
       function ppHarvestEligible(p) {
         if (!p || p.isTombstone || p.isEmpty) return false;
         if (p.phase === 'Sown' || p.raisingUnderCover) return false;
         const stillSeedOrSeedling = p.phase
           ? (p.phase === 'Sown' || p.phase === 'Sprouted')
           : (p.stage === 'Germination' || (p.stage === 'Seedling' && !p.transplanted));
-        return !stillSeedOrSeedling && !p.flowering;
+        return !stillSeedOrSeedling && !p.flowering && p.category !== 'herb';
       }
       // Footer action row (design pass 23/07 round 4 — supersedes round 2/3's "Harvest + Pull out share the
       // footer" layout). "Harvest" has moved UP into the status-line row (ppLedgerLinesEl, where "Not ready"
