@@ -1953,7 +1953,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.57</span>
+        <span class="header-version">v8.58</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2263,7 +2263,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.57 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.58 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -10723,11 +10723,13 @@ if (typeof module !== 'undefined' && module.exports) {
         ['bestbefore', 'Best before']
       ];
 
-      // Plant-card two-group split (design pass, 23/07 — "From the label" vs "General reference").
-      // Grouping is by FIELD TYPE now, not by provenance: a variety-specific measurable fact reads bright
-      // in a table row regardless of whether THIS row happened to capture it or borrowed it from the
-      // species book; a generic species-advice fact reads muted prose either way. Captured still always
-      // wins over the species value for a given key — only the visual treatment stopped tracking provenance.
+      // Plant-card fact fields, split into two DISPLAY-ORDER lists only (reverted 23/07 — these used to
+      // also decide provenance grouping; a plant with nothing captured at all could show generic Sun/
+      // Maturity/Height/Water/Feeder filler under the "From the packet"/"From the label" header as if it
+      // were a real scan, which is a false claim). ppFactsEl now splits captured-vs-filler itself, by
+      // whether each field actually has a captured value (f[key]) — these two lists together are just
+      // "every field this section can ever show, in this order"; which BOX a given field's row lands in
+      // is decided per-plant, per-field, at render time.
       const PP_LABEL_GROUP = [
         ['flavour', 'Flavour'], ['sun', 'Sun'], ['maturity', 'Maturity'],
         ['height', 'Height'], ['water', 'Water'], ['feederClass', 'Feeder']
@@ -12013,9 +12015,13 @@ if (typeof module !== 'undefined' && module.exports) {
       // is carried by that one typographic tell, nothing louder. `includeReference` is the plant card
       // (species fallback fills the gaps a label left); the shed card passes its own fuller spec and no
       // reference. Renders if EITHER captured or filler rows exist (a label-less plant is reference-only).
-      // NOTE: this captured/filler distinction is the SHED card's rendering model only (below, the
-      // `displaySpec` branch). The plant card switched (design pass, 23/07) to grouping by field TYPE
-      // instead — see PP_LABEL_GROUP/PP_REFERENCE_GROUP and the `!displaySpec` branch of ppFactsEl.
+      // NOTE: the shed card (below, the `displaySpec` branch) blends captured + filler into one box with
+      // this dimmed-value tell. The plant card (`!displaySpec` branch) keeps captured/filler SEPARATE
+      // instead — its own header ("From the packet"/"From the label") must only ever describe genuinely
+      // captured facts (reverted 23/07 — a "design pass, 23/07" field-type split had briefly let generic
+      // filler pass under that header, which read as a false claim for a plant with nothing captured at
+      // all). See PP_LABEL_GROUP/PP_REFERENCE_GROUP (now just the two fields' DISPLAY ORDER, not a
+      // provenance split) and the `!displaySpec` branch of ppFactsEl.
       function ppFactRow(label, value, isRef) {
         const row = document.createElement('div');
         row.className = 'pp-fact' + (isRef ? ' pp-fact-ref' : '');
@@ -12029,18 +12035,35 @@ if (typeof module !== 'undefined' && module.exports) {
         row.appendChild(k); row.appendChild(v);
         return row;
       }
-      // Captured always wins over the species-reference filler for a given key (same precedence as the
-      // shed path below); feederClass is a controlled lowercase vocab (heavy/medium/light), capitalized
-      // for display only.
-      function ppResolveFact(p, f, key, refOn) {
-        const cap = String(f[key] || '').trim();
-        if (cap) return cap;
-        if (refOn && p.reference && p.reference[key]) {
-          let v = p.reference[key];
-          if (key === 'feederClass' && v) v = v.charAt(0).toUpperCase() + v.slice(1);
-          return v;
-        }
-        return '';
+      // A DEFINITIVE capture point, not a guess (owner, 23/07): a plant with a tracked seed sow
+      // (p.estSprout set) can only ever have had its facts captured off the SEED PACKET — that's the one
+      // physical document that exists at sow time. A plant with no tracked sow (bought as a seedling/
+      // established plant) can only have had them captured off its PLANT LABEL/tag. Mutually exclusive by
+      // definition, never both. PURE — no DOM, testable.
+      function ppCaptureSourceLabel(p) {
+        return (p && p.estSprout) ? 'From the packet' : 'From the label';
+      }
+      // PURE split of the plant card's fact fields into captured-vs-filler rows (owner, 23/07 — reverting
+      // an earlier "design pass, 23/07" that grouped by field TYPE instead and let generic species-book
+      // filler pass as if captured for Sun/Maturity/Height/Water/Feeder). A field's row lands in labelRows
+      // ONLY when `f` (the plant's own captured Label* facts) actually has it; every other field with a
+      // reference-book value (when refOn) lands in refRows instead — regardless of which of the two
+      // legacy field-type lists it came from. No DOM — testable independently of ppFactsEl's rendering.
+      function ppSplitPlantFactRows(p, f, refOn) {
+        const fields = PP_LABEL_GROUP.concat(PP_REFERENCE_GROUP);
+        const labelRows = fields
+          .map(function (s) { return [s[0], s[1], String((f && f[s[0]]) || '').trim()]; })
+          .filter(function (r) { return r[2]; });
+        const refRows = fields
+          .filter(function (s) { return !String((f && f[s[0]]) || '').trim(); }) // already captured -> not a reference row
+          .map(function (s) {
+            if (!refOn || !p || !p.reference || !p.reference[s[0]]) return null;
+            let v = p.reference[s[0]];
+            if (s[0] === 'feederClass' && v) v = v.charAt(0).toUpperCase() + v.slice(1);
+            return [s[0], s[1], v];
+          })
+          .filter(Boolean);
+        return { labelRows: labelRows, refRows: refRows };
       }
       function ppFactsEl(p, displaySpec, includeReference) {
         const f = p.labelFacts || {};
@@ -12077,15 +12100,15 @@ if (typeof module !== 'undefined' && module.exports) {
           return sec;
         }
 
-        // Plant card: two groups by field type — "From the label" (bright table rows) and
-        // "General reference" (dimmed-as-one-unit prose), regardless of which tier each value
-        // actually came from (design pass, 23/07).
-        const labelRows = PP_LABEL_GROUP
-          .map(function (s) { return [s[0], s[1], ppResolveFact(p, f, s[0], refOn)]; })
-          .filter(function (r) { return r[2]; });
-        const refRows = PP_REFERENCE_GROUP
-          .map(function (s) { return [s[0], s[1], ppResolveFact(p, f, s[0], refOn)]; })
-          .filter(function (r) { return r[2]; });
+        // Plant card: two groups split strictly by PROVENANCE (owner, 23/07 — reverting the "design pass,
+        // 23/07" field-type split that let generic species-book filler pass as if captured for Sun/
+        // Maturity/Height/Water/Feeder). "From the packet"/"From the label" (bright table rows) holds ONLY
+        // facts genuinely CAPTURED for this plant, across every field; "General reference" (dimmed prose)
+        // holds everything else, whenever it's just species-book filler — regardless of which field it is.
+        // A plant with no captured facts at all now correctly shows NO "From the X" section, only General
+        // reference — never dressing up generic text as a real scan.
+        const split = ppSplitPlantFactRows(p, f, refOn);
+        const labelRows = split.labelRows, refRows = split.refRows;
         if (!aboutText && !labelRows.length && !refRows.length) return null;
         const sec = document.createElement('div');
         if (aboutText) {
@@ -12095,15 +12118,10 @@ if (typeof module !== 'undefined' && module.exports) {
           sec.appendChild(about);
         }
         if (labelRows.length) {
-          // Section-1 header, conditional on how THIS plant instance started (design pass, 23/07 round 2,
-          // "packet" not "label" per owner correction): "From the seed" for anything raised from a tracked
-          // seed (p.estSprout set — the same seedOrigin signal ppLedgerLinesEl already uses for its
-          // Sown/Sprouted wording), else "From the packet" for a direct-sow/label-captured planting.
           // Reuses .pp-sec-h — same header voice as General reference.
-          const seedOrigin = !!p.estSprout;
           const boxHead = document.createElement('div');
           boxHead.className = 'pp-sec-h pp-sec-h-tab';
-          boxHead.textContent = seedOrigin ? 'From the seed' : 'From the packet';
+          boxHead.textContent = ppCaptureSourceLabel(p);
           sec.appendChild(boxHead);
           const box = document.createElement('div'); box.className = 'pp-facts';
           labelRows.forEach(function (r) { box.appendChild(ppFactRow(r[1], r[2], false)); });
