@@ -2002,7 +2002,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.69</span>
+        <span class="header-version">v8.70</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2312,7 +2312,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.69 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.70 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -8082,9 +8082,13 @@ if (typeof module !== 'undefined' && module.exports) {
           if (isRecording) { micWantsListening = false; recognition.stop(); }
 
           updateQueueUI();
-          // Optimistic Garden-tab row (latency Slice A) — GARDEN notes only (a shed supply never touches the
-          // Garden tab). No-ops silently when the note doesn't confidently target one visible plant.
-          if (mode === 'garden') registerOptimisticPending(logId, text);
+          // Optimistic Garden-tab row (latency Slice A). registerOptimisticPending self-gates: it no-ops
+          // unless the note matches one visible garden plant, and only paints while the Garden tab is the
+          // visible one — so a shed supply simply never matches. The old `if (mode === 'garden')` guard
+          // referenced `mode`, a variable retired with the `dest` param at v8.07; the ReferenceError it threw
+          // here aborted the rest of THIS callback (the ✓ chip + immediate syncQueue below) on EVERY log.
+          // Calling unconditionally restores them.
+          registerOptimisticPending(logId, text);
           // The inline confirmation CHIP (Phase 3b) is the acknowledgement — an instant "✓ Logged" then
           // "✓ Logged to Garden/Shed · tap to change" once the route lands — so no separate "Saved" toast is needed.
           showLogChipPending(logId);
@@ -8515,7 +8519,10 @@ if (typeof module !== 'undefined' && module.exports) {
         const sm = (readCachedGardenState() || {}).sunModel;
         const ranked = rankZonesThisWeek((sm && sm.zones) || [], sunDoyToday());
         if (!ranked.length) return '';
-        const cur = sunZoneKey(currentId);
+        // currentId is the STABLE SLUG (data-bed-id); the ranked list keys off the display zone name, so map
+        // slug -> display before comparing (sunZoneKey only lowercases) or the current bed never highlights.
+        const curBed = plotModelById[currentId];
+        const cur = sunZoneKey(curBed ? curBed.zone : currentId);
         const items = ranked.map(function (r) {
           const c = sunZoneKey(r.zone) === cur ? ' class="plot-sun-cur"' : '';
           return '<li' + c + '>' + escapeHtml(r.zone) + ' — ' + r.hours.toFixed(1) + ' h</li>';
@@ -9172,7 +9179,7 @@ if (typeof module !== 'undefined' && module.exports) {
           // button; that flips plotArrangeMode on for this bed only. Switching to a different bed drops back to
           // view (and clears any armed placement) so you never get stuck in a mode you can't see the edge of.
           if (plotArrangeBedId !== id) { plotArrangeBedId = id; plotCancelPlace(true); plotArrangeMode = false; }
-          nameEl.innerHTML = escapeHtml(id) +
+          nameEl.innerHTML = escapeHtml(bed.zone || id) +   // display name, not the stable slug (BedId drift)
             ' <span class="plot-count">· ' + rp.length + ' plant' + (rp.length === 1 ? '' : 's') + '</span>';
           let html = '';
           html += plotCropListHtml(bed, plotArrangeMode, id);
@@ -9199,7 +9206,7 @@ if (typeof module !== 'undefined' && module.exports) {
             const jump = document.createElement('button');       // secondary → bottom
             jump.type = 'button'; jump.className = 'plot-jump';
             jump.textContent = 'Open in Garden →';
-            jump.onclick = function () { jumpToBed(id); };
+            jump.onclick = function () { jumpToBed(bed.zone || id); };   // jump target keys on display name (dataset.bedName), not the slug
             detEl.appendChild(jump);
             const arr = document.createElement('button');        // enter per-bed arrange (no global toggle) — top
             arr.type = 'button'; arr.className = 'plot-arrange-cta';
