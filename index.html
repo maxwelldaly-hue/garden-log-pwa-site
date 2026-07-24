@@ -1122,10 +1122,12 @@
         flex: 0 1 220px; border-radius: var(--r-sm); font-size: var(--fs-sm); font-weight: 600;
         padding: 9px 14px; cursor: pointer; background: none;
       }
-      .pp-action-harvest { border: 1px solid rgba(45, 138, 96, 0.4); color: var(--color-sage); }
-      .pp-action-harvest:hover { border-color: var(--color-sage); background: rgba(45, 138, 96, 0.08); }
       .pp-action-pullout { border: 1px solid rgba(239, 68, 68, 0.4); color: var(--red-300); }
       .pp-action-pullout:hover { border-color: rgba(239, 68, 68, 0.6); background: rgba(239, 68, 68, 0.08); }
+      /* "End season" (SCOPE-STAGE-BUTTON.md Phase 5) — sits next to Pull-out but is NOT destructive (the plant
+         returns next year), so it stays quiet/neutral, never the red exit colour. */
+      .pp-action-endseason { border: 1px solid var(--surface-inset-03); color: var(--text-soft); }
+      .pp-action-endseason:hover { border-color: var(--text-muted); color: var(--text-main); }
       /* Pull-out reason choices (round 2 — replaces a <select>): plain readable tap targets inside the
          shared resolve-modal shell, same list-of-buttons idiom the app already uses elsewhere. */
       .pp-reason-choices { display: flex; flex-direction: column; gap: 8px; }
@@ -1218,15 +1220,27 @@
       .pp-bell-pending { color: var(--text-muted); }
       .pp-bell-pending:hover { border-color: var(--text-muted); color: var(--text-soft); }
       .pp-bell-days { font-weight: 600; }
-      /* Harvest, relocated inline (design pass 23/07 round 4 — was a full-width footer button, now sits in
-         the status-line area, same tap-target size/register as the bell above but coloured sage/green like
-         the old .pp-action-harvest — this IS the positive action, not a muted secondary. */
+      /* Harvest, inline in the status-line area (design pass 23/07 round 4) — same tap-target size/register
+         as the bell above, coloured sage/green: this IS the positive "pick the crop" action. Now the GREEN
+         member of the single stage-advance slot (SCOPE-STAGE-BUTTON.md Phase 2); its quiet siblings use
+         .pp-stage-btn below. */
       .pp-lines .pp-harvest-btn {
         flex: none; white-space: nowrap;
         background: none; border: 1px solid rgba(45, 138, 96, 0.4); color: var(--color-sage);
         border-radius: var(--r-sm); font-size: var(--fs-xs); font-weight: 600; padding: 3px 9px; cursor: pointer;
       }
       .pp-lines .pp-harvest-btn:hover { border-color: var(--color-sage); background: rgba(45, 138, 96, 0.08); }
+      /* Grey stage-advance moves (SCOPE-STAGE-BUTTON.md Phase 2) — "Sprouted" / "Plant outside" (and later
+         Sow / First flower / First fruit) share the harvest button's SLOT + size but stay muted: colour is a
+         hint, not a gate (owner, 24/07). Grey reads "nothing you must act on yet"; only Harvest lights up
+         green, marking the flip from "move the season along" to "there's a crop to pick". Same quiet palette
+         as the pending harvest bell above, so the two muted affordances read as one register. */
+      .pp-lines .pp-stage-btn {
+        flex: none; white-space: nowrap;
+        background: none; border: 1px solid var(--surface-inset-03); color: var(--text-muted);
+        border-radius: var(--r-sm); font-size: var(--fs-xs); font-weight: 600; padding: 3px 9px; cursor: pointer;
+      }
+      .pp-lines .pp-stage-btn:hover { border-color: var(--text-muted); color: var(--text-soft); }
       /* A harvest-only row (no status text alongside it — e.g. an established perennial/tree with no other
          ledger line at all) has no `.pl-line:first-child` to soak up the slack, so its button would sit at
          the LEFT edge by default; flex-end matches every other row's button, right-aligned. */
@@ -1968,7 +1982,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.60</span>
+        <span class="header-version">v8.61</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2278,7 +2292,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.60 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.61 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11100,6 +11114,20 @@ if (typeof module !== 'undefined' && module.exports) {
         if (bagTile) wrap.appendChild(bagTile);   // RIGHT: the seed-bag — it's a packet in the shed
         body.appendChild(wrap);
 
+        // Shed crossover action (SCOPE-STAGE-BUTTON.md Phase 4): "Sow" (a seed packet) / "Plant outside" (a
+        // seedling punnet) — the shed's own stage-advance move, mirroring the plant passport's status-line
+        // pill placement (right under the identity). Grey pp-stage-btn (no due signal on a shed row).
+        const shedAction = ppShedToGardenBtnEl(item, category);
+        if (shedAction) {
+          const lines = document.createElement('div');
+          lines.className = 'pp-lines';
+          const rowEl = document.createElement('div');
+          rowEl.className = 'pl-line-row pl-line-row-solo';
+          rowEl.appendChild(shedAction);
+          lines.appendChild(rowEl);
+          body.appendChild(lines);
+        }
+
         // "From the label" — the whole point. Same renderer as the plant card, but the SHED's fuller tier
         // (PP_SHED_FACT_DISPLAY): an unsown packet is defined by its sowing facts, so Sow/Spacing/Germination
         // show here where the plant card hides them. A few fields are SYNTHESISED / tidied before rendering:
@@ -11146,6 +11174,84 @@ if (typeof module !== 'undefined' && module.exports) {
           bestbefore: lf.bestbefore || ppOtherFact(other, /best ?before|use ?by|sell ?by|expir/i)
         }), name: item.item, reference: item.reference || null }, PP_SHED_FACT_DISPLAY, true);
         if (facts) body.appendChild(facts);
+      }
+
+      // --- Shed crossover: Sow / Plant outside (SCOPE-STAGE-BUTTON.md Phase 4) --------------------------
+      // The shed's own stage-advance move: turn a supply into a growing plant. A SEED packet -> "Sow" (creates
+      // a garden sow, stage Germination — the packet is NEVER consumed, seeds are unlimited by design); a
+      // SEEDLING punnet (Kind='Seedling') -> "Plant outside" (creates a garden planting — the whole seedling
+      // shed row is then deleted, a one-off). BOTH ride the EXISTING RULE 10 "planted/sowed from the shed"
+      // pipeline via a structured Planting item with fromShed:true (handleLogAction orchestrates the garden
+      // write + consumeSeedlingForPlanting, GardenDoc.js) — no new server write path. shouldConsumeSeedling
+      // (GardenDoc.js) excludes stage='Germination', so the Sow's seed packet is left untouched automatically.
+      // Only shown for a Seeds & Seedlings item (the passport already self-scopes to labelFacts rows).
+      function ppShedToGardenBtnEl(item, category) {
+        if (!item) return null;
+        const isSeed = /seed|seedling/i.test(String(category || item.category || ''));
+        if (!isSeed) return null;
+        const seedling = String(item.kind || '').toLowerCase() === 'seedling';
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'pp-stage-btn';
+        btn.textContent = seedling ? 'Plant outside' : 'Sow';
+        btn.onclick = function () { ppOpenShedToGarden(item, category, seedling ? 'plant' : 'sow'); };
+        return btn;
+      }
+      // Combined popup: how many + which bed + when (backdate), all in the shared resolve-modal shell. Tapping
+      // a bed submits with the current count + date (same read-before-close pattern as ppOpenMovedOutside).
+      function ppOpenShedToGarden(item, category, mode) {
+        const base = ppSplitName(item.item)[0];
+        const sow = mode === 'sow';
+        document.getElementById('resolveTitle').textContent = sow ? ('Sow ' + base + '?') : ('Plant out the ' + base + '?');
+        document.getElementById('resolveSub').textContent = sow ? 'How many, and where?' : 'How many seedlings, and which bed?';
+        const body = document.getElementById('resolveBody'); body.innerHTML = '';
+        const actions = document.getElementById('resolveActions'); actions.innerHTML = '';
+        let val = 1;
+        const stepper = document.createElement('div'); stepper.className = 'pp-stepper';
+        const minus = document.createElement('button'); minus.type = 'button'; minus.className = 'pp-stepper-btn'; minus.textContent = '−';
+        const disp = document.createElement('span'); disp.className = 'pp-stepper-val'; disp.textContent = String(val);
+        const plus = document.createElement('button'); plus.type = 'button'; plus.className = 'pp-stepper-btn'; plus.textContent = '+';
+        const render = function () { disp.textContent = String(val); minus.disabled = val <= 1; };
+        minus.onclick = function () { if (val > 1) { val--; render(); } };
+        plus.onclick = function () { val++; render(); };
+        render();
+        stepper.appendChild(minus); stepper.appendChild(disp); stepper.appendChild(plus);
+        body.appendChild(stepper);
+        const df = ppDateField();
+        body.appendChild(df.el);
+        const beds = (typeof getKnownBeds === 'function') ? getKnownBeds() : [];
+        const choices = document.createElement('div');
+        choices.className = 'pp-reason-choices';
+        beds.forEach(function (b) {
+          const btn = document.createElement('button');
+          btn.type = 'button'; btn.className = 'pp-reason-choice';
+          btn.textContent = b;
+          btn.onclick = function () {
+            const date = df.getDate(); // read before closeResolve wipes the modal body
+            closeResolve();
+            ppSubmitShedToGarden(item, mode, b, val, date);
+          };
+          choices.appendChild(btn);
+        });
+        body.appendChild(choices);
+        actions.appendChild(rButton('Cancel', 'rbtn-secondary', closeResolve));
+        presentResolveModal();
+      }
+      // Structured bypass (see ppSubmitHarvestQuantity): a Planting item with fromShed:true rides the RULE 10
+      // pipeline. crop = the FULL packet name — applyLogToState (StateUpdate.js) splits a trailing "(variety)"
+      // into VarietyNotes and keys off the base, and consumeSeedlingForPlanting matches the shed row by that
+      // same full name to delete a seedling. A Sow adds stage 'Germination' (bakes the nursery dates AND, via
+      // shouldConsumeSeedling's Germination exclusion, guarantees the seed packet is left on the shelf).
+      function ppSubmitShedToGarden(item, mode, bed, count, date) {
+        const base = ppSplitName(item.item)[0];
+        const sow = mode === 'sow';
+        const n = (count && count > 0) ? count : 1;
+        const text = (sow ? 'Sowed ' : 'Planted ') + n + ' ' + base + ' in ' + bed + (sow ? '' : ' (from the shed)');
+        const it = { zone: bed, category: 'Planting', crop: item.item, count: String(n), fromShed: true };
+        if (sow) it.stage = 'Germination';
+        if (date) it.date = date; // backdate; '' -> server defaults to today
+        closePassport();
+        if (typeof submitLog === 'function') submitLog(text, it);
+        if (typeof showToast === 'function') showToast(sow ? 'Sowed' : 'Planted out', text);
       }
 
       // Background story read — the ONLY network this surface does. Cached per plant for the session;
@@ -11222,9 +11328,9 @@ if (typeof module !== 'undefined' && module.exports) {
         if (remove) body.appendChild(remove);
       }
 
-      // Shared eligibility gate for the Harvest action (design pass 23/07 round 4) — used both here (to
-      // decide the Sprouted/Moved-outside shortcuts) and by ppLedgerLinesEl (which now renders the button
-      // itself, inline in the status-line row — see ppHarvestBtnEl below). Harvest never appears while the
+      // Shared eligibility gate for the Harvest action (design pass 23/07 round 4) — the last arm of the
+      // single stage-advance dispatcher (ppStageAdvanceBtnEl below), which renders the button inline in the
+      // status-line row via ppLedgerLinesEl. Harvest never appears while the
       // plant is still a seed/seedling — there's nothing to collect yet, and a stray tap here previously
       // fired a nonsense "Harvested the X" log against an unsprouted seed. Deliberately NOT plantNurseryPhase
       // (Js-State.html) — that classifier has a zone override that permanently reads ANY "House Window"/
@@ -11245,35 +11351,26 @@ if (typeof module !== 'undefined' && module.exports) {
           : (p.stage === 'Germination' || (p.stage === 'Seedling' && !p.transplanted));
         return !stillSeedOrSeedling && !p.flowering && p.category !== 'herb';
       }
-      // Footer action row (design pass 23/07 round 4 — supersedes round 2/3's "Harvest + Pull out share the
-      // footer" layout). "Harvest" has moved UP into the status-line row (ppLedgerLinesEl, where "Not ready"
-      // used to sit alone — owner ask: it belongs beside the status it acts on, not buried below the whole
-      // card). This footer now carries only the universal exit path: red "Pull out" always means ending the
-      // plant early (expired/died, never a harvest action — colour carries that distinction, not wording),
-      // plus the two seed/seedling shortcuts that were never really "harvest" actions to begin with.
+      // Footer action row. As of SCOPE-STAGE-BUTTON.md Phase 2 the Sprouted / Plant-outside shortcuts that
+      // used to live here have moved UP into the single stage-advance slot in the status-line row
+      // (ppStageAdvanceBtnEl) — so this footer now carries ONLY the universal exit path: red "Pull out",
+      // which always means ending the plant early (expired/died, never a harvest action — colour carries that
+      // distinction, not wording). Pull-out is deliberately kept separate from the stage-advance button: it's
+      // not a forward move and can apply at any phase, so it never competes for the one status-line slot.
       function ppRemoveEl(p, bedName) {
         if (!p || p.isTombstone || p.isEmpty) return null;
         const wrap = document.createElement('div');
         wrap.className = 'pp-remove';
         const actions = document.createElement('div');
         actions.className = 'pp-remove-actions';
-        // Still an unsprouted seed (phase 'Sown') — nothing to harvest yet, but "it came up" is a real,
-        // common shortcut worth a dedicated button rather than making the owner type it (owner, 23/07).
-        if (p.phase === 'Sown') {
-          const sprouted = document.createElement('button');
-          sprouted.type = 'button'; sprouted.className = 'pp-action-btn pp-action-harvest';
-          sprouted.textContent = 'Sprouted';
-          sprouted.onclick = function () { ppSproutedTap(p, bedName); };
-          actions.appendChild(sprouted);
-        // A sprouted seedling still raised under cover (House Window etc, not yet transplanted) — the
-        // shortcut here is "plant it out", not "harvest it" (owner, 23/07). raisingUnderCover already
-        // encodes exactly this: sprouted + no Transplanted date + a nursery zone (GardenSheet.js).
-        } else if (p.raisingUnderCover) {
-          const moved = document.createElement('button');
-          moved.type = 'button'; moved.className = 'pp-action-btn pp-action-harvest';
-          moved.textContent = 'Moved outside';
-          moved.onclick = function () { ppOpenMovedOutside(p, bedName); };
-          actions.appendChild(moved);
+        // "End season" (SCOPE-STAGE-BUTTON.md Phase 5) — sits NEXT TO Pull-out but does the opposite: it ends
+        // the CROPPING season without ending the plant (Count is kept), for a perennial that returns next year.
+        if (ppEndSeasonEligible(p)) {
+          const es = document.createElement('button');
+          es.type = 'button'; es.className = 'pp-action-btn pp-action-endseason';
+          es.textContent = 'End season';
+          es.onclick = function () { ppEndSeasonTap(p, bedName); };
+          actions.appendChild(es);
         }
         const pull = document.createElement('button');
         pull.type = 'button'; pull.className = 'pp-action-btn pp-action-pullout';
@@ -11282,6 +11379,23 @@ if (typeof module !== 'undefined' && module.exports) {
         actions.appendChild(pull);
         wrap.appendChild(actions);
         return wrap;
+      }
+      // Which plants may END a season and RETURN next year: a deciduous fruit tree (lookupDeciduous is
+      // definitive — no age gate needed), or an OVERWINTERED tender perennial (a capsicum/chilli kept past
+      // 12 months — the age gate is exactly what separates "overwintered chilli" (offered it) from a
+      // one-season tomato, which never crosses 12mo and so never sees it). The >12mo test reuses
+      // ppIsEstablished's daysUntil math; a blank/unparseable date yields null (which is not <= -365), so a
+      // dateless row is naturally excluded WITHOUT a special no-date rule (owner, 24/07 — a live-data sweep
+      // confirmed no lifecycle crop lacks a date, so no special-case is warranted). Shown ONLY during the
+      // cropping/fruiting season ("visible only during the harvest/producing season") — not while Dormant
+      // (already resting) or pre-flower (nothing to end).
+      function ppEndSeasonEligible(p) {
+        if (!p || p.isTombstone || p.isEmpty || !p.plantId) return false;
+        const age = daysUntil(p.planted);   // null for a blank/unparseable date -> not <= -365, excluded
+        const overwintered = p.lifecycle === 'tender perennial' && age !== null && age <= -365;
+        if (!p.deciduous && !overwintered) return false;
+        return p.phase === 'Producing' || p.phase === 'FirstFruit' ||
+          !!p.yield || String(p.stage || '').trim() === 'Harvesting';
       }
       // Pulled out as its own PURE function (test-harness sense-check, 23/07) — this is the one piece of
       // real decision logic behind the button label, so it's worth extracting/testing on its own rather
@@ -11296,18 +11410,56 @@ if (typeof module !== 'undefined' && module.exports) {
         if (String(p.harvestType || 'ongoing') === 'one_shot') return true;
         return !!(p.yield || p.phase === 'Producing' || String(p.stage || '').trim() === 'Harvesting');
       }
-      // The Harvest button itself (design pass 23/07 round 4) — reads "First Harvest" until
-      // ppHarvestAlreadyStarted(p), then "Harvest" from then on (owner ask: the wording should mark the
-      // moment a plant crosses from "still growing" into "now in harvest", not read as a generic
-      // always-there label). Returns null when Harvest doesn't apply (ppHarvestEligible) so the caller can
-      // skip the row/button entirely.
-      function ppHarvestBtnEl(p, bedName) {
-        if (!ppHarvestEligible(p)) return null;
-        const btn = document.createElement('button');
-        btn.type = 'button'; btn.className = 'pp-harvest-btn';
-        btn.textContent = ppHarvestAlreadyStarted(p) ? 'Harvest' : 'First Harvest';
-        btn.onclick = function () { ppHarvestTap(p, bedName); };
-        return btn;
+      // The single stage-advance button (SCOPE-STAGE-BUTTON.md Phase 2) — ONE slot in the status-line row
+      // that shows whichever forward move is currently legal, so "the same button changes as the plant moves
+      // through its life" (owner, 24/07, confirmed against the live First-Harvest screenshot). The three
+      // moves are mutually exclusive by construction (ppHarvestEligible already returns false while phase is
+      // 'Sown' or raisingUnderCover), so the phase-ordered cascade below can only ever match one:
+      //   Sown            -> "Sprouted"        (ppSproutedTap — was a footer button, now here)
+      //   raisingUnderCover -> "Plant outside"  (ppOpenMovedOutside — was a footer button; label unified with
+      //                                          the shed 'Plant outside' per owner, 24/07)
+      //   harvest-eligible -> "First Harvest"/"Harvest" (ppHarvestTap — unchanged)
+      // COLOUR IS A HINT, NOT A GATE (owner, 24/07): every button is always tappable. Harvest stays GREEN
+      // (pp-harvest-btn) exactly as it shipped — that green now also marks the moment the button's job flips
+      // from "move the season along" to "there's a crop to pick". The earlier moves are GREY (pp-stage-btn):
+      // quiet, nothing you have to act on yet. Returns null when no forward move applies (an established
+      // perennial mid-season, a tombstone) so the caller skips the row entirely.
+      function ppStageAdvanceBtnEl(p, bedName) {
+        if (!p || p.isTombstone || p.isEmpty) return null;
+        const mk = function (label, cls, onClick) {
+          const btn = document.createElement('button');
+          btn.type = 'button'; btn.className = cls;
+          btn.textContent = label;
+          btn.onclick = onClick;
+          return btn;
+        };
+        if (p.phase === 'Sown') {
+          return mk('Sprouted', 'pp-stage-btn', function () { ppSproutedTap(p, bedName); });
+        }
+        if (p.raisingUnderCover) {
+          return mk('Plant outside', 'pp-stage-btn', function () { ppOpenMovedOutside(p, bedName); });
+        }
+        // A deciduous perennial resting over winter (phase Dormant, derived from species + season) — a quiet
+        // rest with no manual move, and deliberately NO stray Harvest button (which ppHarvestEligible would
+        // otherwise allow on a tree). Dormant is only ever reached by deciduous plants (computePhase).
+        if (p.phase === 'Dormant') return null;
+        // Deciduous tree cycle (SCOPE-STAGE-BUTTON.md Phase 3): First flower -> First fruit -> then the green
+        // Harvest button (a fruiting tree is ready to pick — phase FirstFruit / Producing fall through below).
+        // Grey moves, since colour is a hint not a gate. Gated on the deciduous flag the server now ships
+        // (phase 'Growing' alone can't tell a fruit tree from a tomato).
+        if (p.deciduous) {
+          if (p.phase === 'Growing') {
+            return mk('First flower', 'pp-stage-btn', function () { ppFirstFlowerTap(p, bedName); });
+          }
+          if (p.phase === 'FirstFlower') {
+            return mk(ppFirstFruitLabel(p), 'pp-stage-btn', function () { ppFirstFruitTap(p, bedName); });
+          }
+        }
+        if (ppHarvestEligible(p)) {
+          return mk(ppHarvestAlreadyStarted(p) ? 'Harvest' : 'First Harvest', 'pp-harvest-btn',
+            function () { ppHarvestTap(p, bedName); });
+        }
+        return null;
       }
       // "Harvest" tap — branches on harvestType (GardenSheet.js; already a per-crop field, no data-model
       // gap here). one_shot (a head/root/bulb — harvesting takes the whole plant) opens the quantity
@@ -11317,6 +11469,67 @@ if (typeof module !== 'undefined' && module.exports) {
         if (oneShot) ppOpenQuantityPicker(p, bedName);
         else ppOpenHarvestPickPopup(p, bedName);
       }
+
+      // --- Shared backdate control for stage-advance popups (SCOPE-STAGE-BUTTON.md Phase 1) --------------
+      // A native <input type="date"> row, capped at today (no future-dating), defaulting to today. Every
+      // stage-advance action (Sprouted, Plant outside, Harvest, and later Sow / First flower / First fruit)
+      // drops one of these into its popup so a milestone noticed after the fact can be recorded on the day it
+      // actually happened — doubling as a whoopsie guard. The whole pipeline already honours a DD/MM/YYYY
+      // `item.date` end-to-end (GardenDoc.js normalizeStructuredItem -> StateUpdate.js applyLogToState /
+      // GardenSheet.js appendGardenLogRow, all validated by parseDDMMYYYY); it was simply never set by a
+      // passport action until now. getDate() returns '' when the user left it on today, so the caller OMITS
+      // item.date and the server's own today-default fires — byte-identical to the pre-backdate behaviour.
+      function ppTodayIso() {
+        const d = new Date();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return d.getFullYear() + '-' + mm + '-' + dd;
+      }
+      // YYYY-MM-DD (native date-input value) -> DD/MM/YYYY (the app/Sheet date format parseDDMMYYYY wants).
+      function ppIsoToDMY(iso) {
+        const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        return m ? (m[3] + '/' + m[2] + '/' + m[1]) : '';
+      }
+      // Returns { el, getDate }. el is a .resolve-field wrapper (already styled — Stylesheet.html) holding a
+      // labelled date input; getDate() yields DD/MM/YYYY only when the user picked a day other than today,
+      // else '' (leave item.date unset -> server defaults to today).
+      function ppDateField() {
+        const today = ppTodayIso();
+        const input = document.createElement('input');
+        input.type = 'date';
+        input.value = today;
+        input.max = today; // no forward-dating; the server's parseDDMMYYYY is the real backstop
+        const el = (typeof rField === 'function')
+          ? rField('When did this happen?', input)
+          : (function () { const w = document.createElement('div'); w.className = 'resolve-field'; w.appendChild(input); return w; })();
+        return {
+          el: el,
+          getDate: function () {
+            const v = String(input.value || '');
+            if (!v || v === today) return '';        // today -> omit item.date (unchanged behaviour)
+            return ppIsoToDMY(v);
+          }
+        };
+      }
+      // Minimal confirm popup for an otherwise-instant stage tap (e.g. Sprouted, and later First flower /
+      // First fruit) — the shared resolve-modal shell with just the backdate field + Confirm/Cancel. Calls
+      // onConfirm(dateOrEmpty). Rich popups that already collect input (quantity / pick / bed choice) embed
+      // ppDateField() directly instead of chaining through here.
+      function ppOpenBackdateConfirm(title, subtitle, onConfirm) {
+        document.getElementById('resolveTitle').textContent = title;
+        document.getElementById('resolveSub').textContent = subtitle || '';
+        const body = document.getElementById('resolveBody'); body.innerHTML = '';
+        const actions = document.getElementById('resolveActions'); actions.innerHTML = '';
+        const df = ppDateField();
+        body.appendChild(df.el);
+        actions.appendChild(rButton('Confirm', 'rbtn-primary', function () {
+          closeResolve();
+          onConfirm(df.getDate());
+        }));
+        actions.appendChild(rButton('Cancel', 'rbtn-secondary', closeResolve));
+        presentResolveModal();
+      }
+
       // One-shot "Harvest": how many of the ×N did you actually pull? Reuses the shared resolve-modal
       // shell (same one the shed merge/category flows use). Confirm submits a log string routed through
       // the EXISTING submitLog queued path — the partial-decrement state machine (StateUpdate.js) already
@@ -11339,17 +11552,19 @@ if (typeof module !== 'undefined' && module.exports) {
         render();
         stepper.appendChild(minus); stepper.appendChild(disp); stepper.appendChild(plus);
         body.appendChild(stepper);
+        const df = ppDateField();
+        body.appendChild(df.el);
         actions.appendChild(rButton('Confirm', 'rbtn-primary', function () {
           closeResolve();
           // 0 picked is a no-op, not a submit — the server's partial-decrement branch only fires for
           // picked > 0; a picked=0 log line would otherwise fall through to the "harvested all" tombstone
           // branch, the opposite of what choosing 0 should mean.
-          if (val > 0) ppSubmitHarvestQuantity(p, bedName, val, n);
+          if (val > 0) ppSubmitHarvestQuantity(p, bedName, val, n, df.getDate());
         }));
         actions.appendChild(rButton('Cancel', 'rbtn-secondary', closeResolve));
         presentResolveModal();
       }
-      function ppSubmitHarvestQuantity(p, bedName, n, total) {
+      function ppSubmitHarvestQuantity(p, bedName, n, total, date) {
         const base = ppSplitName(p.name)[0];
         const from = bedName ? ' from ' + bedName : '';
         // Reaching the full count is byte-identical to the old whole-lot phrasing (no count token needed —
@@ -11372,6 +11587,7 @@ if (typeof module !== 'undefined' && module.exports) {
         // resolveBatch's (StateUpdate.js) existing date-hint arm — no server change needed.
         const item = { zone: bedName || 'Unspecified', category: 'Harvesting', crop: p.name, batchHint: p.planted || '' };
         if (n < total) item.count = String(n);
+        if (date) item.date = date; // backdate (SCOPE-STAGE-BUTTON.md Phase 1); '' -> server defaults to today
         closePassport();
         if (typeof submitLog === 'function') submitLog(text, item);
         // Passport actions close straight back to the beds page (SCOPE-PASSPORT-ACTIONS.md), which is
@@ -11403,10 +11619,12 @@ if (typeof module !== 'undefined' && module.exports) {
         render();
         stepper.appendChild(minus); stepper.appendChild(disp); stepper.appendChild(plus);
         body.appendChild(stepper);
+        const df = ppDateField();
+        body.appendChild(df.el);
         actions.appendChild(rButton('Confirm', 'rbtn-primary', function () {
           closeResolve();
           // 0 is a no-op — an accidental open-then-confirm shouldn't log a phantom pick.
-          if (val > 0) ppSubmitHarvestPick(p, bedName, val, unit);
+          if (val > 0) ppSubmitHarvestPick(p, bedName, val, unit, df.getDate());
         }));
         actions.appendChild(rButton('Cancel', 'rbtn-secondary', closeResolve));
         presentResolveModal();
@@ -11423,7 +11641,7 @@ if (typeof module !== 'undefined' && module.exports) {
         if (!cur) return n + ' ' + unit;
         return cur + ' + ' + n + ' ' + unit;
       }
-      function ppSubmitHarvestPick(p, bedName, n, unit) {
+      function ppSubmitHarvestPick(p, bedName, n, unit, date) {
         const base = ppSplitName(p.name)[0];
         const from = bedName ? ' from ' + bedName : '';
         const text = 'Picked ' + n + ' ' + unit + ' of the ' + base + from;
@@ -11433,6 +11651,7 @@ if (typeof module !== 'undefined' && module.exports) {
         // extractYield only understands weight/volume/bunch/punnet, never an arbitrary per-crop noun.
         // batchHint: p.planted — see ppSubmitHarvestQuantity's comment (the passport-tap disambiguation fix).
         const item = { zone: bedName || 'Unspecified', category: 'Harvesting', crop: p.name, batchHint: p.planted || '', count: String(n), harvestUnit: unit };
+        if (date) item.date = date; // backdate (SCOPE-STAGE-BUTTON.md Phase 1); '' -> server defaults to today
         if (typeof submitLog === 'function') submitLog(text, item);
         if (typeof showToast === 'function') showToast('Harvested', text);
         // Stay OPEN and patch in place (design pass 23/07 round 4 sense-check) — every OTHER passport action
@@ -11501,27 +11720,114 @@ if (typeof module !== 'undefined' && module.exports) {
       // what a free-text "the X sprouted" scribes to (stampSproutedOnStage, StateUpdate.js) — skips Gemini,
       // same deterministic outcome.
       function ppSproutedTap(p, bedName) {
+        // Was an instant submit; now confirms first so a sprout noticed days late can be backdated
+        // (SCOPE-STAGE-BUTTON.md Phase 1). The backdated date stamps Sprouted itself (StateUpdate.js
+        // stampSproutedOnStage reads item.date), so downstream tender-window / phase math uses the real day.
+        const base = ppSplitName(p.name)[0];
+        ppOpenBackdateConfirm('Did the ' + base + ' sprout?', 'Marks it as up and growing.', function (date) {
+          ppSubmitSprouted(p, bedName, date);
+        });
+      }
+      function ppSubmitSprouted(p, bedName, date) {
         const base = ppSplitName(p.name)[0];
         const where = bedName ? ' in ' + bedName : '';
         const text = 'The ' + base + ' sprouted' + where;
         // batchHint: p.planted — see ppSubmitHarvestQuantity's comment (the passport-tap disambiguation fix).
         const item = { zone: bedName || 'Unspecified', category: 'Observation', crop: p.name, stage: 'Seedling', batchHint: p.planted || '' };
+        if (date) item.date = date; // backdate; '' -> server defaults to today
         closePassport();
         if (typeof submitLog === 'function') submitLog(text, item);
         if (typeof showToast === 'function') showToast('Sprouted', text);
       }
 
-      // "Moved outside" — the raised-under-cover shortcut (ppRemoveEl, raisingUnderCover only). Opens a
-      // plain bed-choice list (same shell/CSS as ppOpenPullOutConfirm's reason choices) and submits a
-      // straight Relocation note through the normal submitLog path — relocateForward + stampTransplantOnMove
+      // "End season" (SCOPE-STAGE-BUTTON.md Phase 5) — a returning perennial's "I'm done picking for now".
+      // Direct RPC (like setHarvestReminder, ppSubmitHarvestReminder below), NOT a queued submitLog: it clears
+      // the sticky harvest-alert cells, which the normal state-write path deliberately skips. Confirms first
+      // (backdate — a season ended last week is fine). Needs the network (rare, ~4-5×/year) — offline is a
+      // no-op with a nudge rather than a silently-lost tap.
+      function ppEndSeasonTap(p, bedName) {
+        if (typeof isOnline !== 'undefined' && !isOnline) {
+          if (typeof showToast === 'function') showToast('Offline', 'Reconnect to end the season — nothing was lost.');
+          return;
+        }
+        const base = ppSplitName(p.name)[0];
+        ppOpenBackdateConfirm('End the ' + base + "'s season?", 'Clears this season’s harvest. The plant stays and returns next year.', function (date) {
+          ppSubmitEndSeason(p, bedName, date);
+        });
+      }
+      function ppSubmitEndSeason(p, bedName, date) {
+        if (!p || !p.plantId) return;
+        const pin = localStorage.getItem('garden_log_pin'), token = localStorage.getItem('garden_log_token');
+        if (!pin && !token) return;
+        const base = ppSplitName(p.name)[0];
+        closePassport();
+        if (typeof showToast === 'function') showToast('Season ended', 'The ' + base + ' is done for the season — it’ll be back.');
+        google.script.run
+          .withSuccessHandler(function (resStr) {
+            let res = null; try { res = JSON.parse(resStr); } catch (e) {}
+            if (res && res.status === 'success' && res.data && res.data.currentState && typeof applyGardenState === 'function') {
+              try { if (typeof cacheState === 'function') cacheState(res.data); } catch (e) {}
+              applyGardenState(res.data); // repaint the Garden in place (the passport already closed)
+            } else if (typeof refreshStateView === 'function') { refreshStateView(true); }
+          })
+          .withFailureHandler(function () { if (typeof refreshStateView === 'function') refreshStateView(true); })
+          .processClientRequest(JSON.stringify({ action: 'endSeason', plantId: p.plantId, date: date || '', token: token, pin: pin }));
+      }
+
+      // Deciduous tree cycle taps (SCOPE-STAGE-BUTTON.md Phase 3) — First flower / First fruit. Same
+      // structured-bypass shape as ppSproutedTap: a category 'Observation' with stage 'Flowering'/'Fruiting'
+      // (long-standing STAGE_SEQUENCE values) is exactly what a free-text "the X flowered" scribes to, and
+      // computePhase (GardenSheet.js) now reads those stages back as the FirstFlower/FirstFruit phases that
+      // drive the next button. Both confirm-with-backdate first (a blossom noticed a week late is normal).
+      // "First fruit" vs "First leaf" is species-aware (owner, 24/07): a leaf-harvest tree (HarvestUnit
+      // 'leaves') reads "First leaf"; everything else "First fruit". Two labels, matching the owner's
+      // "First fruit/leaf" phrasing — deliberately NOT a per-crop singularised word (robust, no odd plurals).
+      function ppFirstFruitLabel(p) {
+        return /leaf|leaves/.test(String((p && p.harvestUnit) || '').toLowerCase()) ? 'First leaf' : 'First fruit';
+      }
+      function ppFirstFlowerTap(p, bedName) {
+        const base = ppSplitName(p.name)[0];
+        ppOpenBackdateConfirm('Did the ' + base + ' flower?', 'Marks its first blossom this season.', function (date) {
+          ppSubmitStageObservation(p, bedName, 'Flowering', 'The ' + base + ' flowered', 'Flowered', date);
+        });
+      }
+      function ppFirstFruitTap(p, bedName) {
+        const base = ppSplitName(p.name)[0];
+        const leaf = ppFirstFruitLabel(p) === 'First leaf';
+        const noun = leaf ? 'leaf' : 'fruit';
+        const setWord = leaf ? 'leafed out' : 'set fruit';
+        ppOpenBackdateConfirm('First ' + noun + ' on the ' + base + '?', 'Marks it ' + setWord + ' this season.', function (date) {
+          ppSubmitStageObservation(p, bedName, 'Fruiting', 'The ' + base + ' ' + setWord, 'First ' + noun, date);
+        });
+      }
+      // Shared submit for a stage-Observation milestone (flower/fruit) — the generic form of ppSubmitSprouted
+      // for the tree cycle. batchHint: p.planted, backdate via item.date, structured bypass — all exactly as
+      // the other passport taps (see ppSubmitHarvestQuantity's comment).
+      function ppSubmitStageObservation(p, bedName, stage, logText, toastTitle, date) {
+        const where = bedName ? ' in ' + bedName : '';
+        const text = logText + where;
+        const item = { zone: bedName || 'Unspecified', category: 'Observation', crop: p.name, stage: stage, batchHint: p.planted || '' };
+        if (date) item.date = date; // backdate; '' -> server defaults to today
+        closePassport();
+        if (typeof submitLog === 'function') submitLog(text, item);
+        if (typeof showToast === 'function') showToast(toastTitle, text);
+      }
+
+      // "Plant outside" — the raised-under-cover move (ppStageAdvanceBtnEl, raisingUnderCover only; the label
+      // is unified with the shed 'Plant outside' per owner, 24/07, though this path is a Relocation of an
+      // existing under-cover row, not a fresh Planting). Opens a plain bed-choice list (same shell/CSS as
+      // ppOpenPullOutConfirm's reason choices) and submits a straight Relocation note through the normal
+      // submitLog path — relocateForward + stampTransplantOnMove
       // (StateUpdate.js) already turn "moved the X to Y" into a plant-out for a still-nursery-stage row, so
       // no new server logic is needed here.
       function ppOpenMovedOutside(p, bedName) {
         const base = ppSplitName(p.name)[0];
-        document.getElementById('resolveTitle').textContent = 'Move the ' + base + ' outside?';
+        document.getElementById('resolveTitle').textContent = 'Plant the ' + base + ' outside?';
         document.getElementById('resolveSub').textContent = 'Pick the bed it went into.';
         const body = document.getElementById('resolveBody'); body.innerHTML = '';
         const actions = document.getElementById('resolveActions'); actions.innerHTML = '';
+        const df = ppDateField();
+        body.appendChild(df.el);
         const beds = (typeof getKnownBeds === 'function') ? getKnownBeds() : [];
         const choices = document.createElement('div');
         choices.className = 'pp-reason-choices';
@@ -11530,8 +11836,9 @@ if (typeof module !== 'undefined' && module.exports) {
           btn.type = 'button'; btn.className = 'pp-reason-choice';
           btn.textContent = b;
           btn.onclick = function () {
+            const date = df.getDate(); // read before closeResolve wipes the modal body
             closeResolve();
-            ppSubmitMovedOutside(p, bedName, b);
+            ppSubmitMovedOutside(p, bedName, b, date);
           };
           choices.appendChild(btn);
         });
@@ -11542,14 +11849,15 @@ if (typeof module !== 'undefined' && module.exports) {
       // Structured bypass (see ppSubmitHarvestQuantity): category Relocation with the known source
       // (fromZone) + target (zone) is exactly what relocateForward (StateUpdate.js) derives from a
       // free-text "moved the X to Y" — skips Gemini, same plant-out stamp on a still-nursery-stage row.
-      function ppSubmitMovedOutside(p, fromBed, targetBed) {
+      function ppSubmitMovedOutside(p, fromBed, targetBed, date) {
         const base = ppSplitName(p.name)[0];
         const text = 'Moved the ' + base + ' to ' + targetBed;
         // batchHint: p.planted — see ppSubmitHarvestQuantity's comment (the passport-tap disambiguation fix).
         const item = { zone: targetBed, category: 'Relocation', crop: p.name, fromZone: fromBed || '', batchHint: p.planted || '' };
+        if (date) item.date = date; // backdate (SCOPE-STAGE-BUTTON.md Phase 1); '' -> server defaults to today
         closePassport();
         if (typeof submitLog === 'function') submitLog(text, item);
-        if (typeof showToast === 'function') showToast('Moved outside', text);
+        if (typeof showToast === 'function') showToast('Planted outside', text);
       }
 
       // RIGHT-hand status tile (owner: "the missing visual piece") — reads a plant's stage/place at a glance,
@@ -11948,22 +12256,22 @@ if (typeof module !== 'undefined' && module.exports) {
         // amber/pending bell (ppHarvestBellBtnEl) — rebuilt fresh on every render. Falls back to a bare solo
         // row only when NOTHING else is showing (an established perennial/tree — ppIsEstablished — which
         // otherwise renders nothing here).
-        const harvestBtn = ppHarvestBtnEl(p, bedName);
-        if (harvestBtn) {
+        const stageBtn = ppStageAdvanceBtnEl(p, bedName);
+        if (stageBtn) {
           const last = wrap.lastElementChild;
           if (last && last.classList.contains('pl-line-row')) {
-            last.appendChild(harvestBtn);
+            last.appendChild(stageBtn);
           } else if (last) {
             wrap.removeChild(last);
             const hrow = document.createElement('div');
             hrow.className = 'pl-line-row';
             hrow.appendChild(last);
-            hrow.appendChild(harvestBtn);
+            hrow.appendChild(stageBtn);
             wrap.appendChild(hrow);
           } else {
             const hrow = document.createElement('div');
             hrow.className = 'pl-line-row pl-line-row-solo';
-            hrow.appendChild(harvestBtn);
+            hrow.appendChild(stageBtn);
             wrap.appendChild(hrow);
           }
         }
