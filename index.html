@@ -1991,7 +1991,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.67</span>
+        <span class="header-version">v8.68</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2301,7 +2301,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.67 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.68 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -10832,7 +10832,15 @@ if (typeof module !== 'undefined' && module.exports) {
         } catch (e) { return null; }
       }
 
-      // Surface 2: the plant-out line for an under-cover seedling. Returns {cls,txt} or null. Fires ONLY when
+      // Builds a mark SVG as a DOM node (not a string) so a caller can insert it mid-line — e.g. the plant-out
+      // line's second ui-clock icon ahead of an appended age note. Same markup ppPlantOutLine's mark icons use.
+      function ppIconEl(mark) {
+        const span = document.createElement('span');
+        span.innerHTML = '<svg class="pl-line-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#' + mark + '" xlink:href="#' + mark + '"></use></svg>';
+        return span.firstChild;
+      }
+
+      // Surface 2: the plant-out line for an under-cover seedling. Returns {cls,txt,mark?,ageTxt?} or null. Fires ONLY when
       // the server flagged it raisingUnderCover (a sprouted, not-yet-transplanted nursery seedling) and we have
       // a model + cached forecast. The gate is night AIR vs the crop's transplant floor (window→outside), NOT
       // soil — a separate reading from the packet's sow line. Green "✓ Ready to plant" when the nights have
@@ -10863,16 +10871,17 @@ if (typeof module !== 'undefined' && module.exports) {
           return { cls: 'pl-ready', txt: '✓ Plant out' };   // green go — the sanctioned green
         }
         // Weather is ALSO blocking below — when the seedling itself isn't ready either, say so alongside the
-        // weather gate ("· N days"), so a not-yet reading always answers BOTH clocks, not just whichever one
-        // the code happened to check first. Silent when age is unknown or already satisfied (the weather line
-        // alone is the complete answer then — once weather clears, this one goes straight out). Plain text, no
-        // second icon — the line already carries the weather mark (frost/heat) at its head.
-        const ageNote = (age && !age.ready) ? (' · ' + age.daysRemaining + ' day' + (age.daysRemaining === 1 ? '' : 's')) : '';
+        // weather gate as its OWN "N days" clause (ageTxt, rendered with a second ui-clock icon by the caller —
+        // owner, 24/07: a bare "· 5 days" with no icon read as a stray fragment; every day-count on this line
+        // gets a clock), so a not-yet reading always answers BOTH clocks, not just whichever the code checked
+        // first. '' when age is unknown or already satisfied (the weather line alone is the complete answer
+        // then — once weather clears, this one goes straight out).
+        const ageTxt = (age && !age.ready) ? (age.daysRemaining + ' day' + (age.daysRemaining === 1 ? '' : 's')) : '';
         // Too HOT: a heat spell ahead cooks a fresh transplant, so hold plant-out even when soil + nights are
         // fine. Amber + heat mark, mirroring the cold gap below. Checked first — heat trumps a satisfied cold gate.
         if (r.tooHotToPlant) {
           const hg = (r.heatPlantGap != null && r.heatPlantGap > 0) ? r.heatPlantGap : 0;
-          return { cls: 'pl-hot', mark: 'ui-wx-heat', txt: (hg > 0 ? 'Days ' + hg + '° too hot to plant' : 'Too hot to plant out') + ageNote };
+          return { cls: 'pl-hot', mark: 'ui-wx-heat', txt: (hg > 0 ? 'Days ' + hg + '° too hot to plant' : 'Too hot to plant out'), ageTxt: ageTxt };
         }
         // Not ready yet: show whichever gate is the BINDING blocker — the SOIL below the growing floor (roots
         // won't establish) or the NIGHTS below the frost floor. Blue + frost mark, same language as the soil
@@ -10880,7 +10889,7 @@ if (typeof module !== 'undefined' && module.exports) {
         const sg = (r.soilPlantGap != null && r.soilPlantGap > 0) ? r.soilPlantGap : 0;
         const ng = (r.plantOutGap != null && r.plantOutGap > 0) ? r.plantOutGap : 0;
         if (sg > 0 || ng > 0) {
-          return { cls: 'pl-cold', mark: 'ui-wx-frost', txt: (sg >= ng ? 'Soil ' + sg : 'Nights ' + ng) + '° too cold to plant' + ageNote };
+          return { cls: 'pl-cold', mark: 'ui-wx-frost', txt: (sg >= ng ? 'Soil ' + sg : 'Nights ' + ng) + '° too cold to plant', ageTxt: ageTxt };
         }
         return null;
       }
@@ -12257,11 +12266,19 @@ if (typeof module !== 'undefined' && module.exports) {
         } else if ((po = ppPlantOutLine(p))) {
           // under-cover seedling (surface 2): "✓ Ready to plant" (green go) or "❄ N° too cold to plant" (blue,
           // with the dashboard's frost mark). The mark case builds the span directly so it can carry the SVG.
+          // A weather-blocked line that ALSO carries an age note (po.ageTxt) gets a SECOND icon (always
+          // ui-clock) ahead of that clause — a bare "· 5 days" with no icon read as a stray fragment (owner,
+          // 24/07); every day-count on this line now carries its own clock, standalone or not.
           if (po.mark) {
             const s = document.createElement('span');
             s.className = 'pl-line ' + po.cls;
-            s.innerHTML = '<svg class="pl-line-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#' + po.mark + '" xlink:href="#' + po.mark + '"></use></svg> ';
-            s.appendChild(document.createTextNode(po.txt));
+            s.appendChild(ppIconEl(po.mark));
+            s.appendChild(document.createTextNode(' ' + po.txt));
+            if (po.ageTxt) {
+              s.appendChild(document.createTextNode(' · '));
+              s.appendChild(ppIconEl('ui-clock'));
+              s.appendChild(document.createTextNode(' ' + po.ageTxt));
+            }
             wrap.appendChild(s);
           } else {
             line(po.cls, po.txt);
