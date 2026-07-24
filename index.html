@@ -1754,6 +1754,15 @@
       <path fill="currentColor" d="M22 11h-4.17l3.24-3.24-1.41-1.42L15 11h-2V9l4.66-4.66-1.42-1.41L13 6.17V2h-2v4.17L7.76 2.93 6.34 4.34 11 9v2H9L4.34 6.34 2.93 7.76 6.17 11H2v2h4.17l-3.24 3.24 1.41 1.42L9 13h2v2l-4.66 4.66 1.42 1.41L11 17.83V22h2v-4.17l3.24 3.24 1.42-1.41L13 15v-2h2l4.66 4.66 1.41-1.42L17.83 13H22z"/>
     </symbol>
 
+    <!-- ui-clock — a plain mono clock (owner audit, 24/07): the seedling-age "just waiting, not a weather
+         signal" mark — the plant-out line's counterpart to the harvest bell's mono-pending face. Deliberately
+         a bare clock (no colour-coded meaning of its own, unlike ui-wx-frost/ui-wx-heat), so pairing it with
+         --text-muted never gets confused for a temperature reading. -->
+    <symbol id="ui-clock" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M12 7v5l3.5 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+
     <!-- ===== Log-feed category marks (mono chrome for the Recent feed head; the drawn set that
          retires 🧺 🛠 👁 💩 ✂ ↪ ↩ 📋. Plant actions (sow/plant/feed) keep their COLOUR crop-art —
          these mono marks are the chore/meta actions only. See docs/ICON-SYSTEM.md §6a. ===== -->
@@ -1982,7 +1991,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.66</span>
+        <span class="header-version">v8.67</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2292,7 +2301,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.66 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.67 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -10845,19 +10854,20 @@ if (typeof module !== 'undefined' && module.exports) {
           ? computeSeedlingAgeReady(daysSinceSprout, p.sowModel.daysSproutToTransplant) : null;
         if (r.canPlantOut) {
           if (age && !age.ready) {
-            // Weather's ready but the tray itself isn't — a quiet blue wait note (reuses .pl-cold's neutral blue,
-            // no frost mark: this isn't a temperature blocker), not the green go.
-            const d = age.daysRemaining;
-            return { cls: 'pl-cold', txt: 'Seedling needs ' + d + ' more day' + (d === 1 ? '' : 's') };
+            // Weather's ready but the tray itself isn't — its own quiet grey wait (.pl-countdown, the SAME
+            // muted tone the harvest countdown uses — "just waiting", not a weather signal), mono clock icon
+            // instead of the frost mark this used to borrow (owner, 24/07: blue/frost falsely implied cold).
+            // Bare "N days" — no sentence — mirrors the harvest bell's own "Nd" shorthand.
+            return { cls: 'pl-countdown', mark: 'ui-clock', txt: age.daysRemaining + ' day' + (age.daysRemaining === 1 ? '' : 's') };
           }
           return { cls: 'pl-ready', txt: '✓ Plant out' };   // green go — the sanctioned green
         }
         // Weather is ALSO blocking below — when the seedling itself isn't ready either, say so alongside the
-        // weather gate ("· seedling ready in N days"), so a not-yet reading always answers BOTH clocks, not just
-        // whichever one the code happened to check first. Silent when age is unknown or already satisfied (the
-        // weather line alone is the complete answer then — once weather clears, this one goes straight out).
-        const ageNote = (age && !age.ready)
-          ? (' · seedling ready in ' + age.daysRemaining + ' day' + (age.daysRemaining === 1 ? '' : 's')) : '';
+        // weather gate ("· N days"), so a not-yet reading always answers BOTH clocks, not just whichever one
+        // the code happened to check first. Silent when age is unknown or already satisfied (the weather line
+        // alone is the complete answer then — once weather clears, this one goes straight out). Plain text, no
+        // second icon — the line already carries the weather mark (frost/heat) at its head.
+        const ageNote = (age && !age.ready) ? (' · ' + age.daysRemaining + ' day' + (age.daysRemaining === 1 ? '' : 's')) : '';
         // Too HOT: a heat spell ahead cooks a fresh transplant, so hold plant-out even when soil + nights are
         // fine. Amber + heat mark, mirroring the cold gap below. Checked first — heat trumps a satisfied cold gate.
         if (r.tooHotToPlant) {
