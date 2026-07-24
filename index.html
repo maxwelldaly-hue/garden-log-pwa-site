@@ -987,6 +987,17 @@
       .dev-drawer.open { max-height: 6000px; overflow: visible; }
       .dev-section { margin-bottom: 18px; }
       .dev-section:last-child { margin-bottom: 0; }
+      /* Collapsed "Tools & diagnostics" group: dev + authoring machinery a daily user never needs, tucked
+         behind one tap so the drawer opens short. Native <details> — no JS. The summary reads as a section
+         header (same look as .dev-h) with a rotating ▸ affordance; open, its sections sit indented under a
+         hairline so the grouping is legible. */
+      .dev-tools { margin-bottom: 18px; border-top: 1px solid var(--surface-inset-05); padding-top: 14px; }
+      .dev-tools-summary { font-size: var(--fs-sm); font-weight: 700; letter-spacing: var(--ls-tight); text-transform: uppercase; color: var(--text-muted); cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
+      .dev-tools-summary::-webkit-details-marker { display: none; }
+      .dev-tools-summary::before { content: "▸"; display: inline-block; transition: transform 0.15s ease; }
+      .dev-tools[open] > .dev-tools-summary::before { transform: rotate(90deg); }
+      .dev-tools[open] > .dev-tools-summary { margin-bottom: 16px; }
+      .dev-tools > .dev-section { padding-left: 12px; border-left: 2px solid var(--surface-inset-05); }
       .dev-h { font-size: var(--fs-sm); font-weight: 700; letter-spacing: var(--ls-tight); text-transform: uppercase; color: var(--text-muted); margin: 0 0 8px; }
       .dev-kv { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: var(--fs-sm); color: var(--text-main); line-height: 1.7; }
       .dev-kv .k { color: var(--text-muted); }
@@ -1991,7 +2002,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.68</span>
+        <span class="header-version">v8.69</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2301,7 +2312,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.68 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.69 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2323,31 +2334,6 @@
             <div id="devScribeStats" class="dev-kv">—</div>
           </div>
 
-          <!-- Scribe check (the test seam for prompt changes): the scribe's text→item step IS the Gemini
-               prompt and can't be unit-tested, so this runs a set of representative notes through the LIVE
-               scribe and checks each classification against its known-correct answer. Tap it BEFORE and AFTER
-               any scribe-rules change to catch a regression. Owner-run (ScribeCheck.js → runScribeRegression),
-               read-only, ~15 text calls (no photos → light on quota). -->
-          <div class="dev-section">
-            <h4 class="dev-h">Scribe check</h4>
-            <p class="dev-note">Runs a set of representative notes through the <em>live</em> scribe and checks each against its known-correct answer — the only way to catch a classification regression, since the scribe's understanding step can't be unit-tested. Tap this <strong>before and after</strong> any change to the scribe rules to compare. The calls are <strong>spaced out</strong> to stay under the AI's rate limit, so a full run takes a few minutes; <strong>Routing only</strong> re-checks just the garden-vs-shed decision (~23 reads, quicker). No photos, writes nothing. Needs your PIN and a connection.</p>
-            <button class="dev-simbtn" onclick="runScribeCheck(this)">Run full check</button>
-            <button class="dev-simbtn" onclick="runScribeCheck(this, 'routing')" style="margin-left:6px;">Routing only</button>
-            <div id="devScribeCheck" class="dev-kv" style="margin-top:8px;"></div>
-          </div>
-
-
-          <!-- Formula-escape self-test (audit Finding 11): a cell written starting with =/+/-/@ would run as a
-               live formula when the raw Sheet is opened. The guard prefixes a ' to neutralise it. This can't be
-               unit-tested (no USER_ENTERED offline) or logged (the scribe rewrites the input first), so this
-               drives the real write→read cycle on a throwaway tab. Owner-run, read-only w.r.t. real data. -->
-          <div class="dev-section">
-            <h4 class="dev-h">Formula-escape check</h4>
-            <p class="dev-note">A note or crop that starts with <code>=</code>, <code>+</code>, <code>-</code> or <code>@</code> could otherwise run as a live spreadsheet formula when you open the raw Sheet. This writes each of those to a scratch tab (raw <em>and</em> guarded), reads them back, and confirms the guarded ones stay harmless text and come back exactly as typed. Uses no AI; writes only to a throwaway tab it deletes. Needs your PIN and a connection.</p>
-            <button class="settings-save-btn" onclick="runFormulaEscapeCheck(this)">Run formula-escape check</button>
-            <div id="devFormulaEscape" class="dev-kv" style="margin-top:8px;"></div>
-          </div>
-
           <!-- Log speed (latency track, Option 0 — "measure"): the wait the owner watches is the parsed row
                appearing, gated on the Gemini round-trip. This shows, per path, the typical (median) total and
                how much of it is Gemini — the dominant, runtime-independent cost. Server-read (recent-samples
@@ -2358,55 +2344,23 @@
             <div id="devLatencyStats" class="dev-kv">—</div>
           </div>
 
-          <!-- Map binding lint (engineering brief A3): the "House Window rename" trap made visible. The map
-               binds each SVG zone to a bed by data-bed-id === bed.bedId — a STABLE opaque slug (BedId
-               migration), independent of the bed's display name, so renaming a bed in Blueprint no longer
-               unbinds its overlay. Lists SVG zones with no matching bed and beds with no matching zone; a
-               near-match (differs only by case/spacing) is flagged as the likely stale-SVG-id culprit. Client-only. -->
-          <div class="dev-section">
-            <h4 class="dev-h">Map binding</h4>
-            <p class="dev-note">The map ties each drawn zone to a bed by a stable id, so renaming a bed in Blueprint no longer unbinds its overlay. This lists any drawn zone with no matching bed (and vice versa) — normally empty; a ⚠ near-match flags a genuinely stale or hand-edited id worth reconciling.</p>
-            <div id="devMapLint" class="dev-kv">—</div>
-          </div>
-
           <!-- One-tap maintenance jobs — so the owner runs them from the app, never the Apps Script editor.
                (The one-off "Re-tag Shed categories" + "Rename Window (House)→House Window" migrations were
                retired v6.85 once complete — the shed is on the 4 categories and the bed is renamed.) -->
           <div class="dev-section">
             <h4 class="dev-h">Maintenance</h4>
-            <p class="dev-note">One-tap jobs. <strong>Sync category order</strong> makes sure every category you use has a row on the <em>Shed Categories</em> tab, where you set the display order (edit the Order column — blank sorts last). <strong>Clear un-captured seed entries</strong> removes old description-only seed packets that can't open a passport, so you can re-add them fresh from the packets — it confirms first and never touches a properly-captured seed. <strong>Heal duplicate plants</strong> collapses a plant that got recorded as two rows in the same bed (a card-capture bug) into one, keeping the richer record — a real second planting on a different date is never touched. <strong>Scan for missing plantings</strong> lists any logged planting with no matching card (skipping anything ever harvested or removed) — it only reports, it creates nothing, since a Log row can be test data or a mistake rather than proof; check each one against the real garden yourself. <strong>Remove Key column</strong> is a one-off: deletes an old, unused column from the Garden sheet (safe to tap once; reports "already removed" after). All safe to tap more than once.</p>
+            <p class="dev-note">One-tap jobs. <strong>Sync category order</strong> makes sure every category you use has a row on the <em>Shed Categories</em> tab, where you set the display order (edit the Order column — blank sorts last). <strong>Clear un-captured seed entries</strong> removes old description-only seed packets that can't open a passport, so you can re-add them fresh from the packets — it confirms first and never touches a properly-captured seed. <strong>Heal duplicate plants</strong> collapses a plant that got recorded as two rows in the same bed (a card-capture bug) into one, keeping the richer record — a real second planting on a different date is never touched. <strong>Scan for missing plantings</strong> lists any logged planting with no matching card (skipping anything ever harvested or removed) — it only reports, it creates nothing, since a Log row can be test data or a mistake rather than proof; check each one against the real garden yourself. All safe to tap more than once.</p>
             <button class="settings-save-btn" onclick="runShedCategorySync(this)">Sync category order</button>
             <button class="settings-save-btn" onclick="runClearShedSeeds(this)" style="margin-top:8px;">Clear un-captured seed entries</button>
             <button class="settings-save-btn" onclick="runHealDuplicatePlants(this)" style="margin-top:8px;">Heal duplicate plants</button>
             <button class="settings-save-btn" onclick="runScanForMissingPlantings(this)" style="margin-top:8px;">Scan for missing plantings</button>
-            <button class="settings-save-btn" onclick="runRemoveStateKeyColumn(this)" style="margin-top:8px;">Remove Key column</button>
             <div id="devMaintResult" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;"></div>
           </div>
 
-          <!-- Stable-identity cutover tooling (docs/SCOPE-STABLE-IDENTITY.md step 4, GardenSheet.js).
-               Two SAFE prerequisites (backup, assign) THEN the destructive clean-slate wipe — run them in
-               order, top to bottom. The wipe is triple-gated (type WIPE + confirm dialog + a backup must exist). -->
-          <div class="dev-section">
-            <h4 class="dev-h">Stable identity cutover</h4>
-            <p class="dev-note">Run these in order. <strong>1. Back up Log</strong> duplicates the Log tab to a timestamped copy — it only reads and copies. <strong>2. Assign stable IDs</strong> mints an id onto any existing plant/shed row that lacks one; it never overwrites an existing id, so it's safe to tap twice.</p>
-            <button class="settings-save-btn" onclick="runBackupLogTab(this)">Back up Log</button>
-            <button class="settings-save-btn" onclick="runAssignStableIds(this)" style="margin-top:8px;">Assign stable IDs</button>
-            <p class="dev-note" style="margin-top:12px;"><strong>3. Wipe Log history</strong> — the clean-slate step. Deletes every Log entry (keeps the column header); plants, dates, counts and the ids you just assigned stay put, while stories, photo journeys, care timers and the Recent feed clear and re-fill from new logs. It refuses unless a backup exists. Type <code>WIPE</code> to enable, then confirm.</p>
-            <input type="text" id="devWipeConfirm" placeholder="type WIPE" autocomplete="off" autocapitalize="characters" spellcheck="false">
-            <button class="settings-save-btn" onclick="runWipeLogData(this)" style="margin-top:8px;">Wipe Log history</button>
-            <div id="devIdentityResult" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;"></div>
-          </div>
-
-          <!-- Crop Reference book (CropsBook.js): the ONE home for generic species facts, seeded from the
-               owner-signed-off audit (135 crops). First tap creates the per-instance spreadsheet + seeds it,
-               then links it so the owner can eyeball the rows. Idempotent; per-instance (prod AND beta). Inert
-               for now — nothing reads it into the app yet (Phase 3 repoints the crop lookups). -->
-          <div class="dev-section">
-            <h4 class="dev-h">Crop Reference</h4>
-            <p class="dev-note">One home for typical species facts — days to maturity, harvest type, lifecycle, botanical name, sun, spacing, sow window — seeded with 135 crops from the audit. <strong>Create / update</strong> makes your own Crop Reference spreadsheet (once), seeds it, and gives you a link to open and review it. Safe to tap more than once. The app reads it for the plant passports; edit a row in the sheet and it takes effect.</p>
-            <button class="settings-save-btn" onclick="runCropsBookCreate(this)">Create / update Crop Reference book</button>
-            <div id="devCropsResult" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;"></div>
-          </div>
+          <!-- Stable-identity cutover tooling (backup / assign / wipe) was removed from the Dev drawer once the
+               owner-run cutover completed on prod + beta (19/07, v7.90 — see docs/SCOPE-STABLE-IDENTITY.md).
+               The server functions backupLogTab / assignStableIds / wipeLogData remain in GardenSheet.js but are
+               no longer surfaced; prune them in a later pass if they stay unused. -->
 
           <!-- Passport test plants (PassportTestSeed.js): SANDBOX-ONLY fixtures that exercise every plant-
                passport card shape (full journey, 2nd-season, dormant perennial, ornamental, Spent, …).
@@ -2442,18 +2396,6 @@
             <h4 class="dev-h">Unlock editing</h4>
             <p class="dev-note">Reveals a ✎ on plant names, shed items (name, quantity, category) and bed names so you can fix a typo or move something without going through the log. Off by default — nothing changes on the daily surface until you switch this on.</p>
             <label class="dev-toggle"><input type="checkbox" id="devEditUnlockToggle" onchange="toggleEditMode(this)"> Unlock edit pencils</label>
-          </div>
-
-          <div class="dev-section">
-            <h4 class="dev-h">Crop icon coverage</h4>
-            <p class="dev-note">Which crops in your current garden map to an Open Crop icon (<code>assets/open-crop-icons</code>, CC0) vs. fall back to <code>generic-plant</code>. Gaps listed first — those are what still need a hand-drawn icon.</p>
-            <div id="devIconCoverage" class="dev-kv">—</div>
-          </div>
-
-          <div class="dev-section">
-            <h4 class="dev-h">Shed icon coverage</h4>
-            <p class="dev-note">Which Shed supplies have a bespoke drawn icon vs. show a generic box — gaps first, so you know what could still be drawn. <strong>Seeds, Feed &amp; Soil and Pest items are header-only by design</strong> (the category header carries the icon), so they're not counted — this covers Tools &amp; Hardware and anything uncategorised. A <code>generic-plant</code> here means the category wasn't recognised (a plant icon on a supply) — worth a look.</p>
-            <div id="devShedIconCoverage" class="dev-kv">—</div>
           </div>
 
           <div class="dev-section">
@@ -2513,26 +2455,73 @@
             <button class="settings-save-btn" onclick="saveCareThreshold('seasol', this)">Save Seasol cadence</button>
           </div>
 
-          <!-- Preview the care-ring colour bands without waiting days: back-dates the ring's marker locally.
-               Clear with "cold" or a real tap on the ring. Water isn't here — its colour is forecast-driven. -->
-          <div class="dev-section">
-            <h4 class="dev-h">Preview care-ring colours</h4>
-            <p class="dev-note">Back-dates a feed ring's marker so you can see green / amber (due soon) / red (overdue). Local only — clear with <strong>cold</strong> or by tapping the ring.</p>
-            <div class="dev-simrow"><span class="dev-simlabel">🍞 Nutrition</span>
-              <button class="dev-simbtn" onclick="devSimCare('food','green')">green</button>
-              <button class="dev-simbtn" onclick="devSimCare('food','amber')">amber</button>
-              <button class="dev-simbtn" onclick="devSimCare('food','red')">red</button>
-              <button class="dev-simbtn" onclick="devSimCare('food','cold')">cold</button>
-            </div>
-            <div class="dev-simrow"><span class="dev-simlabel">🪸 Seasol</span>
-              <button class="dev-simbtn" onclick="devSimCare('seasol','green')">green</button>
-              <button class="dev-simbtn" onclick="devSimCare('seasol','amber')">amber</button>
-              <button class="dev-simbtn" onclick="devSimCare('seasol','red')">red</button>
-              <button class="dev-simbtn" onclick="devSimCare('seasol','cold')">cold</button>
-            </div>
-          </div>
-
           
+
+          <!-- Tools & diagnostics: developer + authoring machinery that a daily user never needs, collapsed
+               by default so the drawer opens short. One tap on the summary reveals the scribe/formula self-tests,
+               the map + icon coverage lints, the Crop Reference builder, and the care-ring colour preview. These
+               were scattered through the flat drawer before; grouping them here is presentation-only (each
+               section's markup, ids and handlers are unchanged). -->
+          <details class="dev-tools">
+            <summary class="dev-tools-summary">Tools &amp; diagnostics</summary>
+
+            <div class="dev-section">
+              <h4 class="dev-h">Scribe check</h4>
+              <p class="dev-note">Runs a set of representative notes through the <em>live</em> scribe and checks each against its known-correct answer — the only way to catch a classification regression, since the scribe's understanding step can't be unit-tested. Tap this <strong>before and after</strong> any change to the scribe rules to compare. The calls are <strong>spaced out</strong> to stay under the AI's rate limit, so a full run takes a few minutes; <strong>Routing only</strong> re-checks just the garden-vs-shed decision (~23 reads, quicker). No photos, writes nothing. Needs your PIN and a connection.</p>
+              <button class="dev-simbtn" onclick="runScribeCheck(this)">Run full check</button>
+              <button class="dev-simbtn" onclick="runScribeCheck(this, 'routing')" style="margin-left:6px;">Routing only</button>
+              <div id="devScribeCheck" class="dev-kv" style="margin-top:8px;"></div>
+            </div>
+
+            <div class="dev-section">
+              <h4 class="dev-h">Formula-escape check</h4>
+              <p class="dev-note">A note or crop that starts with <code>=</code>, <code>+</code>, <code>-</code> or <code>@</code> could otherwise run as a live spreadsheet formula when you open the raw Sheet. This writes each of those to a scratch tab (raw <em>and</em> guarded), reads them back, and confirms the guarded ones stay harmless text and come back exactly as typed. Uses no AI; writes only to a throwaway tab it deletes. Needs your PIN and a connection.</p>
+              <button class="settings-save-btn" onclick="runFormulaEscapeCheck(this)">Run formula-escape check</button>
+              <div id="devFormulaEscape" class="dev-kv" style="margin-top:8px;"></div>
+            </div>
+
+            <div class="dev-section">
+              <h4 class="dev-h">Map binding</h4>
+              <p class="dev-note">The map ties each drawn zone to a bed by a stable id, so renaming a bed in Blueprint no longer unbinds its overlay. This lists any drawn zone with no matching bed (and vice versa) — normally empty; a ⚠ near-match flags a genuinely stale or hand-edited id worth reconciling.</p>
+              <div id="devMapLint" class="dev-kv">—</div>
+            </div>
+
+            <div class="dev-section">
+              <h4 class="dev-h">Crop Reference</h4>
+              <p class="dev-note">One home for typical species facts — days to maturity, harvest type, lifecycle, botanical name, sun, spacing, sow window — seeded with 135 crops from the audit. <strong>Create / update</strong> makes your own Crop Reference spreadsheet (once), seeds it, and gives you a link to open and review it. Safe to tap more than once. The app reads it for the plant passports; edit a row in the sheet and it takes effect.</p>
+              <button class="settings-save-btn" onclick="runCropsBookCreate(this)">Create / update Crop Reference book</button>
+              <div id="devCropsResult" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;"></div>
+            </div>
+
+            <div class="dev-section">
+              <h4 class="dev-h">Crop icon coverage</h4>
+              <p class="dev-note">Which crops in your current garden map to an Open Crop icon (<code>assets/open-crop-icons</code>, CC0) vs. fall back to <code>generic-plant</code>. Gaps listed first — those are what still need a hand-drawn icon.</p>
+              <div id="devIconCoverage" class="dev-kv">—</div>
+            </div>
+
+            <div class="dev-section">
+              <h4 class="dev-h">Shed icon coverage</h4>
+              <p class="dev-note">Which Shed supplies have a bespoke drawn icon vs. show a generic box — gaps first, so you know what could still be drawn. <strong>Seeds, Feed &amp; Soil and Pest items are header-only by design</strong> (the category header carries the icon), so they're not counted — this covers Tools &amp; Hardware and anything uncategorised. A <code>generic-plant</code> here means the category wasn't recognised (a plant icon on a supply) — worth a look.</p>
+              <div id="devShedIconCoverage" class="dev-kv">—</div>
+            </div>
+
+            <div class="dev-section">
+              <h4 class="dev-h">Preview care-ring colours</h4>
+              <p class="dev-note">Back-dates a feed ring's marker so you can see green / amber (due soon) / red (overdue). Local only — clear with <strong>cold</strong> or by tapping the ring.</p>
+              <div class="dev-simrow"><span class="dev-simlabel">🍞 Nutrition</span>
+                <button class="dev-simbtn" onclick="devSimCare('food','green')">green</button>
+                <button class="dev-simbtn" onclick="devSimCare('food','amber')">amber</button>
+                <button class="dev-simbtn" onclick="devSimCare('food','red')">red</button>
+                <button class="dev-simbtn" onclick="devSimCare('food','cold')">cold</button>
+              </div>
+              <div class="dev-simrow"><span class="dev-simlabel">🪸 Seasol</span>
+                <button class="dev-simbtn" onclick="devSimCare('seasol','green')">green</button>
+                <button class="dev-simbtn" onclick="devSimCare('seasol','amber')">amber</button>
+                <button class="dev-simbtn" onclick="devSimCare('seasol','red')">red</button>
+                <button class="dev-simbtn" onclick="devSimCare('seasol','cold')">cold</button>
+              </div>
+            </div>
+          </details>
 
           <div class="dev-section">
             <h4 class="dev-h">How the scribe reads your notes</h4>
