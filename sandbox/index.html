@@ -1982,7 +1982,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.65</span>
+        <span class="header-version">v8.66</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2292,7 +2292,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.65 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.66 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -10901,11 +10901,17 @@ if (typeof module !== 'undefined' && module.exports) {
           }
           return { cls: 'pl-ready', txt: '✓ Plant out' };   // green go — the sanctioned green
         }
+        // Weather is ALSO blocking below — when the seedling itself isn't ready either, say so alongside the
+        // weather gate ("· seedling ready in N days"), so a not-yet reading always answers BOTH clocks, not just
+        // whichever one the code happened to check first. Silent when age is unknown or already satisfied (the
+        // weather line alone is the complete answer then — once weather clears, this one goes straight out).
+        const ageNote = (age && !age.ready)
+          ? (' · seedling ready in ' + age.daysRemaining + ' day' + (age.daysRemaining === 1 ? '' : 's')) : '';
         // Too HOT: a heat spell ahead cooks a fresh transplant, so hold plant-out even when soil + nights are
         // fine. Amber + heat mark, mirroring the cold gap below. Checked first — heat trumps a satisfied cold gate.
         if (r.tooHotToPlant) {
           const hg = (r.heatPlantGap != null && r.heatPlantGap > 0) ? r.heatPlantGap : 0;
-          return { cls: 'pl-hot', mark: 'ui-wx-heat', txt: (hg > 0 ? 'Days ' + hg + '° too hot to plant' : 'Too hot to plant out') };
+          return { cls: 'pl-hot', mark: 'ui-wx-heat', txt: (hg > 0 ? 'Days ' + hg + '° too hot to plant' : 'Too hot to plant out') + ageNote };
         }
         // Not ready yet: show whichever gate is the BINDING blocker — the SOIL below the growing floor (roots
         // won't establish) or the NIGHTS below the frost floor. Blue + frost mark, same language as the soil
@@ -10913,7 +10919,7 @@ if (typeof module !== 'undefined' && module.exports) {
         const sg = (r.soilPlantGap != null && r.soilPlantGap > 0) ? r.soilPlantGap : 0;
         const ng = (r.plantOutGap != null && r.plantOutGap > 0) ? r.plantOutGap : 0;
         if (sg > 0 || ng > 0) {
-          return { cls: 'pl-cold', mark: 'ui-wx-frost', txt: (sg >= ng ? 'Soil ' + sg : 'Nights ' + ng) + '° too cold to plant' };
+          return { cls: 'pl-cold', mark: 'ui-wx-frost', txt: (sg >= ng ? 'Soil ' + sg : 'Nights ' + ng) + '° too cold to plant' + ageNote };
         }
         return null;
       }
