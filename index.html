@@ -2002,7 +2002,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.70</span>
+        <span class="header-version">v8.71</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2312,7 +2312,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.70 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.71 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -8065,7 +8065,10 @@ if (typeof module !== 'undefined' && module.exports) {
       // Without this, a transient server error strands the queue until a focus/visibility/online event.
       function scheduleSyncRetry(attempt) {
         if (syncRetryTimer) return; // one pending retry at a time
-        const delay = SYNC_BACKOFF_MS[Math.min(attempt, SYNC_BACKOFF_MS.length - 1)];
+        // attempt is the post-increment failure count (>=1), so index by attempt-1: the FIRST retry uses
+        // SYNC_BACKOFF_MS[0] (2s). Before (review #20) it indexed by attempt, so the 2s tier was dead and the
+        // first retry waited 5s.
+        const delay = SYNC_BACKOFF_MS[Math.min(Math.max(0, attempt - 1), SYNC_BACKOFF_MS.length - 1)];
         syncRetryTimer = setTimeout(() => { syncRetryTimer = null; syncQueue(); }, delay);
       }
 
