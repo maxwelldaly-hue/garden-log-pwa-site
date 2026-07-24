@@ -1982,7 +1982,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.64</span>
+        <span class="header-version">v8.65</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2292,7 +2292,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.64 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.65 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -4106,6 +4106,23 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
            hasGermGate: hasGermGate };
 }
 
+// Seedling-AGE readiness (owner audit, 24/07): a tray-raised seedling isn't plant-out ready just because the
+// WEATHER says go — it also needs to have actually reached transplant size (true leaves, sturdy stem), which
+// takes roughly daysNeeded (the crop's DaysSproutToTransplant, Crops book) days from its real Sprouted date.
+// This is the seedling's OWN clock, entirely separate from computeSowReadiness's soil/night gate — the two are
+// combined by the caller (Js-Passport ppPlantOutLine), which needs BOTH to agree before showing "✓ Plant out".
+// PURE: caller supplies daysSinceSprout already computed (client-side date maths, e.g. -daysUntil(row.sprouted))
+// so this stays Node-testable with no Date-now dependency. Degrade-safe: no Sprouted date or no researched
+// figure for this crop → null (never blocks a crop we haven't timed yet).
+function computeSeedlingAgeReady(daysSinceSprout, daysNeeded) {
+  if (daysSinceSprout == null || daysNeeded == null || daysNeeded === '') return null;
+  const need = Number(daysNeeded);
+  const since = Number(daysSinceSprout);
+  if (!isFinite(need) || need <= 0 || !isFinite(since)) return null;
+  const daysRemaining = Math.max(0, need - since);
+  return { ready: since >= need, daysSinceSprout: since, daysNeeded: need, daysRemaining: daysRemaining };
+}
+
 // Build the readiness context from the SAME cached forecast the weather card uses. PURE (today is passed
 // in as a 'YYYY-MM-DD' string, no Date at module scope). soilTemp mirrors computeSoilStatus (rolling 3-day
 // actual soil + raised-bed offset); nightMinC = the coldest upcoming forecast night (a conservative "are
@@ -4139,7 +4156,7 @@ function computeSowContext(forecastData, todayIso, bedSoilOffset) {
 // Node harness reaches these via the eval'd sandbox; the browser gets them as globals.
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { classifyStress, computeWaterRing, computeCareRing, computeSoilStatus, buildAlerts,
-    computeSowReadiness, computeSowContext, parseSowWindow };
+    computeSowReadiness, computeSowContext, parseSowWindow, computeSeedlingAgeReady };
 }
 </script>
 
@@ -10819,7 +10836,22 @@ if (typeof module !== 'undefined' && module.exports) {
         if (!ctx || !ctx.hasData) return null;
         const r = computeSowReadiness(p.sowModel, p.sowMonths, ctx);
         if (!r) return null;
-        if (r.canPlantOut) return { cls: 'pl-ready', txt: '✓ Plant out' };   // green go — the sanctioned green
+        // Seedling-AGE gate (owner audit, 24/07): the weather can say go while the seedling itself is still too
+        // young (hasn't reached transplant size yet) — its OWN clock, timed from the real Sprouted date, not the
+        // calendar/soil check above. Degrade-safe: no Sprouted date or no researched figure for this crop → null,
+        // so an un-timed crop behaves exactly as before (weather alone decides).
+        const daysSinceSprout = (p.sprouted && typeof daysUntil === 'function') ? -daysUntil(p.sprouted) : null;
+        const age = (typeof computeSeedlingAgeReady === 'function')
+          ? computeSeedlingAgeReady(daysSinceSprout, p.sowModel.daysSproutToTransplant) : null;
+        if (r.canPlantOut) {
+          if (age && !age.ready) {
+            // Weather's ready but the tray itself isn't — a quiet blue wait note (reuses .pl-cold's neutral blue,
+            // no frost mark: this isn't a temperature blocker), not the green go.
+            const d = age.daysRemaining;
+            return { cls: 'pl-cold', txt: 'Seedling needs ' + d + ' more day' + (d === 1 ? '' : 's') };
+          }
+          return { cls: 'pl-ready', txt: '✓ Plant out' };   // green go — the sanctioned green
+        }
         // Too HOT: a heat spell ahead cooks a fresh transplant, so hold plant-out even when soil + nights are
         // fine. Amber + heat mark, mirroring the cold gap below. Checked first — heat trumps a satisfied cold gate.
         if (r.tooHotToPlant) {
