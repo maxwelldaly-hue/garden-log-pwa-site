@@ -1982,7 +1982,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.63</span>
+        <span class="header-version">v8.64</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2292,7 +2292,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.63 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.64 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2386,17 +2386,6 @@
             <input type="text" id="devWipeConfirm" placeholder="type WIPE" autocomplete="off" autocapitalize="characters" spellcheck="false">
             <button class="settings-save-btn" onclick="runWipeLogData(this)" style="margin-top:8px;">Wipe Log history</button>
             <div id="devIdentityResult" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;"></div>
-          </div>
-
-          <!-- ONE-OFF prod sheet tidy (ProdSheetTidy.js, 24/07). TEMPORARY: this whole section + the file +
-               the Router action come OUT once it's been run once and the sheet verified. Distinct from the
-               "Stable identity cutover" above (that's the pre-wipe backup/id job) and from any recurring
-               maintenance — this is a run-ONCE cleanup of defects that built up during BAU testing. -->
-          <div class="dev-section">
-            <h4 class="dev-h">Prod sheet tidy — one-off (24/07)</h4>
-            <p class="dev-note">A run-once cleanup of small defects that built up in the prod sheet during testing — a duplicate Log row, an un-named Shed column folded back into PurchaseDate, a mis-filed sun note, a truncated label, typos, and the empty trailing rows. <strong>It backs up every tab it touches first</strong> (to <em>… tidy-backup …</em> tabs) and only fixes clear defects — anything that's your preference (bed display order, a plural plant name) is just listed, never changed. Prod only; safe to tap twice (a second run finds nothing left). Review the report, then delete the tidy-backup tabs when happy.</p>
-            <button class="settings-save-btn" onclick="runTidyProdSheet(this)">Tidy the prod sheet</button>
-            <div id="devTidyResult" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;"></div>
           </div>
 
           <!-- Crop Reference book (CropsBook.js): the ONE home for generic species facts, seeded from the
@@ -5564,33 +5553,6 @@ if (typeof module !== 'undefined' && module.exports) {
             if (out) out.textContent = 'Could not run — ' + (e && e.message ? e.message : 'try again.');
           })
           .processClientRequest(JSON.stringify({ action: 'backupLogTab', token: token, pin: pin }));
-      }
-
-      // ONE-OFF prod sheet tidy (ProdSheetTidy.js, 24/07). TEMPORARY — remove this handler with the file +
-      // button once it's been run. Prod-only backend; backs up every affected tab first, then reports.
-      function runTidyProdSheet(btn) {
-        const out = document.getElementById('devTidyResult');
-        const pin = localStorage.getItem('garden_log_pin');
-        const token = localStorage.getItem('garden_log_token');
-        if (!pin && !token) { if (out) out.textContent = 'Enter your PIN in App Settings first.'; return; }
-        if (btn) { btn.disabled = true; btn.textContent = 'Tidying…'; }
-        if (out) out.textContent = 'Working… (backing up, then fixing)';
-        const reset = function () { if (btn) { btn.disabled = false; btn.textContent = 'Tidy the prod sheet'; } };
-        google.script.run
-          .withSuccessHandler(function (resStr) {
-            reset();
-            let res = null; try { res = JSON.parse(resStr); } catch (e) {}
-            if (res && res.status === 'success') {
-              if (out) out.textContent = (res.data && res.data.report) || 'Done.';
-            } else if (out) {
-              out.textContent = (res && res.message) ? res.message : 'Could not run — try again.';
-            }
-          })
-          .withFailureHandler(function (e) {
-            reset();
-            if (out) out.textContent = 'Could not run — ' + (e && e.message ? e.message : 'try again.');
-          })
-          .processClientRequest(JSON.stringify({ action: 'tidyProdSheet', token: token, pin: pin }));
       }
 
       // Stable-identity cutover tooling (docs/HANDOFF-IDENTITY-CUTOVER-TOOLING.md). One-off: mint an id onto
