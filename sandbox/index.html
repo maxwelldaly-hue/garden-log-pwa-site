@@ -668,11 +668,12 @@
       .pl-line { font-size: var(--fs-sm); color: var(--text-muted); }
       .pl-countdown { color: var(--text-muted); }                    /* growing — muted, never green */
       .pl-harvest-check { color: var(--text-muted); font-weight: 600; } /* bare class: dashboard rows (.plant-meta), stays muted — do NOT brighten this, it leaks onto the main Garden-tab list (hit once, 23/07) */
-      /* Passport-only override (design pass, 23/07): the harvest-due status line becomes the card's one
-         actionable notice — teal (--color-online, not --color-go which means "optimal verdict" elsewhere,
-         and not --color-sage which is the app's button green), regular weight so it reads as a notice not
-         a shout. Scoped under .pp-lines so the dashboard list above is never touched by this. */
-      .pp-lines .pl-harvest-check { color: var(--color-online); font-weight: 400; }
+      /* Passport-only override (design pass 23/07, recoloured round 6 — "harvest alarm" redesign): the
+         harvest-due status line is now AMBER (--color-plant, the app's existing "needs attention" orange —
+         same token as .pl-hot/.is-plant), matching the bell it now sits beside (.pp-bell-amber) — an actual
+         alarm colour, not the quieter teal it used to be. Scoped under .pp-lines so the dashboard list
+         above is never touched by this (it stays muted always — see the bare .pl-harvest-check rule). */
+      .pp-lines .pl-harvest-check { color: var(--color-plant); font-weight: 600; }
       .pl-ready { color: var(--color-go); font-weight: 600; }         /* "✓ Ready to plant" — the sanctioned green: an actionable GO, not a nudge */
       .pl-cold  { color: var(--blue-400); }                           /* "❄ N° too cold to plant" — same blue+frost language as the dashboard soil panel's cold gap */
       .pl-hot   { color: var(--color-plant); }                        /* "N° too hot to plant" — heat spell ahead cooks a fresh transplant; warm amber, the heat side of the cold gap */
@@ -1201,15 +1202,25 @@
          separated from each other only by the row's own gap. */
       .pp-lines .pl-line-row { display: flex; align-items: center; gap: 10px; }
       .pp-lines .pl-line-row > .pl-line:first-child { flex: 1 1 auto; }
-      .pp-lines .pp-check-btn {
-        flex: none; white-space: nowrap;
-        background: none; border: 1px solid var(--surface-inset-03); color: var(--text-muted);
+      /* The harvest-alert bell (design pass 23/07 round 6 — replaces the old text "Not ready" button).
+         Amber = a reminder is due NOW (or none was ever armed — the same thing, see harvestAlertState);
+         mono/muted = a reminder is armed but still pending, showing the day-count so a glance tells you
+         it's quiet-for-now rather than needing attention. Same tap-target size/register the old "Not
+         ready" button had. */
+      .pp-lines .pp-bell-btn {
+        flex: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;
+        background: none; border: 1px solid var(--surface-inset-03);
         border-radius: var(--r-sm); font-size: var(--fs-xs); padding: 3px 9px; cursor: pointer;
       }
-      .pp-lines .pp-check-btn:hover { border-color: var(--color-online); color: var(--color-online); }
+      .pp-bell-ic { width: 14px; height: 14px; display: block; }
+      .pp-bell-amber { color: var(--color-plant); border-color: rgba(251, 146, 60, 0.4); }
+      .pp-bell-amber:hover { border-color: var(--color-plant); background: rgba(251, 146, 60, 0.08); }
+      .pp-bell-pending { color: var(--text-muted); }
+      .pp-bell-pending:hover { border-color: var(--text-muted); color: var(--text-soft); }
+      .pp-bell-days { font-weight: 600; }
       /* Harvest, relocated inline (design pass 23/07 round 4 — was a full-width footer button, now sits in
-         the status-line area, same tap-target size/register as .pp-check-btn's "Not ready" but coloured
-         sage/green like the old .pp-action-harvest — this IS the positive action, not a muted secondary. */
+         the status-line area, same tap-target size/register as the bell above but coloured sage/green like
+         the old .pp-action-harvest — this IS the positive action, not a muted secondary. */
       .pp-lines .pp-harvest-btn {
         flex: none; white-space: nowrap;
         background: none; border: 1px solid rgba(45, 138, 96, 0.4); color: var(--color-sage);
@@ -1957,7 +1968,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.59</span>
+        <span class="header-version">v8.60</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2267,7 +2278,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.59 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.60 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6342,6 +6353,43 @@ if (typeof module !== 'undefined' && module.exports) {
         return String(s || '').replace(/\s*(?:⚠\s*overdue|\(overdue\))\s*$/i, '').trim();
       }
 
+      // Shared derivation of the check-for-harvest ALERT state (design pass 23/07 round 6, "harvest alarm"
+      // redesign) — used by both the Garden-tab list row (below) and the plant passport (Js-Passport.html),
+      // so the two surfaces can never disagree about amber-vs-grey again (see GardenSheet.js's
+      // HarvestSnoozeUntil comment for what happened the LAST time they had separate logic). Reads three
+      // plain fields: estHarvest (the plant's real maturity estimate, NEVER touched by the alert system —
+      // the whole point of the redesign), harvestSnoozeUntil (a reminder date: blank/past = due NOW; future
+      // = armed/pending) and harvestAlertOff (permanent silence). Returns:
+      //   null                                          — no estHarvest at all, nothing to show.
+      //   { mode:'countdown', overdueDays:N }           — not yet due (N > 0): "Est. harvest in N days".
+      //   { mode:'amber', overdueDays:N }                — due NOW (N <= 0): no reminder pending, not off.
+      //   { mode:'off', overdueDays:N }                  — due, owner turned the alert off — permanently quiet.
+      //   { mode:'pending', overdueDays:N, remindDays:M } — due, a reminder is armed M days out — quiet until
+      //                                                     it fires, then flips back to 'amber'.
+      // overdueDays is negative once past due (daysUntil's native sign) — the SAME number both the 'off' and
+      // 'pending' quiet text and (via ppHarvestReminderText, Js-Passport.html) the passport's negative
+      // countdown read directly, so "how overdue is this really" stays one honest, undying number regardless
+      // of how many times the alert has been armed/silenced/fired. PURE.
+      function harvestAlertState(p) {
+        if (!p || !p.estHarvest) return null;
+        const overdueDays = daysUntil(stripOverdueClient(p.estHarvest));
+        if (overdueDays === null) return null;
+        if (overdueDays > 0) return { mode: 'countdown', overdueDays: overdueDays };
+        if (p.harvestAlertOff) return { mode: 'off', overdueDays: overdueDays };
+        if (p.harvestSnoozeUntil) {
+          const remindDays = daysUntil(p.harvestSnoozeUntil);
+          if (remindDays !== null && remindDays > 0) return { mode: 'pending', overdueDays: overdueDays, remindDays: remindDays };
+        }
+        return { mode: 'amber', overdueDays: overdueDays };
+      }
+      // The shared "Est. harvest in N days" / negative-overdue text, one wording for both quiet states
+      // ('off' and 'pending' read identically — see harvestAlertState's header comment on why) and the
+      // ordinary future countdown. PURE.
+      function harvestCountdownText(overdueDays) {
+        if (overdueDays === 0) return 'Est. harvest today';
+        return 'Est. harvest in ' + overdueDays + (Math.abs(overdueDays) === 1 ? ' day' : ' days');
+      }
+
       // "06/10/2025" -> "6 Oct" for the duplicate-plant (successions) date tag in renderLayoutModel.
       function shortPlantedDate(s) {
         const m = String(s || '').match(/^(\d{1,2})\/(\d{1,2})\/\d{4}$/);
@@ -6857,7 +6905,6 @@ if (typeof module !== 'undefined' && module.exports) {
             }
 
             const yieldVal = metadata['yield to date'];
-            const estDate = stripOverdueClient(metadata['est. harvest']);
             if (p.phase === 'Dormant') {
               // Deciduous perennial resting over winter (life-phase, DEBUGGING §2.5): no harvest nag, no
               // "overdue", no stale "Harvesting" — just a quiet, honest line. It leafs back up in spring.
@@ -6882,19 +6929,29 @@ if (typeof module !== 'undefined' && module.exports) {
               y.className = 'pl-line pl-yield';
               y.textContent = 'Harvesting';
               metaContainer.appendChild(y);
-            } else if (estDate) {
-              const days = daysUntil(estDate);
-              const h = document.createElement('span');
-              if (days !== null && days <= 0) {
-                // Past its est-harvest, nothing picked yet — a quiet "go look" nudge (not tappable; a plant
-                // reads Producing only once a real pick is logged, so the phase derives from evidence).
-                h.className = 'pl-line pl-harvest-check';
-                h.textContent = 'Check for harvest';
-              } else {
-                h.className = 'pl-line pl-countdown';
-                h.textContent = (days !== null) ? ('Est. harvest in ' + days + (days === 1 ? ' day' : ' days')) : ('Est. harvest ' + estDate);
+            } else {
+              // Design pass 23/07 round 6 ("harvest alarm" redesign) — harvestAlertState is the SAME
+              // function the passport uses, so the two surfaces can never disagree again. Not tappable here
+              // (a plant reads Producing only once a real pick is logged, so the phase derives from
+              // evidence) — the bell/reminder controls live only in the passport; this row is read-only,
+              // deliberately kept muted rather than amber even in 'amber' mode (a past "brightened the list"
+              // attempt leaked urgency onto the whole Garden tab — see .pl-harvest-check's CSS comment).
+              const alert = harvestAlertState(p);
+              if (alert) {
+                const h = document.createElement('span');
+                if (alert.mode === 'countdown') {
+                  h.className = 'pl-line pl-countdown';
+                  h.textContent = harvestCountdownText(alert.overdueDays);
+                } else if (alert.mode === 'amber') {
+                  h.className = 'pl-line pl-harvest-check';
+                  h.textContent = 'Check for harvest';
+                } else {
+                  // 'off' or 'pending' — same quiet text either way (see harvestAlertState comment).
+                  h.className = 'pl-line pl-countdown';
+                  h.textContent = harvestCountdownText(alert.overdueDays);
+                }
+                metaContainer.appendChild(h);
               }
-              metaContainer.appendChild(h);
             }
             if (metaContainer.children.length > 0) row.appendChild(metaContainer);
             currentPlantList.appendChild(row);
@@ -11870,7 +11927,6 @@ if (typeof module !== 'undefined' && module.exports) {
             line('pl-planted', 'Planted ' + ppWhen(p.planted));
           }
         }
-        const estDate = stripOverdueClient(p.estHarvest);
         const st = String(p.stage || '').trim();
         // "· since <date>" — the stamp's own log date, from the async story (absent until it lands).
         const since = function (dmy) { const d = ppShortDate(dmy); return d ? ' · since ' + d : ''; };
@@ -11903,38 +11959,44 @@ if (typeof module !== 'undefined' && module.exports) {
           } else {
             line(po.cls, po.txt);
           }
-        } else if (estDate && !established) {
-          const days = daysUntil(estDate);
-          if (days !== null && days <= 0) {
-            // Past its est-harvest, nothing picked yet. No separate "snoozed" state any more (design pass
-            // 23/07 round 3) — "Not ready" pushes EstHarvest itself out 7 days (see ppSnoozeHarvestCheck),
-            // so this branch simply stops being true for a week and the countdown branch below takes over
-            // on its own; nothing to track or go quiet about here. Matches the Garden-tab card's identical
-            // "Check for harvest" nudge (Js-State.html), which reads the same EstHarvest field — the two
-            // surfaces can no longer disagree.
-            const row = document.createElement('div');
-            row.className = 'pl-line-row';
-            const s = document.createElement('span');
-            s.className = 'pl-line pl-harvest-check';
-            s.textContent = 'Check for harvest';
-            row.appendChild(s);
-            if (p.plantId) {
-              const btn = document.createElement('button');
-              btn.type = 'button'; btn.className = 'pp-check-btn'; btn.textContent = 'Not ready';
-              btn.onclick = function () { ppSnoozeHarvestCheck(p, btn, bedName); };
-              row.appendChild(btn);
+        } else if (!established) {
+          // Design pass 23/07 round 6 ("harvest alarm" redesign) — harvestAlertState (Js-State.html) is the
+          // SAME function the Garden-tab list row uses, so the two surfaces can never disagree again (see
+          // GardenSheet.js's HarvestSnoozeUntil comment for what happened the last time they had separate
+          // logic). The bell is a passport-only affordance — the list row is read-only, deliberately quiet.
+          const alert = harvestAlertState(p);
+          if (alert) {
+            if (alert.mode === 'countdown') {
+              line('pl-countdown', harvestCountdownText(alert.overdueDays));
+            } else if (alert.mode === 'amber') {
+              const row = document.createElement('div');
+              row.className = 'pl-line-row';
+              const s = document.createElement('span');
+              s.className = 'pl-line pl-harvest-check';
+              s.textContent = 'Check for harvest';
+              row.appendChild(s);
+              if (p.plantId) row.appendChild(ppHarvestBellBtnEl(p, bedName, alert));
+              wrap.appendChild(row);
+            } else {
+              // 'off' or 'pending' — same quiet negative-countdown text either way (harvestAlertState's own
+              // comment explains why); 'pending' alone also gets the mono bell showing days remaining.
+              const row = document.createElement('div');
+              row.className = 'pl-line-row';
+              const s = document.createElement('span');
+              s.className = 'pl-line pl-countdown';
+              s.textContent = harvestCountdownText(alert.overdueDays);
+              row.appendChild(s);
+              if (alert.mode === 'pending' && p.plantId) row.appendChild(ppHarvestBellBtnEl(p, bedName, alert));
+              wrap.appendChild(row);
             }
-            wrap.appendChild(row);
-          } else {
-            line('pl-countdown', (days !== null) ? ('Est. harvest in ' + days + (days === 1 ? ' day' : ' days')) : ('Est. harvest ' + estDate));
           }
         }
-        // Harvest button (design pass 23/07 round 4, fixed round 5 — was landing on its OWN row below
-        // "Check for harvest [Not ready]" instead of sharing it, reading as two disconnected/broken rows
-        // rather than one status with two responses). Joins whichever row is already showing — including
-        // sitting alongside "Not ready" — so ppSnoozeHarvestCheck was fixed (below) to rebuild this button
-        // instead of wiping it on tap. Falls back to a bare solo row only when NOTHING else is showing (an
-        // established perennial/tree — ppIsEstablished — which otherwise renders nothing here).
+        // Harvest button (design pass 23/07 round 4, fixed round 5 — was landing on its OWN row below the
+        // status line instead of sharing it, reading as two disconnected/broken rows rather than one status
+        // with its response). Joins whichever row is already showing — including sitting alongside the
+        // amber/pending bell (ppHarvestBellBtnEl) — rebuilt fresh on every render. Falls back to a bare solo
+        // row only when NOTHING else is showing (an established perennial/tree — ppIsEstablished — which
+        // otherwise renders nothing here).
         const harvestBtn = ppHarvestBtnEl(p, bedName);
         if (harvestBtn) {
           const last = wrap.lastElementChild;
@@ -11956,55 +12018,109 @@ if (typeof module !== 'undefined' && module.exports) {
         }
         return wrap.children.length ? wrap : null;
       }
-      // "Not ready" tap (design pass 23/07, round 3) — direct structured action (snoozeHarvestCheck), not
-      // the log/scribe pipeline (this is deterministic UI intent). Pushes EstHarvest itself out 7 days
-      // server-side, so the honest optimistic guess is exactly the ordinary countdown line every other
-      // plant already shows — not a bespoke "Not ready" confirmation string that would then need to be
-      // reconciled with the real countdown later.
+      // Bell icon (design pass 23/07 round 6, "harvest alarm" redesign) — plain inline SVG (no sprite
+      // registration needed, unlike the map/crop icon system) so CSS can recolour it via currentColor:
+      // amber when a reminder is due NOW (alert.mode 'amber'), muted "mono" when one is armed and merely
+      // pending (alert.mode 'pending' — see .pp-bell-pending, Stylesheet.html). Same viewBox convention as
+      // the app's other inline marks (e.g. the frost mark, ppPlantOutLine).
+      const PP_BELL_SVG = '<svg class="pp-bell-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
+      // The bell button itself: amber (alert.mode 'amber', bare icon) or mono-with-a-day-count (alert.mode
+      // 'pending' — the reminder that's currently armed). Never built for 'countdown' or 'off' (see the
+      // ledger-line callers above) — those modes have no bell at all, by design.
+      function ppHarvestBellBtnEl(p, bedName, alert) {
+        const pending = alert.mode === 'pending';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pp-bell-btn' + (pending ? ' pp-bell-pending' : ' pp-bell-amber');
+        btn.innerHTML = PP_BELL_SVG + (pending ? '<span class="pp-bell-days">' + alert.remindDays + 'd</span>' : '');
+        btn.setAttribute('aria-label', pending
+          ? 'Harvest reminder in ' + alert.remindDays + (alert.remindDays === 1 ? ' day' : ' days') + ' — tap to change'
+          : 'Set a harvest reminder');
+        btn.onclick = function () { ppOpenHarvestReminderPopup(p, bedName); };
+        return btn;
+      }
+      // Bell tap (design pass 23/07 round 6) — two choices, reusing the shared resolve-modal shell (same
+      // one the quantity/pick popups use). "Turn off" is a deliberate one-way door from the UI (owner: it
+      // hides the bell for this plant forever — the raw Sheet cell is still owner-editable if that's ever
+      // wanted back). "Remind me in N days" arms/re-arms a reminder, defaulting the stepper to whatever's
+      // CURRENTLY armed (re-tapping a pending reminder lets you just adjust the count) or 7 otherwise.
+      function ppOpenHarvestReminderPopup(p, bedName) {
+        const current = harvestAlertState(p);
+        const startDays = (current && current.mode === 'pending') ? current.remindDays : 7;
+        document.getElementById('resolveTitle').textContent = 'Harvest reminder';
+        document.getElementById('resolveSub').textContent = ppSplitName(p.name)[0];
+        const body = document.getElementById('resolveBody'); body.innerHTML = '';
+        const actions = document.getElementById('resolveActions'); actions.innerHTML = '';
+        let val = startDays;
+        const label = document.createElement('div'); label.className = 'pp-quiet'; label.textContent = 'Remind me in';
+        body.appendChild(label);
+        const stepper = document.createElement('div'); stepper.className = 'pp-stepper';
+        const minus = document.createElement('button'); minus.type = 'button'; minus.className = 'pp-stepper-btn'; minus.textContent = '−';
+        const disp = document.createElement('span'); disp.className = 'pp-stepper-val';
+        const plus = document.createElement('button'); plus.type = 'button'; plus.className = 'pp-stepper-btn'; plus.textContent = '+';
+        const render = function () { disp.textContent = val + (val === 1 ? ' day' : ' days'); minus.disabled = val <= 1; };
+        minus.onclick = function () { if (val > 1) { val--; render(); } };
+        plus.onclick = function () { val++; render(); };
+        render();
+        stepper.appendChild(minus); stepper.appendChild(disp); stepper.appendChild(plus);
+        body.appendChild(stepper);
+        actions.appendChild(rButton('Remind me', 'rbtn-primary', function () {
+          closeResolve();
+          ppSubmitHarvestReminder(p, bedName, val, false);
+        }));
+        actions.appendChild(rButton('Turn off', 'rbtn-secondary', function () {
+          closeResolve();
+          ppSubmitHarvestReminder(p, bedName, null, true);
+        }));
+        actions.appendChild(rButton('Cancel', 'rbtn-secondary', closeResolve));
+        presentResolveModal();
+      }
+      // "Today + N days" as DD/MM/YYYY, LOCAL time — good enough for the optimistic client-side guess (the
+      // server response below carries the real Adelaide-computed date, which reconciles it); no shared
+      // date-math helper exists client-side for this, so it's inlined rather than invented as a new one.
+      function ppTodayPlusDays(n) {
+        const d = new Date(); d.setDate(d.getDate() + n);
+        const p2 = function (x) { return x < 10 ? '0' + x : '' + x; };
+        return p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + '/' + d.getFullYear();
+      }
       // Genuinely optimistic (owner, 23/07: the round-trip to Apps Script is a real few seconds — a plain
       // Sheets write, nothing to do with the AI/Gemini side — and waiting for it back before showing
-      // anything read as "the tap did nothing" all over again). The row is patched the instant you tap,
-      // before the request even goes out; low-stakes and freely re-tappable, so on the rare failure it
-      // just reverts to the original row rather than needing a confirm step up front.
-      function ppSnoozeHarvestCheck(p, btn, bedName) {
+      // anything read as "the tap did nothing" all over again). Patches BOTH reminder fields locally and
+      // re-renders the still-open passport in place — same pattern as ppSubmitHarvestPick — before the
+      // request even goes out. On decline/failure, refetches the real story rather than trying to hand-
+      // reconstruct the prior state (two fields changed together, so a clean refetch is the safer revert).
+      function ppSubmitHarvestReminder(p, bedName, days, off) {
         if (!p || !p.plantId) return;
         const pin = localStorage.getItem('garden_log_pin'), token = localStorage.getItem('garden_log_token');
         if (!pin && !token) return;
-        const row = btn ? btn.closest('.pl-line-row') : null;
-        // Keep the ORIGINAL nodes (not a serialized copy) so a rollback restores the real button element,
-        // onclick handler intact — innerHTML round-tripping would silently rebuild a dead button.
-        const origChildren = row ? Array.from(row.childNodes) : [];
-        function revert() {
-          if (row) { row.innerHTML = ''; origChildren.forEach(function (n) { row.appendChild(n); }); }
-          else if (btn) { btn.disabled = false; }
+        if (off) {
+          p.harvestAlertOff = true;
+          p.harvestSnoozeUntil = '';
+        } else {
+          p.harvestAlertOff = false;
+          p.harvestSnoozeUntil = ppTodayPlusDays(days);
         }
-        if (row) {
-          row.innerHTML = '';
-          const s = document.createElement('span');
-          s.className = 'pl-line pl-countdown';
-          s.textContent = 'Est. harvest in 7 days';
-          row.appendChild(s);
-          // The Harvest button shares this row (fixed round 5 — it used to sit on its own row below this
-          // one, and this rewrite would silently delete it entirely rather than just leaving it behind).
-          // A rebuild, not a re-parent: snoozing never changes harvest eligibility or the already-started
-          // label, so a fresh ppHarvestBtnEl call is byte-identical to the one this row already had.
-          const freshBtn = ppHarvestBtnEl(p, bedName);
-          if (freshBtn) row.appendChild(freshBtn);
-        } else if (btn) { btn.disabled = true; }
+        if (_ppLast && _ppLast.p) { _ppLast.p.harvestAlertOff = p.harvestAlertOff; _ppLast.p.harvestSnoozeUntil = p.harvestSnoozeUntil; }
+        try {
+          const cached = _ppCache[ppCurrentKey];
+          if (cached && cached.p) { cached.p.harvestAlertOff = p.harvestAlertOff; cached.p.harvestSnoozeUntil = p.harvestSnoozeUntil; }
+        } catch (e) {}
+        ppRender(p, bedName, _ppCache[ppCurrentKey], false);
         google.script.run
           .withSuccessHandler(function (resStr) {
             let res = null; try { res = JSON.parse(resStr); } catch (e) {}
-            if (res && res.status === 'success' && res.data && res.data.snoozed) {
-              p.estHarvest = res.data.until || p.estHarvest;
-              if (_ppLast && _ppLast.p) _ppLast.p.estHarvest = p.estHarvest;
-              try {
-                const cached = _ppCache[ppCurrentKey];
-                if (cached && cached.p) cached.p.estHarvest = p.estHarvest;
-              } catch (e) {}
-            } else { revert(); }
+            if (res && res.status === 'success' && res.data && res.data.updated) {
+              if (!off && res.data.until) {
+                p.harvestSnoozeUntil = res.data.until; // reconcile the exact server-computed date
+                if (_ppLast && _ppLast.p) _ppLast.p.harvestSnoozeUntil = res.data.until;
+                if (ppOpen && _ppLast && p === _ppLast.p) ppRender(p, bedName, _ppCache[ppCurrentKey], false);
+              }
+            } else { ppFetchStory(p, bedName); }
           })
-          .withFailureHandler(revert)
-          .processClientRequest(JSON.stringify({ action: 'snoozeHarvestCheck', plantId: p.plantId, token: token, pin: pin }));
+          .withFailureHandler(function () { ppFetchStory(p, bedName); })
+          .processClientRequest(JSON.stringify({ action: 'setHarvestReminder', plantId: p.plantId, days: off ? '' : String(days), off: off, token: token, pin: pin }));
       }
       // Which terminal event tombstoned this plant — 'harvest' | 'removal' | '' (unknown yet). Milestones are
       // newest-first, so the FIRST Harvesting/Removal we meet is the most recent terminal event.
