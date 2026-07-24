@@ -1212,7 +1212,7 @@
       .pp-lines .pp-bell-btn {
         flex: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;
         background: none; border: 1px solid var(--surface-inset-03);
-        border-radius: var(--r-sm); font-size: var(--fs-xs); padding: 3px 9px; cursor: pointer;
+        border-radius: var(--r-sm); font-size: var(--fs-sm); padding: 6px 13px; cursor: pointer;
       }
       .pp-bell-ic { width: 14px; height: 14px; display: block; }
       .pp-bell-amber { color: var(--color-plant); border-color: rgba(251, 146, 60, 0.4); }
@@ -1227,7 +1227,7 @@
       .pp-lines .pp-harvest-btn {
         flex: none; white-space: nowrap;
         background: none; border: 1px solid rgba(45, 138, 96, 0.4); color: var(--color-sage);
-        border-radius: var(--r-sm); font-size: var(--fs-xs); font-weight: 600; padding: 3px 9px; cursor: pointer;
+        border-radius: var(--r-sm); font-size: var(--fs-sm); font-weight: 600; padding: 6px 13px; cursor: pointer;
       }
       .pp-lines .pp-harvest-btn:hover { border-color: var(--color-sage); background: rgba(45, 138, 96, 0.08); }
       /* Grey stage-advance moves (SCOPE-STAGE-BUTTON.md Phase 2) — "Sprouted" / "Plant outside" (and later
@@ -1238,7 +1238,7 @@
       .pp-lines .pp-stage-btn {
         flex: none; white-space: nowrap;
         background: none; border: 1px solid var(--surface-inset-03); color: var(--text-muted);
-        border-radius: var(--r-sm); font-size: var(--fs-xs); font-weight: 600; padding: 3px 9px; cursor: pointer;
+        border-radius: var(--r-sm); font-size: var(--fs-sm); font-weight: 600; padding: 6px 13px; cursor: pointer;
       }
       .pp-lines .pp-stage-btn:hover { border-color: var(--text-muted); color: var(--text-soft); }
       /* A harvest-only row (no status text alongside it — e.g. an established perennial/tree with no other
@@ -1982,7 +1982,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.61</span>
+        <span class="header-version">v8.62</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2292,7 +2292,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.61 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.62 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11397,17 +11397,17 @@ if (typeof module !== 'undefined' && module.exports) {
         return p.phase === 'Producing' || p.phase === 'FirstFruit' ||
           !!p.yield || String(p.stage || '').trim() === 'Harvesting';
       }
-      // Pulled out as its own PURE function (test-harness sense-check, 23/07) — this is the one piece of
-      // real decision logic behind the button label, so it's worth extracting/testing on its own rather
-      // than leaving it inlined where only a live-sandbox eyeball could ever catch a regression. "Already
-      // harvesting" reuses the EXACT test the status line above (ppLedgerLinesEl) uses to decide the
-      // Harvesting/Producing state (yield present, or phase/stage already flipped) — the two can never
-      // disagree. A one_shot crop (a head/root/bulb — Lettuce, Beetroot) is forced true always: there is no
-      // "first of many" for a single whole-plant pull, so "First Harvest" would be a false promise of a
-      // second one to come.
+      // Pulled out as its own PURE function (test-harness sense-check, 23/07) — the one piece of real
+      // decision logic behind the button label, worth extracting/testing on its own. Drives the "First
+      // Harvest" -> "Harvest" flip: "First Harvest" means NOTHING has been picked yet (owner, 24/07), and it
+      // reuses the EXACT evidence test the status line (ppLedgerLinesEl) uses — accumulated Yield, phase
+      // Producing, or Stage='Harvesting' — so the two can never disagree. The old one_shot forced-true
+      // (always "Harvest") was DROPPED 24/07: it read as "already harvesting" on a crop nothing had been
+      // picked from. A one_shot (beetroot/garlic) now stamps Stage='Harvesting' on a PARTIAL pick
+      // (StateUpdate.js), so it too reads "First Harvest" until the first pick, then "Harvest" (a full pull
+      // tombstones the card, so "Harvest" mainly shows mid-harvest of a counted one_shot).
       function ppHarvestAlreadyStarted(p) {
         if (!p) return false;
-        if (String(p.harvestType || 'ongoing') === 'one_shot') return true;
         return !!(p.yield || p.phase === 'Producing' || String(p.stage || '').trim() === 'Harvesting');
       }
       // The single stage-advance button (SCOPE-STAGE-BUTTON.md Phase 2) — ONE slot in the status-line row
