@@ -1217,7 +1217,12 @@
       /* Ledger lines reuse the row voice (.pl-line palette) — same strings, same register. The status
          line carries the current stage (v6.76 — headline + ribbon retired; their .pp-ribbon/.pp-ph/
          .pp-season CSS was removed with them). */
-      .pp-lines { display: flex; flex-direction: column; gap: 3px; }
+      .pp-lines { display: flex; flex-direction: column; gap: 4px; }
+      /* Separate the origin line (Sprouted/Sown/Planted — the plant's history) from the readiness block that
+         follows (the clock + weather now) so the two read as distinct groups, not one run-on stack (owner 25/07,
+         spacing pass). A button row is taller than a plain line, so centring already balances the block; this
+         just adds a clean breath above it. */
+      .pp-lines > .pl-planted { margin-bottom: 4px; }
       /* Status text + its action button(s) share one row (design pass 23/07 round 2 — was stacked on its
          own row below, disconnected and oversized; round 5 — the row can now carry TWO buttons, "Not
          ready" + "First Harvest"/"Harvest" side by side, so justify-content:space-between was dropped —
@@ -2014,7 +2019,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.77</span>
+        <span class="header-version">v8.78</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2324,7 +2329,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.77 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.78 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6340,6 +6345,17 @@ if (typeof module !== 'undefined' && module.exports) {
         if (ago < 365) return Math.round(ago / 30) + 'mo ago';
         const y = Math.floor(ago / 365);
         return y + (y === 1 ? ' year ago' : ' years ago');
+      }
+      // Days-only variant (owner 25/07): a nursery seedling's age reads in DAYS, not weeks — "14 days ago", not
+      // "2w ago" — so it stays in one unit with the plant-out clock ("Earliest plant out in N days"). Used only
+      // for the Sprouted/Sown origin lines (young by definition); established plants keep relativePast's coarser
+      // weeks/months/years.
+      function relativePastDays(dateStr) {
+        const d = daysUntil(dateStr);
+        if (d === null) return '';
+        const ago = -d;
+        if (ago <= 0) return 'today';
+        return ago + (ago === 1 ? ' day ago' : ' days ago');
       }
       // Strip any overdue marker the backend baked into Est. Harvest before we compute the line.
       function stripOverdueClient(s) {
@@ -10893,7 +10909,7 @@ if (typeof module !== 'undefined' && module.exports) {
         // separate alarm — harvest/sprout are estimates with their own nudge, so they carry no clock (ICON-SYSTEM).
         const tooYoung = !!(age && !age.ready);
         const countdownLine = tooYoung
-          ? { cls: 'pl-countdown', mark: 'ui-clock', txt: 'Est. plant-out in ' + age.daysRemaining + ' day' + (age.daysRemaining === 1 ? '' : 's') }
+          ? { cls: 'pl-countdown', mark: 'ui-clock', txt: 'Earliest plant out in ' + age.daysRemaining + ' day' + (age.daysRemaining === 1 ? '' : 's') }
           : null;
         if (r.canPlantOut) {
           // Weather is fine — no warning line. L2 is the countdown (still too young) or, once old enough, the
@@ -10992,6 +11008,14 @@ if (typeof module !== 'undefined' && module.exports) {
         const abs = ppLongDate(dmy);
         if (!abs) return String(dmy || '');
         const rel = relativePast(dmy);
+        return rel ? abs + ' (' + rel + ')' : abs;
+      }
+      // Days-only twin of ppWhen for the nursery origin lines (Sprouted/Sown) — "8 July 2026 (14 days ago)"
+      // instead of "(2w ago)", so a seedling's age stays in the same unit as its plant-out clock (owner 25/07).
+      function ppWhenDays(dmy) {
+        const abs = ppLongDate(dmy);
+        if (!abs) return String(dmy || '');
+        const rel = (typeof relativePastDays === 'function') ? relativePastDays(dmy) : relativePast(dmy);
         return rel ? abs + ' (' + rel + ')' : abs;
       }
 
@@ -12288,9 +12312,9 @@ if (typeof module !== 'undefined' && module.exports) {
           if (seedOrigin && p.transplanted) {
             line('pl-planted', 'Planted ' + ppWhen(p.transplanted));
           } else if (seedOrigin && p.sprouted) {
-            line('pl-planted', 'Sprouted ' + ppWhen(p.sprouted));   // up, not yet planted out — distinguishes a seedling from a still-under-soil sow
+            line('pl-planted', 'Sprouted ' + ppWhenDays(p.sprouted));   // seedling age in DAYS (owner 25/07); up, not yet planted out
           } else if (seedOrigin) {
-            line('pl-planted', 'Sown ' + ppWhen(p.planted));
+            line('pl-planted', 'Sown ' + ppWhenDays(p.planted));   // a still-under-soil sow — also days-scale
           } else {
             line('pl-planted', 'Planted ' + ppWhen(p.planted));
           }
@@ -12299,6 +12323,7 @@ if (typeof module !== 'undefined' && module.exports) {
         // "· since <date>" — the stamp's own log date, from the async story (absent until it lands).
         const since = function (dmy) { const d = ppShortDate(dmy); return d ? ' · since ' + d : ''; };
         let po = null;   // plant-out line for an under-cover seedling (ppPlantOutLine), assigned in the cascade below
+        let plantOutBtnDone = false;   // the plant-out branch places its OWN button (clock line + button); skips the generic attach
         if (p.isTombstone) {
           // A pulled-out plant is NOT a harvest (SCOPE-PASSPORT-ACTIONS.md — the language bug): only a real
           // Harvesting outcome earns the "✓ Harvested"; a Removal reads a neutral "Removed", no green tick. The
@@ -12316,22 +12341,27 @@ if (typeof module !== 'undefined' && module.exports) {
         } else if (st === 'Fruiting' || st === 'Flowering') {
           line('', st + since(ppStageSince(story, st)));
         } else if ((po = ppPlantOutLine(p))) {
-          // under-cover seedling (surface 2): up to TWO stacked lines — L1 a weather warning (blue cold / amber
-          // hot, shown only when weather blocks) and L2 the grey time line (ui-clock countdown, or the "N days
-          // since sprouted" tick). Each renders as its own .pl-line; a marked line builds the span so the mono
-          // icon sits inline (ppIconEl). The stage button below joins whichever line ends up last (the time line).
-          [po.weather, po.time].forEach(function (ln) {
-            if (!ln) return;
-            if (ln.mark) {
-              const s = document.createElement('span');
-              s.className = 'pl-line ' + ln.cls;
-              s.appendChild(ppIconEl(ln.mark));
-              s.appendChild(document.createTextNode(' ' + ln.txt));
-              wrap.appendChild(s);
-            } else {
-              line(ln.cls, ln.txt);
-            }
-          });
+          // under-cover seedling (surface 2): the grey TIME line first ("Earliest plant out in N days" clock, or
+          // the "N days since sprouted" tick) — it carries the Plant-outside button on its row — with the weather
+          // warning (blue cold / amber hot) stacked BELOW it (owner 25/07). A marked line builds its span so the
+          // mono icon sits inline (ppIconEl). This branch owns its button, so the generic attach below is skipped.
+          const mkPlLine = function (ln) {
+            const s = document.createElement('span');
+            s.className = 'pl-line ' + ln.cls;
+            if (ln.mark) { s.appendChild(ppIconEl(ln.mark)); s.appendChild(document.createTextNode(' ' + ln.txt)); }
+            else { s.textContent = ln.txt; }
+            return s;
+          };
+          const poBtn = ppStageAdvanceBtnEl(p, bedName);
+          const primary = po.time || po.weather;      // the time line hosts the button; weather-only when old enough
+          const secondary = po.time ? po.weather : null;
+          const prow = document.createElement('div');
+          prow.className = primary ? 'pl-line-row' : 'pl-line-row pl-line-row-solo';
+          if (primary) prow.appendChild(mkPlLine(primary));
+          if (poBtn) prow.appendChild(poBtn);
+          wrap.appendChild(prow);
+          if (secondary) wrap.appendChild(mkPlLine(secondary));
+          plantOutBtnDone = true;
         } else if (!established) {
           // Design pass 23/07 round 6 ("harvest alarm" redesign) — harvestAlertState (Js-State.html) is the
           // SAME function the Garden-tab list row uses, so the two surfaces can never disagree again (see
@@ -12370,7 +12400,7 @@ if (typeof module !== 'undefined' && module.exports) {
         // amber/pending bell (ppHarvestBellBtnEl) — rebuilt fresh on every render. Falls back to a bare solo
         // row only when NOTHING else is showing (an established perennial/tree — ppIsEstablished — which
         // otherwise renders nothing here).
-        const stageBtn = ppStageAdvanceBtnEl(p, bedName);
+        const stageBtn = plantOutBtnDone ? null : ppStageAdvanceBtnEl(p, bedName);
         if (stageBtn) {
           const last = wrap.lastElementChild;
           if (last && last.classList.contains('pl-line-row')) {
