@@ -2033,7 +2033,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.82</span>
+        <span class="header-version">v8.83</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2343,7 +2343,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.82 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.83 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -13088,7 +13088,9 @@ if (typeof module !== 'undefined' && module.exports) {
               const res = JSON.parse(resStr);
               if (res.status === 'success' && res.data && Array.isArray(res.data.catalogue)) {
                 localStorage.setItem(IS_CACHE_KEY, JSON.stringify(res.data.catalogue));
-                if (_isOpen) renderInSeason(res.data.catalogue);
+                // Guard the race: a catalogue fetch started on open can land AFTER the user taps Edit — repaint
+                // the read view ONLY when we're not mid-edit, else it wipes the tickbox list (bug, 25/07).
+                if (_isOpen && !_isEdit) renderInSeason(res.data.catalogue);
               }
             } catch (e) {}
           })
