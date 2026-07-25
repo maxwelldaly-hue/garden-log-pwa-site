@@ -2033,7 +2033,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.83</span>
+        <span class="header-version">v8.84</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2343,7 +2343,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.83 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.84 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -12991,22 +12991,28 @@ if (typeof module !== 'undefined' && module.exports) {
         const CATLABEL = { vegetable: 'Veg', fruit: 'Fruit', herb: 'Herbs', flower: 'Flowers' };
         const ORDER = ['vegetable', 'fruit', 'herb', 'flower'];
         let html = '<div class="is-edit-intro">Tick the crops you want the Seasonal Guide to offer. Unticked crops stay in your reference book — the guide just won’t suggest them.</div>';
+        // Group by the four known categories, then sweep EVERYTHING ELSE into a final "Other" section so a crop
+        // with an unexpected/blank category (e.g. a misaligned book cell) is still listed and curatable — never
+        // silently dropped (bug fix, 25/07: two lettuce rows carried a stray "Thirsty" category and vanished).
+        const rowHtml = function (c) {
+          const icon = (typeof plantIconSvgHtml === 'function') ? plantIconSvgHtml(c.crop) : '';
+          return '<label class="is-edit-row">' +
+                   '<input type="checkbox" class="is-edit-cb"' + (c.show !== false ? ' checked' : '') +
+                     ' data-key="' + esc(c.key) + '" onchange="isSetVisibility(this)">' +
+                   '<span class="is-ic">' + icon + '</span>' +
+                   '<span class="is-name">' + esc(c.crop) + '</span>' +
+                 '</label>';
+        };
+        const sectionHtml = function (label, rows) {
+          if (!rows.length) return '';
+          return '<div class="is-section"><div class="is-sec-head"><span class="is-sec-title">' + label + '</span>' +
+                   '<span class="is-sec-sub">' + rows.length + '</span></div><div class="is-list">' +
+                   rows.map(rowHtml).join('') + '</div></div>';
+        };
         ORDER.forEach(function (cat) {
-          const rows = crops.filter(function (c) { return (c.category || 'vegetable') === cat; });
-          if (!rows.length) return;
-          html += '<div class="is-section"><div class="is-sec-head"><span class="is-sec-title">' + CATLABEL[cat] + '</span>' +
-                    '<span class="is-sec-sub">' + rows.length + '</span></div><div class="is-list">';
-          rows.forEach(function (c) {
-            const icon = (typeof plantIconSvgHtml === 'function') ? plantIconSvgHtml(c.crop) : '';
-            html += '<label class="is-edit-row">' +
-                      '<input type="checkbox" class="is-edit-cb"' + (c.show !== false ? ' checked' : '') +
-                        ' data-key="' + esc(c.key) + '" onchange="isSetVisibility(this)">' +
-                      '<span class="is-ic">' + icon + '</span>' +
-                      '<span class="is-name">' + esc(c.crop) + '</span>' +
-                    '</label>';
-          });
-          html += '</div></div>';
+          html += sectionHtml(CATLABEL[cat], crops.filter(function (c) { return c.category === cat; }));
         });
+        html += sectionHtml('Other', crops.filter(function (c) { return ORDER.indexOf(c.category) < 0; }));
         body.innerHTML = html;
       }
 
