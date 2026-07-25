@@ -68,8 +68,9 @@
         /* Accent palette — named tokens for the status/badge colours. Single source of
            truth: every solid-hex usage across the sheet references these (rgba tints keep
            their literal triplets, since var() can't sit inside rgba()). */
-        --color-go: #4ade80;       /* bright "go"/optimal green */
-        --color-online: #10b981;   /* online / vegetative teal-green */
+        --color-go: #4ade80;       /* bright "go"/optimal green — buttons only (COLOUR-SYSTEM.md §1) */
+        /* --color-online retired 2026-07-25 (Phase 2): the online dot + photo link fold into --color-sage;
+           bright-go is now button-only and teal no longer earns its own meaning (COLOUR-SYSTEM.md §2). */
         --amber-500: #f59e0b;      /* primary amber */
         --amber-400: #fbbf24;      /* amber text */
         --amber-300: #fcd34d;      /* light amber hint */
@@ -79,6 +80,7 @@
         --blue-500: #3b82f6;
         --blue-400: #60a5fa;
         --blue-300: #93c5fd;
+        --border-nursery: #8cb6e4;  /* cool "under-glass" hairline on the House/indoor nursery card — was a raw rgba orphan, tokenised 2026-07-25 (COLOUR-SYSTEM.md). RGB 140,182,228 is used as an rgba tint at the use-site since var() can't nest in rgba(). */
 
         /* Functional one-off colours (STYLE-AUDIT backlog #6) — kept distinct from the --red-*
            accents on purpose: a deeper recording-flash red and the lighter alert-danger body text.
@@ -190,7 +192,7 @@
       .pending-text { font-size: var(--fs-sm); color: var(--text-main); line-height: 1.35; }
       .pending-status { font-size: var(--fs-xs); color: var(--text-muted); letter-spacing: 0.03em; margin-top: 2px; }
       .pending-wedged .pending-spin { background: var(--text-muted); box-shadow: none; animation: none; }
-      .recent-photo-link { display: inline-block; font-size: var(--fs-xs); color: var(--color-online); text-decoration: none; margin-top: 4px; }
+      .recent-photo-link { display: inline-block; font-size: var(--fs-xs); color: var(--color-sage); text-decoration: none; margin-top: 4px; }
       /* A reversed/retracted entry — dimmed + struck so it reads as "undone", a visible trace (never hidden). */
       .recent-reversed { opacity: 0.55; }
       .recent-reversed .recent-head { text-decoration: line-through; }
@@ -351,7 +353,7 @@
       /* Version stamp — visible on every tab (the header is persistent), sits left of the status dot. */
       .header-version { font-size: var(--fs-sm); font-weight: 500; color: var(--text-muted); letter-spacing: var(--ls-tight); }
       .status-container { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--text-muted); background-color: var(--surface-inset-05); padding: 4px 10px; border-radius: var(--r-md); border: 1px solid var(--surface-inset-05); }
-      .status-indicator { width: 8px; height: 8px; border-radius: var(--r-pill); background-color: var(--color-online); box-shadow: 0 0 8px var(--color-online); }
+      .status-indicator { width: 8px; height: 8px; border-radius: var(--r-pill); background-color: var(--color-sage); box-shadow: 0 0 8px var(--color-sage); }
       .status-indicator.offline { background-color: var(--red-500); box-shadow: 0 0 8px var(--red-500); }
       .status-indicator.syncing { background-color: var(--amber-500); box-shadow: 0 0 8px var(--amber-500); animation: pulse 1s infinite alternate; }
 
@@ -503,7 +505,7 @@
          air after the card (margin-bottom on top of the .bed-grid gap) that sets the indoor zone apart from the
          outdoor beds below. Neither signal shouts; together they read "fenced-off, under glass". */
       .bed-card.nursery {
-        border: 1px solid rgba(140, 182, 228, 0.28);
+        border: 1px solid rgba(140, 182, 228, 0.28);   /* RGB = --border-nursery (var() can't nest in rgba) */
         margin-bottom: 9px; /* the "gap after" — stacks on the .bed-grid 10px gap to separate the indoor zone (dialled back from 14px, owner 13/07) */
       }
       .needs-bed-hint {
@@ -638,8 +640,8 @@
       .inv-cat-ic .plant-ic { width: 40px; height: 24px; vertical-align: unset; margin: 0; }
       /* Nursery-phase emoji stand-in (🫘/🌱) fills the same slot as the svg icon so names stay aligned. */
       .plant-ic-emoji { display: inline-block; width: 1.5em; text-align: center; font-size: var(--fs-base); line-height: 1; }
-      /* Sprout-by past due with nothing up — the quiet "check the tray" amber. */
-      .pl-sprout-due { color: var(--amber-400); }
+      /* (.pl-sprout-due removed 25/07 — the overdue-sprout line is now a grey "Est. sprout day passed" nudge on
+         the plain .pl-countdown, the twin of the grey "Check for harvest"; no amber, no separate class.) */
       /* Container lead icons (ICON-HANDOFF v3, 07/07). Garden rows sit on a FIXED-PX icon column so every
          bed NAME starts at the same x regardless of icon width. Two things make it robust: the slot is a
          hard 40px (not em, which drifted between the title's fs-base and the icon's fs-lg), and the icon
@@ -667,16 +669,18 @@
       .plant-meta { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
       .pl-line { font-size: var(--fs-sm); color: var(--text-muted); }
       .pl-countdown { color: var(--text-muted); }                    /* growing — muted, never green */
-      .pl-harvest-check { color: var(--text-muted); font-weight: 600; } /* bare class: dashboard rows (.plant-meta), stays muted — do NOT brighten this, it leaks onto the main Garden-tab list (hit once, 23/07) */
-      /* Passport-only override (design pass 23/07, recoloured round 6 — "harvest alarm" redesign): the
-         harvest-due status line is now AMBER (--color-plant, the app's existing "needs attention" orange —
-         same token as .pl-hot/.is-plant), matching the bell it now sits beside (.pp-bell-amber) — an actual
-         alarm colour, not the quieter teal it used to be. Scoped under .pp-lines so the dashboard list
-         above is never touched by this (it stays muted always — see the bare .pl-harvest-check rule). */
-      .pp-lines .pl-harvest-check { color: var(--color-plant); font-weight: 600; }
-      .pl-ready { color: var(--color-go); font-weight: 600; }         /* "✓ Ready to plant" — the sanctioned green: an actionable GO, not a nudge */
+      /* "Check for harvest" line — GREY on BOTH surfaces (Phase 2, owner 25/07 — was a passport-only AMBER
+         override, which read "way too intense" for a quiet ledger). The words + the bell beside it carry the
+         state; colour is not spent on it. The passport override was removed, so this one muted rule now governs
+         both the dashboard list AND the passport (they can't disagree). Orange (--color-plant) now lives only
+         on the seasonal guide's "Plant only" (a genuinely closing sow window). */
+      /* Phase 2 weight rule (owner 25/07): status LINES are all normal weight — colour is the only signal, bold
+         would be a second, noisy emphasis axis. Weight is spent ONLY on buttons (a uniform control affordance).
+         So .pl-harvest-check / .pl-ready / .pl-yield / the guide verdicts all dropped their font-weight:600. */
+      .pl-harvest-check { color: var(--text-muted); }
+      .pl-ready { color: var(--text-muted); }                         /* "✓ N days since sprouted" tick — GREY, normal weight: green lives on the button beside it (COLOUR-SYSTEM.md §1) */
       .pl-cold  { color: var(--blue-400); }                           /* "❄ N° too cold to plant" — same blue+frost language as the dashboard soil panel's cold gap */
-      .pl-hot   { color: var(--color-plant); }                        /* "N° too hot to plant" — heat spell ahead cooks a fresh transplant; warm amber, the heat side of the cold gap */
+      .pl-hot   { color: var(--amber-400); }                          /* "N° too hot to plant" — heat spell ahead cooks a fresh transplant; AMBER (Phase 2), the weather's own heat warning (unified with the soil panel's .soil-go-hot; --color-plant is now time-pressure only) */
       .pl-line-ic { width: 1em; height: 1em; fill: currentColor; vertical-align: -0.12em; }  /* inline weather-mark in a ledger line (mirrors .soil-go-ic) */
       /* Optimistic Garden-tab row (latency Slice A, docs/SCOPE-LATENCY-SLICES.md): the confident-match case
          dims the row + adds a quiet "saving…" line while the real write is still in flight. .plant-row-spin
@@ -691,10 +695,9 @@
          page"). Same lesson as .pl-harvest-check earlier this session: a passport-worthy highlight isn't
          automatically right for the ambient list view. */
       .pl-yield { color: var(--text-muted); }
-      /* Passport-only override: green, the same --color-go token as a one-shot's "ready to harvest" verdict
-         (.pl-ready/.pp-fact-go) — reusing that established "there's something to act on right now" signal
-         rather than inventing a new one, scoped so it never leaks onto the dashboard (see above). */
-      .pp-lines .pl-yield { color: var(--color-go); font-weight: 600; }
+      /* Passport "Harvesting · N" line: GREY, normal weight (Phase 2) — same as the bare .pl-yield now that the
+         green go lives only on the Harvest button and bold is buttons-only. The old passport-only green +
+         font-weight:600 override was removed; both surfaces read identically muted. */
       /* (Life-phase, step 4) the .plant-stage-badge / .stage-* rules were removed with the Stage badge —
          they were already dead (the code used a non-matching `stage-badge` class). Lifecycle now reads from
          the derived phase (nursery icons + harvest/yield lines), not a botanical badge. */
@@ -1066,9 +1069,12 @@
       .is-lines { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex: 0 0 auto; min-width: 0; }
       .is-line { font-size: var(--fs-sm); font-weight: 500; text-align: right; white-space: nowrap; flex: 0 0 auto; }
       .is-note { font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; font-weight: 500; }   /* quiet secondary under the go line: deadline / "or under cover" */
-      .is-go   { color: var(--color-sage); font-weight: 600; }    /* GREEN — sow/plant outdoors now (In season) */
-      .is-cold { color: var(--blue-400); font-weight: 600; }    /* BLUE — ✓ Sow indoors (too cold outside, start on the windowsill) */
-      .is-plant { color: var(--color-plant); font-weight: 600; } /* ORANGE — ✓ Plant only (sow window shut, seedling still fits — ending) */
+      /* Verdict colour only — weight inherits .is-line (500, the guide's uniform baseline). Bold dropped 25/07
+         (status lines carry no weight-emphasis; colour + the fs-sm-vs-fs-xs size gap already set the verdict
+         apart from its grey .is-note). */
+      .is-go   { color: var(--color-sage); }    /* SAGE — sow/plant outdoors now (In season) */
+      .is-cold { color: var(--blue-400); }      /* BLUE — ✓ Sow indoors (too cold outside, start on the windowsill) */
+      .is-plant { color: var(--color-plant); }  /* ORANGE — ✓ Plant only (sow window shut, seedling still fits — ending) */
       .is-indoors { opacity: 0.68; font-weight: 500; }         /* (legacy) start-indoors quieter cue — retained for back-compat */
       .is-soon { color: var(--blue-400); }                     /* (legacy) in-window but soil not there yet */
       .is-far  { color: var(--text-muted); }                   /* GREY — not in season, quiet "from Sep" */
@@ -1222,14 +1228,15 @@
          ready" button had. */
       .pp-lines .pp-bell-btn {
         flex: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;
-        background: none; border: 1px solid var(--surface-inset-03);
+        background: none; border: 1px solid var(--border-input); color: var(--text-muted);
         border-radius: var(--r-sm); font-size: var(--fs-sm); padding: 6px 13px; cursor: pointer;
       }
       .pp-bell-ic { width: 14px; height: 14px; display: block; }
-      .pp-bell-amber { color: var(--color-plant); border-color: rgba(251, 146, 60, 0.4); }
-      .pp-bell-amber:hover { border-color: var(--color-plant); background: rgba(251, 146, 60, 0.08); }
-      .pp-bell-pending { color: var(--text-muted); }
-      .pp-bell-pending:hover { border-color: var(--text-muted); color: var(--text-soft); }
+      /* Snooze is GREY (Phase 2, COLOUR-SYSTEM.md §3): the orange "Check for harvest" LINE carries the
+         "act soon" signal; the button beside it is a quiet neutral control, not a second alarm. Both the
+         due-now (.pp-bell-amber) and armed-pending (.pp-bell-pending) states now share the muted register. */
+      .pp-bell-amber, .pp-bell-pending { color: var(--text-muted); }
+      .pp-bell-amber:hover, .pp-bell-pending:hover { border-color: var(--text-muted); color: var(--text-soft); }
       .pp-bell-days { font-weight: 600; }
       /* Harvest, inline in the status-line area (design pass 23/07 round 4) — same tap-target size/register
          as the bell above, coloured sage/green: this IS the positive "pick the crop" action. Now the GREEN
@@ -1237,10 +1244,10 @@
          .pp-stage-btn below. */
       .pp-lines .pp-harvest-btn {
         flex: none; white-space: nowrap;
-        background: none; border: 1px solid rgba(45, 138, 96, 0.4); color: var(--color-sage);
+        background: none; border: 1px solid rgba(74, 222, 128, 0.4); color: var(--color-go);
         border-radius: var(--r-sm); font-size: var(--fs-sm); font-weight: 600; padding: 6px 13px; cursor: pointer;
       }
-      .pp-lines .pp-harvest-btn:hover { border-color: var(--color-sage); background: rgba(45, 138, 96, 0.08); }
+      .pp-lines .pp-harvest-btn:hover { border-color: var(--color-go); background: rgba(74, 222, 128, 0.08); }
       /* Grey stage-advance moves (SCOPE-STAGE-BUTTON.md Phase 2) — "Sprouted" / "Plant outside" (and later
          Sow / First flower / First fruit) share the harvest button's SLOT + size but stay muted: colour is a
          hint, not a gate (owner, 24/07). Grey reads "nothing you must act on yet"; only Harvest lights up
@@ -1248,7 +1255,7 @@
          as the pending harvest bell above, so the two muted affordances read as one register. */
       .pp-lines .pp-stage-btn {
         flex: none; white-space: nowrap;
-        background: none; border: 1px solid var(--surface-inset-03); color: var(--text-muted);
+        background: none; border: 1px solid var(--border-input); color: var(--text-muted);
         border-radius: var(--r-sm); font-size: var(--fs-sm); font-weight: 600; padding: 6px 13px; cursor: pointer;
       }
       .pp-lines .pp-stage-btn:hover { border-color: var(--text-muted); color: var(--text-soft); }
@@ -2002,7 +2009,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.75</span>
+        <span class="header-version">v8.76</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2312,7 +2319,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.75 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.76 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3922,11 +3929,12 @@ function computeSoilStatus(forecastData, today, bedSoilOffset, cropWatchlist) {
     // `txt` until v5.51 — now split out so the status reads as chrome, matching the weather grid marks).
     let txt, cls, mark;
     if (soilTemp < crop.cold) {
-      // "below min" / "above max" (not "too cold/warm") so it reads as a GAP to the crop's band, not a
-      // soil reading — the soil temp is on the axis; this is how far short/over it is (design review §4).
-      txt = fmtDeg(crop.cold - soilTemp) + '° below min'; cls = 'soil-go-cold'; mark = 'ui-wx-frost';
+      // "N° too cold / too hot" (Phase 2, COLOUR-SYSTEM.md §6) — unified with the plant-out line's own
+      // "N° too cold to plant" wording so the same gap reads the same way everywhere; the number still
+      // carries the magnitude (how far short/over the crop's band), the frost/heat mark carries the side.
+      txt = fmtDeg(crop.cold - soilTemp) + '° too cold'; cls = 'soil-go-cold'; mark = 'ui-wx-frost';
     } else if (soilTemp > crop.hot) {
-      txt = fmtDeg(soilTemp - crop.hot) + '° above max'; cls = 'soil-go-hot'; mark = 'ui-wx-heat';
+      txt = fmtDeg(soilTemp - crop.hot) + '° too hot'; cls = 'soil-go-hot'; mark = 'ui-wx-heat';
     } else {
       txt = '✓ ready'; cls = 'soil-go-ready'; mark = ''; // ✓ is a plain tick, kept in the text
     }
@@ -4135,7 +4143,7 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
     else if (canDirectSow) sowLine = '✓ Sow direct';
     else if (canStartIndoors) sowLine = '✓ Sow indoors';                      // soil not ready outside, but the house is — start it inside
     else if (soilTooCold) sowLine = fmtDeg(germMin - soil) + '° too cold';    // direct-only crop: how far the SOIL is below the germ floor
-    else if (soilTooWarm) sowLine = fmtDeg(soil - germMax) + '° too warm';    // soil above the germ ceiling (Adelaide hot-fail)
+    else if (soilTooWarm) sowLine = fmtDeg(soil - germMax) + '° too hot';     // soil above the germ ceiling (Adelaide hot-fail) — "too hot" unifies with the plant-out line + soil panel (owner 25/07, one heat word everywhere)
     // soil unknown → leave null so the caller keeps the static window text.
   } else if (inLeadRunway) {
     sowLine = '✓ Sow indoors';   // ahead of the window — the head-start the lead weeks are FOR (no soil gate)
@@ -5998,7 +6006,7 @@ if (typeof module !== 'undefined' && module.exports) {
         }
 
         if (failed.length) { sectionLabel('Failed (' + failed.length + '):'); failed.forEach(function (c) { fullBlock(c, 'FAIL · ', 'var(--red-300)'); }); }
-        if (info.length) { sectionLabel('Ambiguous — not scored (' + info.length + '):'); info.forEach(function (c) { fullBlock(c, 'info · ', 'var(--text-muted, #9aa)'); }); }
+        if (info.length) { sectionLabel('Ambiguous — not scored (' + info.length + '):'); info.forEach(function (c) { fullBlock(c, 'info · ', 'var(--text-muted)'); }); }
         // Passes are COMPACT one-liners (no note/got/why) — keeps total height under the drawer's clip so the
         // failures above always render. The full detail for a pass is rarely what you're after here.
         if (passed.length) {
@@ -6904,16 +6912,17 @@ if (typeof module !== 'undefined' && module.exports) {
             // Amber sprout-by = past due with nothing recorded up — the whole "check the tray" nudge.
             if (nursery === 'seed' && p.estSprout) {
               const sp = document.createElement('span');
+              // One voice with the harvest line ("Est. harvest in N days"): future countdown → "today" on the
+              // estimate day → a grey "Est. sprout day passed" nudge once it's overdue (owner 25/07). Grey, not
+              // amber — the sprout nudge is the twin of the grey "Check for harvest"; a seed can't be snoozed, so
+              // it rests at the nudge rather than counting negative days.
+              sp.className = 'pl-line pl-countdown';
               if (p.overdueSprout) {
-                sp.className = 'pl-line pl-sprout-due';
-                sp.textContent = 'Est. sprout overdue — nothing up yet';
+                sp.textContent = 'Est. sprout day passed';
               } else {
-                // Relative countdown to MATCH the harvest line ("Est. harvest in N days") — the two nursery/
-                // harvest estimates now read in one voice instead of a date vs a duration (owner, 09/07).
                 const sd = daysUntil(p.estSprout);
-                sp.className = 'pl-line pl-countdown';
                 sp.textContent = (sd === null) ? ('Est. sprout by ' + shortPlantedDate(p.estSprout))
-                               : (sd <= 0)     ? 'Est. sprout due today'
+                               : (sd <= 0)     ? 'Est. sprout today'
                                                : ('Est. sprout in ' + sd + (sd === 1 ? ' day' : ' days'));
               }
               metaContainer.appendChild(sp);
@@ -10921,36 +10930,35 @@ if (typeof module !== 'undefined' && module.exports) {
         const daysSinceSprout = (p.sprouted && typeof daysUntil === 'function') ? -daysUntil(p.sprouted) : null;
         const age = (typeof computeSeedlingAgeReady === 'function')
           ? computeSeedlingAgeReady(daysSinceSprout, p.sowModel.daysSproutToTransplant) : null;
+        // TWO-LINE model (owner 25/07): L1 = a weather WARNING (blue cold / amber hot) shown only when weather
+        // blocks; L2 = the grey TIME line — a clock counting down to plant-out ("Est. plant-out in N days"),
+        // flipping to a grey tick ("N days since sprouted") once the seedling is old enough. The CLOCK is unique
+        // to this stage on purpose: it's the one countdown whose end needs a human action (plant it out) with no
+        // separate alarm — harvest/sprout are estimates with their own nudge, so they carry no clock (ICON-SYSTEM).
+        const tooYoung = !!(age && !age.ready);
+        const countdownLine = tooYoung
+          ? { cls: 'pl-countdown', mark: 'ui-clock', txt: 'Est. plant-out in ' + age.daysRemaining + ' day' + (age.daysRemaining === 1 ? '' : 's') }
+          : null;
         if (r.canPlantOut) {
-          if (age && !age.ready) {
-            // Weather's ready but the tray itself isn't — its own quiet grey wait (.pl-countdown, the SAME
-            // muted tone the harvest countdown uses — "just waiting", not a weather signal), mono clock icon
-            // instead of the frost mark this used to borrow (owner, 24/07: blue/frost falsely implied cold).
-            // Bare "N days" — no sentence — mirrors the harvest bell's own "Nd" shorthand.
-            return { cls: 'pl-countdown', mark: 'ui-clock', txt: age.daysRemaining + ' day' + (age.daysRemaining === 1 ? '' : 's') };
-          }
-          return { cls: 'pl-ready', txt: '✓ Plant out' };   // green go — the sanctioned green
+          // Weather is fine — no warning line. L2 is the countdown (still too young) or, once old enough, the
+          // grey "N days since sprouted" tick (cls pl-ready — the button beside it, not this line, turns green).
+          const readyTick = (daysSinceSprout != null)
+            ? { cls: 'pl-ready', txt: '✓ ' + daysSinceSprout + ' day' + (daysSinceSprout === 1 ? '' : 's') + ' since sprouted' }
+            : { cls: 'pl-ready', txt: '✓ Ready to plant' };   // degrade: no Sprouted date to count from
+          return { weather: null, time: countdownLine || readyTick };
         }
-        // Weather is ALSO blocking below — when the seedling itself isn't ready either, say so alongside the
-        // weather gate as its OWN "N days" clause (ageTxt, rendered with a second ui-clock icon by the caller —
-        // owner, 24/07: a bare "· 5 days" with no icon read as a stray fragment; every day-count on this line
-        // gets a clock), so a not-yet reading always answers BOTH clocks, not just whichever the code checked
-        // first. '' when age is unknown or already satisfied (the weather line alone is the complete answer
-        // then — once weather clears, this one goes straight out).
-        const ageTxt = (age && !age.ready) ? (age.daysRemaining + ' day' + (age.daysRemaining === 1 ? '' : 's')) : '';
-        // Too HOT: a heat spell ahead cooks a fresh transplant, so hold plant-out even when soil + nights are
-        // fine. Amber + heat mark, mirroring the cold gap below. Checked first — heat trumps a satisfied cold gate.
+        // Weather blocks. L1 = the binding gate; when the seedling is ALSO too young, STACK the L2 clock beneath
+        // it (owner: show both gates at once). Once old enough, weather is the only gate — no time line.
+        // Too HOT first (a heat spell cooks a fresh transplant even when soil + nights are fine).
         if (r.tooHotToPlant) {
           const hg = (r.heatPlantGap != null && r.heatPlantGap > 0) ? r.heatPlantGap : 0;
-          return { cls: 'pl-hot', mark: 'ui-wx-heat', txt: (hg > 0 ? 'Days ' + hg + '° too hot to plant' : 'Too hot to plant out'), ageTxt: ageTxt };
+          return { weather: { cls: 'pl-hot', mark: 'ui-wx-heat', txt: (hg > 0 ? 'Days ' + hg + '° too hot to plant' : 'Too hot to plant out') }, time: countdownLine };
         }
-        // Not ready yet: show whichever gate is the BINDING blocker — the SOIL below the growing floor (roots
-        // won't establish) or the NIGHTS below the frost floor. Blue + frost mark, same language as the soil
-        // panel's cold gap. "to plant" names the gate (window→outside, not sowing/growing).
+        // Too COLD: the binding blocker — SOIL below the growing floor or NIGHTS below the frost floor.
         const sg = (r.soilPlantGap != null && r.soilPlantGap > 0) ? r.soilPlantGap : 0;
         const ng = (r.plantOutGap != null && r.plantOutGap > 0) ? r.plantOutGap : 0;
         if (sg > 0 || ng > 0) {
-          return { cls: 'pl-cold', mark: 'ui-wx-frost', txt: (sg >= ng ? 'Soil ' + sg : 'Nights ' + ng) + '° too cold to plant', ageTxt: ageTxt };
+          return { weather: { cls: 'pl-cold', mark: 'ui-wx-frost', txt: (sg >= ng ? 'Soil ' + sg : 'Nights ' + ng) + '° too cold to plant' }, time: countdownLine };
         }
         return null;
       }
@@ -11555,7 +11563,13 @@ if (typeof module !== 'undefined' && module.exports) {
           return mk('Sprouted', 'pp-stage-btn', function () { ppSproutedTap(p, bedName); });
         }
         if (p.raisingUnderCover) {
-          return mk('Plant outside', 'pp-stage-btn', function () { ppOpenMovedOutside(p, bedName); });
+          // GREEN only when every gate has cleared (Phase 2, COLOUR-SYSTEM.md §1): the same readiness the
+          // status line reports (ppPlantOutLine → 'pl-ready' = weather AND seedling-age both satisfied) lights
+          // the button as the earned GO, reusing the harvest go-button style. Any gate still holding → grey
+          // pp-stage-btn (a quiet "not yet", never a nag). Degrade-safe: no model/forecast → grey.
+          const po = ppPlantOutLine(p);
+          const ready = !!(po && !po.weather && po.time && po.time.cls === 'pl-ready');
+          return mk('Plant outside', ready ? 'pp-harvest-btn' : 'pp-stage-btn', function () { ppOpenMovedOutside(p, bedName); });
         }
         // A deciduous perennial resting over winter (phase Dormant, derived from species + season) — a quiet
         // rest with no manual move, and deliberately NO stray Harvest button (which ppHarvestEligible would
@@ -11574,7 +11588,7 @@ if (typeof module !== 'undefined' && module.exports) {
           }
         }
         if (ppHarvestEligible(p)) {
-          return mk(ppHarvestAlreadyStarted(p) ? 'Harvest' : 'First Harvest', 'pp-harvest-btn',
+          return mk(ppHarvestAlreadyStarted(p) ? 'Harvest' : 'First harvest', 'pp-harvest-btn',
             function () { ppHarvestTap(p, bedName); });
         }
         return null;
@@ -12325,25 +12339,22 @@ if (typeof module !== 'undefined' && module.exports) {
         } else if (st === 'Fruiting' || st === 'Flowering') {
           line('', st + since(ppStageSince(story, st)));
         } else if ((po = ppPlantOutLine(p))) {
-          // under-cover seedling (surface 2): "✓ Ready to plant" (green go) or "❄ N° too cold to plant" (blue,
-          // with the dashboard's frost mark). The mark case builds the span directly so it can carry the SVG.
-          // A weather-blocked line that ALSO carries an age note (po.ageTxt) gets a SECOND icon (always
-          // ui-clock) ahead of that clause — a bare "· 5 days" with no icon read as a stray fragment (owner,
-          // 24/07); every day-count on this line now carries its own clock, standalone or not.
-          if (po.mark) {
-            const s = document.createElement('span');
-            s.className = 'pl-line ' + po.cls;
-            s.appendChild(ppIconEl(po.mark));
-            s.appendChild(document.createTextNode(' ' + po.txt));
-            if (po.ageTxt) {
-              s.appendChild(document.createTextNode(' · '));
-              s.appendChild(ppIconEl('ui-clock'));
-              s.appendChild(document.createTextNode(' ' + po.ageTxt));
+          // under-cover seedling (surface 2): up to TWO stacked lines — L1 a weather warning (blue cold / amber
+          // hot, shown only when weather blocks) and L2 the grey time line (ui-clock countdown, or the "N days
+          // since sprouted" tick). Each renders as its own .pl-line; a marked line builds the span so the mono
+          // icon sits inline (ppIconEl). The stage button below joins whichever line ends up last (the time line).
+          [po.weather, po.time].forEach(function (ln) {
+            if (!ln) return;
+            if (ln.mark) {
+              const s = document.createElement('span');
+              s.className = 'pl-line ' + ln.cls;
+              s.appendChild(ppIconEl(ln.mark));
+              s.appendChild(document.createTextNode(' ' + ln.txt));
+              wrap.appendChild(s);
+            } else {
+              line(ln.cls, ln.txt);
             }
-            wrap.appendChild(s);
-          } else {
-            line(po.cls, po.txt);
-          }
+          });
         } else if (!established) {
           // Design pass 23/07 round 6 ("harvest alarm" redesign) — harvestAlertState (Js-State.html) is the
           // SAME function the Garden-tab list row uses, so the two surfaces can never disagree again (see
