@@ -1093,6 +1093,20 @@
       .is-fact-k { font-size: var(--fs-xs); color: var(--text-muted); letter-spacing: var(--ls-wide); text-transform: uppercase; }
       .is-fact-v { font-size: var(--fs-sm); color: var(--text-soft); text-align: right; }
       .is-none, .is-empty { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.5; padding: 6px 2px; }
+      /* Guide Edit mode (owner curation, 25/07): the Edit button rides the same unlock gate as the plant/bed/shed
+         rename pencils — hidden until the owner unlocks editing (Dev drawer → "Unlock edit pencils"), so the
+         daily surface stays clean. Tapping it flips a tickbox list (renderGuideEdit) of which crops the guide offers. */
+      .is-edit-btn {
+        display: none;
+        background: var(--surface-inset-02); border: 1px solid var(--surface-inset-03);
+        color: var(--text-muted); border-radius: var(--r-xs);
+        font-size: var(--fs-sm); line-height: 1; padding: 6px 12px; cursor: pointer;
+      }
+      body.edit-unlocked .is-edit-btn { display: inline-flex; align-items: center; }
+      .is-edit-btn.is-editing { color: var(--color-sage); border-color: var(--color-sage); }
+      .is-edit-intro { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.5; padding: 2px 2px 6px; }
+      .is-edit-row { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-radius: var(--r-sm); cursor: pointer; }
+      .is-edit-cb { accent-color: var(--color-sage); width: 18px; height: 18px; flex: 0 0 auto; margin: 0; cursor: pointer; }
       .is-empty { text-align: center; padding-top: 40px; }
 
       /* === Plant passport (docs/SCOPE-PLANT-HISTORY.md) ==================================================
@@ -2019,7 +2033,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.81</span>
+        <span class="header-version">v8.82</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2329,7 +2343,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.81 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.82 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3371,7 +3385,10 @@
     <div id="inSeasonOverlay" class="pp-fs" style="display:none;">
       <div class="pp-bar">
         <span class="pp-crumb">Seasonal Guide</span>
-        <button type="button" class="pp-close" onclick="closeInSeason()" aria-label="Close Seasonal Guide">✕</button>
+        <div class="pp-bar-actions">
+          <button type="button" id="inSeasonEditBtn" class="is-edit-btn" onclick="toggleInSeasonEdit()" aria-pressed="false" title="Choose which crops the guide offers">Edit</button>
+          <button type="button" class="pp-close" onclick="closeInSeason()" aria-label="Close Seasonal Guide">✕</button>
+        </div>
       </div>
       <div id="inSeasonFilters" class="is-filters" role="group" aria-label="Filter by crop type">
         <label class="is-filter"><input type="checkbox" class="is-filter-cb" data-cat="vegetable" checked onchange="isToggleFilter('vegetable', this.checked)"> Veg</label>
@@ -12939,6 +12956,7 @@ if (typeof module !== 'undefined' && module.exports) {
       // ============================================================================
 
       let _isOpen = false, _isPushed = false, _isBackdropBound = false;
+      let _isEdit = false, _editCrops = null;      // Edit mode: the guide's include/exclude tickbox list (getGuideCrops)
       const IS_CACHE_KEY = 'garden_log_sow_catalogue';
 
       // Veg/Herbs/Flowers filter (header checkboxes, owner 18/07) — which categories the pane shows.
@@ -12965,6 +12983,104 @@ if (typeof module !== 'undefined' && module.exports) {
         renderInSeason(isReadCache());
       }
 
+      // ── Edit mode ──────────────────────────────────────────────────────────────────────────────────
+      // The owner's include/exclude curation for the guide (owner, 25/07). The Edit button (in the pp-bar,
+      // revealed only when edit-unlocked) flips a tickbox list of EVERY guide-eligible crop — the ones the live
+      // pane shows AND the ones it hides — so a crop can be added back that the pane never sends. Each tick
+      // writes a single ShowInGuide cell to the Crops book (setGuideVisibility); the month/weather bucketing is
+      // untouched. Leaving edit refetches the pane so the change shows immediately.
+      function isSetEditMode(on) {
+        _isEdit = !!on;
+        const btn = document.getElementById('inSeasonEditBtn');
+        if (btn) { btn.classList.toggle('is-editing', _isEdit); btn.textContent = _isEdit ? 'Done' : 'Edit'; btn.setAttribute('aria-pressed', _isEdit ? 'true' : 'false'); }
+        const filters = document.getElementById('inSeasonFilters');
+        if (filters) filters.style.display = _isEdit ? 'none' : '';   // category filter is a read-view control
+      }
+      function toggleInSeasonEdit() {
+        isSetEditMode(!_isEdit);
+        if (_isEdit) {
+          if (_editCrops) renderGuideEdit(_editCrops);
+          else { const b = document.getElementById('inSeasonBody'); if (b) b.innerHTML = '<div class="is-empty">Loading crops…</div>'; }
+          isFetchGuideCrops();           // fetch / refresh the full editable list
+        } else {
+          renderInSeason(isReadCache()); // back to the read view (instant from cache)…
+          isFetchCatalogue();            // …then repaint with the freshly-curated pane
+        }
+      }
+
+      // Fetch the full editable crop list (getGuideCrops → buildGuideEditList). Degrade-safe: no PIN → no-op.
+      function isFetchGuideCrops() {
+        if (typeof isOnline !== 'undefined' && !isOnline) return;
+        const pin = localStorage.getItem('garden_log_pin');
+        const token = localStorage.getItem('garden_log_token');
+        if (!pin && !token) return;
+        google.script.run
+          .withSuccessHandler(function (resStr) {
+            try {
+              const res = JSON.parse(resStr);
+              if (res.status === 'success' && res.data && Array.isArray(res.data.crops)) {
+                _editCrops = res.data.crops;
+                if (_isEdit) renderGuideEdit(_editCrops);
+              }
+            } catch (e) {}
+          })
+          .processClientRequest(JSON.stringify({ action: 'getGuideCrops', token: token, pin: pin }));
+      }
+
+      // The editor: a category-grouped tickbox list. Checked = currently shown in the guide. Toggling a box
+      // writes the crop's ShowInGuide cell (isSetVisibility). No colour/verdict here — it's pure curation.
+      function renderGuideEdit(crops) {
+        const body = document.getElementById('inSeasonBody');
+        if (!body) return;
+        if (!Array.isArray(crops) || !crops.length) {
+          body.innerHTML = '<div class="is-empty">No crops to curate yet. Set up your Crop Reference book first (App Settings → Dev → Crop Reference).</div>';
+          return;
+        }
+        const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+        const CATLABEL = { vegetable: 'Veg', fruit: 'Fruit', herb: 'Herbs', flower: 'Flowers' };
+        const ORDER = ['vegetable', 'fruit', 'herb', 'flower'];
+        let html = '<div class="is-edit-intro">Tick the crops you want the Seasonal Guide to offer. Unticked crops stay in your reference book — the guide just won’t suggest them.</div>';
+        ORDER.forEach(function (cat) {
+          const rows = crops.filter(function (c) { return (c.category || 'vegetable') === cat; });
+          if (!rows.length) return;
+          html += '<div class="is-section"><div class="is-sec-head"><span class="is-sec-title">' + CATLABEL[cat] + '</span>' +
+                    '<span class="is-sec-sub">' + rows.length + '</span></div><div class="is-list">';
+          rows.forEach(function (c) {
+            const icon = (typeof plantIconSvgHtml === 'function') ? plantIconSvgHtml(c.crop) : '';
+            html += '<label class="is-edit-row">' +
+                      '<input type="checkbox" class="is-edit-cb"' + (c.show !== false ? ' checked' : '') +
+                        ' data-key="' + esc(c.key) + '" onchange="isSetVisibility(this)">' +
+                      '<span class="is-ic">' + icon + '</span>' +
+                      '<span class="is-name">' + esc(c.crop) + '</span>' +
+                    '</label>';
+          });
+          html += '</div></div>';
+        });
+        body.innerHTML = html;
+      }
+
+      // One tickbox → one ShowInGuide write. Optimistic (updates the local list immediately), reverts the box on
+      // failure. `crop` is the RAW book key (data-key), so the friendly "Onion" label still writes "Onions, Storage".
+      function isSetVisibility(cb) {
+        const key = cb.getAttribute('data-key');
+        const show = !!cb.checked;
+        if (_editCrops) _editCrops.forEach(function (c) { if (c.key === key) { c.show = show; c.explicit = true; } });
+        const pin = localStorage.getItem('garden_log_pin');
+        const token = localStorage.getItem('garden_log_token');
+        if (!pin && !token) { cb.checked = !show; return; }
+        const revert = function () {
+          cb.checked = !show;
+          if (_editCrops) _editCrops.forEach(function (c) { if (c.key === key) c.show = !show; });
+        };
+        google.script.run
+          .withSuccessHandler(function (resStr) {
+            let res = null; try { res = JSON.parse(resStr); } catch (e) {}
+            if (!(res && res.status === 'success' && res.data && res.data.updated)) revert();
+          })
+          .withFailureHandler(revert)
+          .processClientRequest(JSON.stringify({ action: 'setGuideVisibility', crop: key, show: show, token: token, pin: pin }));
+      }
+
       function openInSeason() {
         const overlay = document.getElementById('inSeasonOverlay');
         if (!overlay || _isOpen) return;
@@ -12973,6 +13089,7 @@ if (typeof module !== 'undefined' && module.exports) {
         document.body.style.overflow = 'hidden';
         overlay.style.display = 'flex';
         try { history.pushState({ is: 1 }, ''); _isPushed = true; } catch (e) { _isPushed = false; }
+        isSetEditMode(false);            // always open in the normal (read) view, never mid-edit
         isSyncFilterCheckboxes();        // reflect the persisted Veg/Herbs/Flowers filter on the header checkboxes
         renderInSeason(isReadCache());   // instant from cache (or a loading state on first ever open)
         isFetchCatalogue();              // then refresh in the background so the list stays fresh
