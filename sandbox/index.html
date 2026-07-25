@@ -2033,7 +2033,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.85</span>
+        <span class="header-version">v8.86</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2343,7 +2343,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.85 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.86 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3543,9 +3543,10 @@
 // plant is logged, resolveCropIcon() maps its name -> an available icon, variety-aware,
 // or flags it as a gap (id 'generic-plant', matched:false) so we KNOW what's missing.
 //
-// DO NOT hand-edit the manifest array — regenerate with:
-//   node assets/open-crop-icons/generate-manifest.js
-// The SYNONYMS/DEFAULTS + resolver are hand-maintained in that generator.
+// HAND-EDIT the manifest array below directly. ⚠ The old generator (assets/open-crop-icons/
+// generate-manifest.js) is STALE — the committed manifest has stemming, variant synonyms, and custom
+// icons the generator never produced, so regenerating REGRESSES it. Don't regenerate; extend by hand.
+// The SYNONYMS/DEFAULTS + resolver are hand-maintained here. (See MEMORY icon-generators-are-stale.)
 // ============================================================================
 
 // --- The available icon ids (247) ---------------------------------------------
@@ -10709,6 +10710,10 @@ if (typeof module !== 'undefined' && module.exports) {
 </script>
 
     <script>
+// [Js-Passport.html] Split 1/3 of the former Js-Passport.html (v8.83) — orchestration: module state,
+// kill-switch/filler toggles, story cache+prefetch, date/fact-format helpers, open/close/back scaffolding,
+// the self-contained Shed passport, and the async story fetch. Loaded first (holds the cache/listener boot).
+//
       // === Plant passport — tap a plant row → its passport (docs/SCOPE-PLANT-HISTORY.md) ===
       //
       // The card's TOP half (identity, ledger lines, packet facts) renders SYNCHRONOUSLY from the plant
@@ -11487,6 +11492,13 @@ if (typeof module !== 'undefined' && module.exports) {
         }
       }
 
+</script>
+
+    <script>
+// [Js-Passport2.html] Split 2/3 (v8.83) — plant-passport render entry (ppRender) + all actions: eligibility
+// gates, the stage-advance dispatcher, every backdate popup/submit, the status tile, and the rename/edit
+// editors. Browser global scope; loaded after Js-Passport.html, before Js-Passport3.html.
+//
       // --- render ------------------------------------------------------------------------------------
 
       function ppRender(p, bedName, story, pending) {
@@ -12281,6 +12293,13 @@ if (typeof module !== 'undefined' && module.exports) {
         select.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); close(); } });
       }
 
+</script>
+
+    <script>
+// [Js-Passport3.html] Split 3/3 (v8.83) — passport view-building: identity + ledger lines, harvest bell/
+// reminder, tombstone/facts renderers + story element, photos/thumbnail cache (self-contained thumb read),
+// and the Dev-drawer seed helpers. Browser global scope; loaded last.
+//
       function ppIdentityEl(p, bedName) {
         const wrap = document.createElement('div');
         wrap.className = 'pp-id';
