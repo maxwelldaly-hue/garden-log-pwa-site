@@ -682,6 +682,11 @@
       .pl-cold  { color: var(--blue-400); }                           /* "❄ N° too cold to plant" — same blue+frost language as the dashboard soil panel's cold gap */
       .pl-hot   { color: var(--amber-400); }                          /* "N° too hot to plant" — heat spell ahead cooks a fresh transplant; AMBER (Phase 2), the weather's own heat warning (unified with the soil panel's .soil-go-hot; --color-plant is now time-pressure only) */
       .pl-line-ic { width: 1em; height: 1em; fill: currentColor; vertical-align: -0.12em; }  /* inline weather-mark in a ledger line (mirrors .soil-go-ic) */
+      /* Seed-card (shed seed packet) sow verdict, Item 1 25/07: sage "✓ Sow direct" (calm in-season go — the same
+         --color-sage the seasonal guide's .is-go uses; "Sow indoors" borrows .pl-cold blue above). The Adelaide
+         window rides after it as a grey tail, so the verdict is coloured and its timing stays quiet. */
+      .pl-sow-go { color: var(--color-sage); }
+      .pl-sow-win { color: var(--text-muted); }
       /* Optimistic Garden-tab row (latency Slice A, docs/SCOPE-LATENCY-SLICES.md): the confident-match case
          dims the row + adds a quiet "saving…" line while the real write is still in flight. .plant-row-spin
          reuses the SAME pulse language as the Log-feed echo (.pending-spin, Option 1), so "in progress" reads
@@ -2009,7 +2014,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.76</span>
+        <span class="header-version">v8.77</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2319,7 +2324,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.76 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.77 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -10831,7 +10836,7 @@ if (typeof module !== 'undefined' && module.exports) {
         ['description', 'About'],
         ['flavour', 'Flavour'],
         ['sun', 'Sun'],
-        ['sowWhen', 'Sow'],     // synthetic: local Adelaide window wins, packet season is the fallback
+        // 'sowWhen' moved to the coloured verdict line under the Sow button (ppShedSowLineEl, Item 1 25/07).
         ['depth', 'Depth'],
         ['spacing', 'Spacing'],
         ['germination', 'Germination'],
@@ -11248,7 +11253,12 @@ if (typeof module !== 'undefined' && module.exports) {
           const lines = document.createElement('div');
           lines.className = 'pp-lines';
           const rowEl = document.createElement('div');
-          rowEl.className = 'pl-line-row pl-line-row-solo';
+          // The sow-verdict line (Item 1, COLOUR-SYSTEM §3 "seed card"): the live readiness, coloured, sits to
+          // the LEFT of the Sow button — mirroring the plant passport's line+button row. When there's no line
+          // (no window / no crop match) the row falls back to button-only, right-aligned (pl-line-row-solo).
+          const sowLineEl = ppShedSowLineEl(item);
+          if (sowLineEl) { rowEl.className = 'pl-line-row'; rowEl.appendChild(sowLineEl); }
+          else { rowEl.className = 'pl-line-row pl-line-row-solo'; }
           rowEl.appendChild(shedAction);
           lines.appendChild(rowEl);
           body.appendChild(lines);
@@ -11265,35 +11275,11 @@ if (typeof module !== 'undefined' && module.exports) {
         //     catch-all (the beta test packet predates those columns).
         const lf = item.labelFacts || {};
         const other = lf.other || '';
-        // Sow timing is location-truth, so the local Adelaide window ALWAYS wins the Sow line — for seeds and
-        // garden alike (owner, 16/07 — "Adelaide always wins for both"). It's the one fact the region's calendar
-        // outranks the label AND the filler toggle; the packet's own sow text is only the fallback when we have
-        // no Adelaide window for that crop (e.g. a generic unnamed seed with no crop match).
-        // The Sow line goes LIVE when we have the crop's threshold model AND a cached forecast: the static
-        // Adelaide window ("Sep–Feb (Adelaide)") becomes a reading of right-now ("✓ Sow outdoors" /
-        // "✓ Sow indoors" / "2° too cold" / "Sow from Sep"). It quietly falls back to the
-        // static window whenever the model or forecast is missing — a state, never a nag (reconciliation end goal).
-        let sowWhen;
-        if (item.sowMonths) {
-          const staticWin = ppFormatSowMonths(item.sowMonths) + ' (Adelaide)';
-          let live = null;
-          if (item.sowModel && typeof computeSowReadiness === 'function') {
-            const ctx = ppSowContext();
-            if (ctx && ctx.hasData) {
-              const r = computeSowReadiness(item.sowModel, item.sowMonths, ctx);
-              if (r && r.sowLine) live = r.sowLine;
-            }
-          }
-          // Seed passport shows the FULL season, not the terse live line (owner, 19/07 — "sow from Sep" is
-          // seasonal-guide messaging; a passport has room for the whole window). The full window always shows;
-          // a live GO reading ("✓ Sow outdoors") only PREPENDS when it's actually sowable now — so we keep the
-          // actionable cue without ever collapsing to a bare start month.
-          sowWhen = (live && live.charAt(0) === '✓') ? (live + ' · ' + staticWin) : staticWin;
-        } else {
-          sowWhen = lf.sow || ppOtherFact(other, /^when$|sow|season|plant/i);
-        }
+        // Sow timing moved OUT of the fact list (Item 1, 25/07): it now renders as the coloured verdict line
+        // under the Sow button above (ppShedSowLineEl) — where the action is, coloured to match the guide —
+        // rather than as a buried grey "Sow:" fact. The full Adelaide window still shows there (grey), so no
+        // info is lost. Every other packet fact (Spacing/Germination/…) still renders here as before.
         const facts = ppFactsEl({ labelFacts: Object.assign({}, lf, {
-          sowWhen: sowWhen,
           water: ppWaterLevel(lf.water),
           germination: ppGermination(lf.germination),
           seedcount: lf.seedcount || ppOtherFact(other, /seed ?count|seeds per|no\.? of seeds/i),
@@ -11321,6 +11307,46 @@ if (typeof module !== 'undefined' && module.exports) {
         btn.textContent = seedling ? 'Plant outside' : 'Sow';
         btn.onclick = function () { ppOpenShedToGarden(item, category, seedling ? 'plant' : 'sow'); };
         return btn;
+      }
+      // The sow-verdict line for a seed packet's shed card (Item 1, COLOUR-SYSTEM §3 "seed card") — the coloured
+      // status line beside the Sow button. The LIVE reading only shows a coloured GO tick when it's sowable now:
+      // sage "✓ Sow direct"/"✓ Plant…", or blue "✓ Sow indoors" (the house is the move — same cold-signal blue the
+      // seasonal guide uses). The full Adelaide window rides after it as a grey tail; when it's NOT sowable now (or
+      // no model/forecast) the whole line is just the grey static window — a state, never a nag. Degrade-safe:
+      // no window → the packet's own sow text, or null (no line, button goes solo). PURE view helper.
+      function ppShedSowLineEl(item) {
+        if (!item) return null;
+        let verdict = '', vcls = '', tail = '';
+        if (item.sowMonths) {
+          tail = (typeof ppFormatSowMonths === 'function' ? ppFormatSowMonths(item.sowMonths) : String(item.sowMonths)) + ' (Adelaide)';
+          if (item.sowModel && typeof computeSowReadiness === 'function') {
+            const ctx = (typeof ppSowContext === 'function') ? ppSowContext() : null;
+            if (ctx && ctx.hasData) {
+              const r = computeSowReadiness(item.sowModel, item.sowMonths, ctx);
+              if (r && r.sowLine && r.sowLine.charAt(0) === '✓') {
+                verdict = r.sowLine;                                   // e.g. "✓ Sow direct" / "✓ Sow indoors"
+                vcls = /indoors/i.test(r.sowLine) ? 'pl-cold' : 'pl-sow-go';   // indoors = cold-blue, else in-season sage
+              }
+            }
+          }
+        } else {
+          const lf = item.labelFacts || {};
+          tail = String(lf.sow || (typeof ppOtherFact === 'function' ? ppOtherFact(lf.other || '', /^when$|sow|season|plant/i) : '') || '').trim();
+          if (!tail) return null;
+        }
+        const s = document.createElement('span');
+        if (verdict) {
+          s.className = 'pl-line ' + vcls;
+          s.appendChild(document.createTextNode(verdict));
+          const t = document.createElement('span');
+          t.className = 'pl-sow-win';                                  // grey window tail after the coloured verdict
+          t.textContent = ' · ' + tail;
+          s.appendChild(t);
+        } else {
+          s.className = 'pl-line';                                     // grey: the static window, or the packet's own sow text
+          s.textContent = tail;
+        }
+        return s;
       }
       // Combined popup: how many + which bed + when (backdate), all in the shared resolve-modal shell. Tapping
       // a bed submits with the current count + date (same read-before-close pattern as ppOpenMovedOutside).
