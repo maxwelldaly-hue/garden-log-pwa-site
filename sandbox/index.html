@@ -1144,9 +1144,18 @@
         color: var(--text-muted); border-radius: var(--r-xs);
         font-size: var(--fs-md); line-height: 1; padding: 6px 10px; cursor: pointer;
       }
-      /* Bar actions: just the ✕ now — the scoped-log control moved out of the bar and is restyled as
+      /* Bar actions: prev/next arrows + the ✕. The scoped-log control moved out of the bar and is restyled as
          #ppLogFab (reuses .log-fab verbatim, bottom-left) so it reads as the same persistent button. */
       .pp-bar-actions { display: flex; align-items: center; gap: 8px; }
+      /* Prev/next arrows (owner, 25/07): same quiet chrome as .pp-close so the bar reads as one control set.
+         A wider tap target (the glyph is thin) and a disabled state greyed back at the ends of the run. */
+      .pp-nav {
+        background: var(--surface-inset-02); border: 1px solid var(--surface-inset-03);
+        color: var(--text-muted); border-radius: var(--r-xs);
+        font-size: var(--fs-md); line-height: 1; padding: 6px 12px; cursor: pointer;
+      }
+      .pp-nav:hover:not([disabled]) { color: var(--text-main); }
+      .pp-nav[disabled] { opacity: 0.3; cursor: default; }
       /* Footer action row (design pass 23/07 round 4): Harvest moved UP into the status-line row (.pp-lines
          .pp-harvest-btn below) — this footer now carries only the universal red "Pull out" (always ends the
          plant early — colour alone signals this is the negative path) plus the rare Sown/raising-under-cover
@@ -1214,6 +1223,10 @@
       .pp-rename-input { flex: 1 1 140px; min-width: 120px; padding: 5px 8px; font-size: var(--fs-md);
         color: var(--text-main); background: var(--surface-inset-03); border: 1px solid var(--text-muted);
         border-radius: var(--r-xs); }
+      /* Native <option> popups don't inherit the select's near-transparent --surface-inset-03 background, so
+         the OS painted them white-text-on-white — readable only under the hover highlight (owner, 25/07). Give
+         every dark-only dropdown's options an explicit solid colour + background so they read at rest. */
+      .pp-rename-input option, .resolve-field select option { color: var(--text-main); background-color: var(--bg-input); }
       .pp-rename-ok, .pp-rename-cancel { padding: 4px 9px; border-radius: var(--r-xs); border: 1px solid var(--surface-inset-03);
         background: var(--surface-inset-03); color: var(--text-main); cursor: pointer; font-size: var(--fs-sm); }
       .pp-rename-ok:hover, .pp-rename-cancel:hover { border-color: var(--text-muted); }
@@ -2033,7 +2046,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.86</span>
+        <span class="header-version">v8.87</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2343,7 +2356,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.86 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.87 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3362,6 +3375,10 @@
       <div class="pp-bar">
         <span id="ppCrumb" class="pp-crumb"></span>
         <div class="pp-bar-actions">
+          <!-- Prev/next flick through the same on-screen group (a bed's plants / a category's packets). Hidden
+               by ppSyncNavButtons when there's nothing to flick through; disabled at each end of the run. -->
+          <button type="button" id="ppPrev" class="pp-nav" onclick="ppNavTo(-1)" aria-label="Previous" title="Previous" style="display:none;">‹</button>
+          <button type="button" id="ppNext" class="pp-nav" onclick="ppNavTo(1)" aria-label="Next" title="Next" style="display:none;">›</button>
           <button type="button" class="pp-close" onclick="closePassport()" aria-label="Close passport">✕</button>
         </div>
       </div>
@@ -5267,7 +5284,16 @@ if (typeof module !== 'undefined' && module.exports) {
             // A row shows its own icon ONLY when it's distinct from the category header: Tools/Seeds items +
             // Seasol. Feed & Soil / Pest items are text only (would duplicate the header).
             const showLead = !feedOrPest && (isSeasol || iconId);
-            if (showLead) {
+            if (isSeedCat && typeof plantIconSvgEl === 'function') {
+              // Seeds & Seedlings rows now carry the CROP sprite — the actual thing being grown (owner, 25/07,
+              // reversing the 10/07 header-only call): a packet is named by its crop, so the crop icon reads at
+              // a glance and matches the seed passport's left tile + the Garden-tab plant rows. Same name→crop
+              // resolver (cropIconHref) the passport uses, so the two can't drift.
+              const ic = document.createElement('span');
+              ic.className = 'lead-chip';
+              ic.appendChild(plantIconSvgEl(it.item));
+              name.appendChild(ic);
+            } else if (showLead) {
               const ic = document.createElement('span');
               ic.className = 'lead-chip';
               ic.innerHTML = isSeasol ? seasolIconSvg(26) : spriteIconHtml(iconId);
@@ -5286,7 +5312,9 @@ if (typeof module !== 'undefined' && module.exports) {
             }
             // 📷 link to the latest product/label photo (Drive), when one exists. Mirrors the Recent
             // tab's photo link (textContent only — no injected markup). Emoji-only to keep the row tight.
-            if (it.image) {
+            // Seeds & Seedlings rows drop it (owner, 25/07): the packet already reads by its crop icon + name,
+            // and the captured facts live one tap away in the passport — the raw photo link added no value here.
+            if (it.image && !isSeedCat) {
               const cam = document.createElement('a');
               cam.className = 'inv-photo-link';
               cam.href = it.image;
@@ -5340,7 +5368,15 @@ if (typeof module !== 'undefined' && module.exports) {
             if (it.labelFacts && typeof openShedPassport === 'function'
                 && (typeof ppEnabled !== 'function' || ppEnabled())) {
               row.dataset.pp = '1';
-              row.onclick = function () { openShedPassport(it, g.category); };
+              // Prev/next arrows flick through THIS category's passport-eligible packets (owner, 25/07) — the
+              // rows that carry captured facts, i.e. exactly the ones a tap can open. Built at tap time so the
+              // group matches what's on screen in this category.
+              row.onclick = function () {
+                const sibs = g.items.filter(function (x) { return x.labelFacts; })
+                                    .map(function (x) { return { kind: 'shed', item: x, category: g.category }; });
+                const idx = sibs.findIndex(function (s) { return s.item === it; });
+                openShedPassport(it, g.category, sibs, idx);
+              };
             }
             list.appendChild(row);
           });
@@ -6585,18 +6621,22 @@ if (typeof module !== 'undefined' && module.exports) {
       // after emergence, while under-cover stock stays 🌱 until planted out. PURE.
       function plantNurseryPhase(p) {
         if (!p || p.isTombstone) return '';
-        let phase = '';
-        if (p.phase) {  // the model carries the derived phase
-          phase = p.phase === 'Sown' ? 'seed' : p.phase === 'Sprouted' ? 'sprout' : '';
-        } else if (p.stage === 'Germination') phase = 'seed';        // fallback for a pre-phase cached model
-        else if (p.stage === 'Seedling' && !p.transplanted) phase = 'sprout';
-        // Nursery ZONE override: anything raised on the window ledge / in a greenhouse always reads as a seed
-        // or a seedling — never the mature crop icon, even once its computed phase quietly ages past Sprouted.
-        // Keyed off the bed (the tail of makeStateKey's "name@bed"), so the map boxes, the map tap-panel list,
-        // and the Garden-tab rows ALL show the same seed/🌱 there — one classifier, no drift. (owner, 12/07)
-        const bed = String(p.key || '').split('@').pop();
-        if (isNurseryZone(bed)) return phase === 'seed' ? 'seed' : 'sprout';
-        return phase;
+        // Below ground (a real sow with nothing up yet) reads as a seed — window ledge or open bed alike.
+        if (p.phase === 'Sown' || (!p.phase && p.stage === 'Germination')) return 'seed';
+        // Emerged: the sprout glyph belongs to the genuine TENDER WEEK only. Once a seedling has aged past that
+        // window it reads as the crop it's becoming — by its TRUE AGE, everywhere. (Reversal, owner 25/07: the
+        // nursery ZONE no longer pins window/greenhouse plants to 🌱 forever — the image now shows the real
+        // plant you're growing, not a sprout held indefinitely by the ledge's nursery status.) The derived
+        // life-PHASE model is deliberately untouched: an under-cover row still computes 'Sprouted' so the
+        // plant-out flow (raisingUnderCover / "Moved outside") keeps working — this rolls only the ICON, using
+        // the same 7-day tender window computePhase applies to a direct-sow (GardenProjection.js PHASE_TENDER_DAYS).
+        const emerged = p.phase === 'Sprouted' || (!p.phase && p.stage === 'Seedling' && !p.transplanted);
+        if (emerged && !p.transplanted) {
+          const since = (typeof daysUntil === 'function') ? daysUntil(p.sprouted) : null; // <0 = days since it sprouted
+          const tender = (since === null) ? true : (since > -7);   // still inside the 7-day tender window
+          if (tender) return 'sprout';
+        }
+        return '';
       }
       // ONE classifier for "this zone is an indoor/temporary nursery" (window ledge / greenhouse). Drives
       // both the seed/sprout phase override above AND the .bed-card.nursery frosted-glass card surface — so
@@ -6888,7 +6928,18 @@ if (typeof module !== 'undefined' && module.exports) {
             if (!isUnspecified && typeof openPassport === 'function'
                 && (typeof ppEnabled !== 'function' || ppEnabled())) {
               row.dataset.pp = '1';
-              row.onclick = function () { openPassport(p, bedName); };
+              // Prev/next arrows flick through THIS bed's plants (owner, 25/07). Built at tap time from the
+              // bed's current row set (minus Empty/free-pot slots, which aren't tap targets), so the arrow
+              // group always matches exactly what's on screen for this bed.
+              row.onclick = function () {
+                let sibs = null, idx = -1;
+                if (typeof ppPlantEligible === 'function') {
+                  sibs = (bed.plants || []).filter(ppPlantEligible)
+                                           .map(function (q) { return { kind: 'plant', p: q, bed: bedName }; });
+                  idx = sibs.findIndex(function (s) { return s.p === p; });
+                }
+                openPassport(p, bedName, sibs, idx);
+              };
             }
 
             const topRow = document.createElement('div');
@@ -6966,7 +7017,11 @@ if (typeof module !== 'undefined' && module.exports) {
               }
               metaContainer.appendChild(sp);
             }
-            if (nursery === 'sprout') {
+            // The Sprouted + Plant-out timeline. Gated on raisingUnderCover (not the ICON) since the 25/07
+            // reversal decoupled the two: an under-cover seedling that has aged past its tender week now shows
+            // the CROP icon, but it's still awaiting plant-out — so the "Plant out ~" reminder must stay. Also
+            // keeps the "Sprouted Nd ago" line for a tender direct-sow (nursery==='sprout', not under cover).
+            if (nursery === 'sprout' || p.raisingUnderCover) {
               if (p.sprouted) {
                 const sr = document.createElement('span');
                 sr.className = 'pl-line pl-planted';
@@ -8737,8 +8792,8 @@ if (typeof module !== 'undefined' && module.exports) {
         (realPlants || []).forEach(function (p) {
           // Nursery rows draw the map's analogue of the Garden tab's 🫘 → 🌱 → crop lifecycle (the map
           // never uses emoji): a sown seed is the seed symbol, a sprouted-not-out row is the sprout symbol,
-          // and only a planted-out row takes its crop/vegetable shape. plantNurseryPhase also FORCES seed/sprout
-          // for a nursery ZONE (window/greenhouse), so window-ledge plants never take their mature crop shape.
+          // and once past its tender week a row takes its crop/vegetable shape — by true age, even on the
+          // window ledge (reversal 25/07: the old nursery-ZONE pin to seed/sprout is gone; plantNurseryPhase).
           const phase = plantNurseryPhase(p);
           const href = phase === 'seed' ? '#plot-ic-seed'
                      : phase === 'sprout' ? '#plot-ic-sprout'
@@ -9178,8 +9233,8 @@ if (typeof module !== 'undefined' && module.exports) {
         const placing = !!plotPlaceKey && plotPlaceBedId === bedId;
         let html = r.map(function (p, i) {
           // Nursery phase drives the icon here too, so the tap-panel list matches the map boxes + Garden-tab
-          // rows: a sown row = the seed glyph, a seedling = 🌱, otherwise the flat crop icon. A window/greenhouse
-          // zone forces seed/seedling (plantNurseryPhase), so its list never shows a mature vegetable.
+          // rows: a sown row = the seed glyph, a tender seedling = 🌱, otherwise the flat crop icon — by true
+          // age, window ledge included (reversal 25/07: no more nursery-zone pin; plantNurseryPhase).
           const ph = plantNurseryPhase(p);
           const ic = ph === 'seed' ? '<svg class="plant-ic" viewBox="0 0 40 40" aria-hidden="true"><use href="#plot-ic-seed" xlink:href="#plot-ic-seed"></use></svg>'
                    : ph === 'sprout' ? '<span class="plant-ic plant-ic-emoji">🌱</span>'
@@ -10734,6 +10789,12 @@ if (typeof module !== 'undefined' && module.exports) {
       let ppCurrentKey = '';
       let _ppLast = null;    // {p, bed} of the open passport, so a prefetch arrival can re-render it
       let _ppShedLast = null; // {item, category} of an open SHED passport (no async story to re-render into)
+      // Prev/next arrows (owner, 25/07): flick through the SAME on-screen group without closing the card — a
+      // bed's plants for a plant passport, a category's packets for a shed passport. Each entry is a self-
+      // contained {kind, …} the open path already understands, so navigation just re-renders IN PLACE (no extra
+      // history push — the single open state still owns the back gesture). Null / a lone item hides both arrows.
+      let _ppSibs = null;
+      let _ppSibIndex = -1;
 
       // Scoped capture (SCOPE-PASSPORT-ACTIONS.md ask 1): the pp-bar ✎. Prefills the ONE capture box with this
       // plant/packet, then hands off to the normal summoned sheet. We CLOSE the passport first (rather than
@@ -11112,7 +11173,7 @@ if (typeof module !== 'undefined' && module.exports) {
         return String(p.key || (p.name + '@' + bedName)) + '#' + String(p.planted || '');
       }
 
-      function openPassport(p, bedName) {
+      function openPassport(p, bedName, siblings, index) {
         if (!p || ppOpen) return;
         const overlay = document.getElementById('passportOverlay');
         if (!overlay) return;
@@ -11120,14 +11181,68 @@ if (typeof module !== 'undefined' && module.exports) {
         ppCurrentKey = ppKeyFor(p, bedName);
         _ppLast = { p: p, bed: bedName };
         _ppShedLast = null;
+        ppSetSiblings(siblings, index);
         ppBindBackdrop(overlay);
         document.body.style.overflow = 'hidden';
         overlay.style.display = 'flex';
         try { history.pushState({ pp: 1 }, ''); _ppPushed = true; } catch (e) { _ppPushed = false; }
         const cached = _ppCache[ppCurrentKey] || null;
         ppRender(p, bedName, cached, !cached);
+        ppSyncNavButtons();
         if (!cached) ppFetchStory(p, bedName);   // only before the first bulk prefetch has ever landed
         ppPrefetchAll();                          // TTL-guarded background refresh of the whole cache
+      }
+
+      // Stash the ordered sibling group + this item's position for the prev/next arrows. Only keeps a list
+      // worth flicking through (2+ entries); anything else clears it so the arrows stay hidden.
+      function ppSetSiblings(siblings, index) {
+        if (Array.isArray(siblings) && siblings.length > 1 && typeof index === 'number' && index >= 0) {
+          _ppSibs = siblings; _ppSibIndex = index;
+        } else { _ppSibs = null; _ppSibIndex = -1; }
+      }
+      // Eligibility mirror of the Garden-tab row's own passport gate (Js-State.html): an 'Empty' free-pot slot
+      // (or a nameless row) is never a tap target, so it's never a sibling to flick to either.
+      function ppPlantEligible(q) {
+        const nm = String((q && q.name) || '').toLowerCase();
+        return nm !== '' && nm !== 'empty';
+      }
+      // Re-render the neighbouring item IN PLACE (no history push, no close/reopen) — the whole point of the
+      // arrows. Reuses the exact render path each kind already has; a plant refetches its Story like a fresh
+      // open, a shed packet renders synchronously. Clamped at the ends (no wrap). Scrolls back to the top so
+      // the new card starts at its header, not wherever the last one was scrolled to.
+      function ppNavTo(delta) {
+        if (!ppOpen || !_ppSibs || _ppSibs.length < 2) return;
+        const i = _ppSibIndex + delta;
+        if (i < 0 || i >= _ppSibs.length) return;
+        _ppSibIndex = i;
+        const e = _ppSibs[i];
+        if (e.kind === 'shed') {
+          ppCurrentKey = 'shed:' + String(e.item.item || '');
+          _ppLast = null;
+          _ppShedLast = { item: e.item, category: e.category };
+          ppRenderShed(e.item, e.category);
+        } else {
+          ppCurrentKey = ppKeyFor(e.p, e.bed);
+          _ppLast = { p: e.p, bed: e.bed };
+          _ppShedLast = null;
+          const cached = _ppCache[ppCurrentKey] || null;
+          ppRender(e.p, e.bed, cached, !cached);
+          if (!cached) ppFetchStory(e.p, e.bed);
+        }
+        ppSyncNavButtons();
+        const body = document.getElementById('passportBody'); if (body) body.scrollTop = 0;
+      }
+      // Show the arrows only when there's a group to move through; disable the one at the end of the run.
+      function ppSyncNavButtons() {
+        const prev = document.getElementById('ppPrev'), next = document.getElementById('ppNext');
+        if (!prev || !next) return;
+        const has = !!(_ppSibs && _ppSibs.length > 1);
+        prev.style.display = has ? '' : 'none';
+        next.style.display = has ? '' : 'none';
+        if (has) {
+          prev.disabled = _ppSibIndex <= 0;
+          next.disabled = _ppSibIndex >= _ppSibs.length - 1;
+        }
       }
 
       function closePassport(fromPop) {
@@ -11138,10 +11253,14 @@ if (typeof module !== 'undefined' && module.exports) {
         overlay.style.display = 'none';
         ppOpen = false;
         ppCurrentKey = '';
+        _ppSibs = null; _ppSibIndex = -1;
         document.body.style.overflow = '';
       }
       document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && ppOpen) closePassport();
+        if (!ppOpen) return;
+        if (e.key === 'Escape') closePassport();
+        else if (e.key === 'ArrowLeft') ppNavTo(-1);
+        else if (e.key === 'ArrowRight') ppNavTo(1);
       });
       // Tap OUTSIDE the content to dismiss (parity with the capture sheet's tap-to-close). The passport is a
       // full-screen surface, so "outside" = the top bar's empty space, the empty area below the content, or
@@ -11163,7 +11282,7 @@ if (typeof module !== 'undefined' && module.exports) {
       // the owner's own thesis), so this is the plant passport with the time half removed: identity + "From
       // the label" only. Reuses the SAME overlay, close/back-gesture scaffolding, kill switch, and ppFactsEl.
       // Everything renders synchronously — labelFacts already ship in the inventory model, so ZERO network.
-      function openShedPassport(item, category) {
+      function openShedPassport(item, category, siblings, index) {
         if (!item || ppOpen || !ppEnabled()) return;
         if (!item.labelFacts) return;   // only items with captured packet facts — self-scopes to seeds/labels
         const overlay = document.getElementById('passportOverlay');
@@ -11172,11 +11291,13 @@ if (typeof module !== 'undefined' && module.exports) {
         ppCurrentKey = 'shed:' + String(item.item || '');
         _ppLast = null;   // no async story to re-render into
         _ppShedLast = { item: item, category: category };   // context for the pp-bar ✎ (log a sow of this packet)
+        ppSetSiblings(siblings, index);
         ppBindBackdrop(overlay);
         document.body.style.overflow = 'hidden';
         overlay.style.display = 'flex';
         try { history.pushState({ pp: 1 }, ''); _ppPushed = true; } catch (e) { _ppPushed = false; }
         ppRenderShed(item, category);
+        ppSyncNavButtons();
       }
 
       // The category (e.g. "Seeds") is the shed's grouping, held on the GROUP not the item — so the caller
@@ -11255,16 +11376,21 @@ if (typeof module !== 'undefined' && module.exports) {
           const editRow = document.createElement('div');
           editRow.className = 'pp-edit-row';
 
-          const qtyField = document.createElement('span'); qtyField.className = 'pp-edit-field';
-          const qtyDisplay = document.createElement('span'); qtyDisplay.className = 'pp-edit-display';
-          qtyDisplay.appendChild(document.createTextNode('Quantity: ' + (item.quantity || '—')));
-          const qtyBtn = document.createElement('button');
-          qtyBtn.type = 'button'; qtyBtn.className = 'pp-rename-btn';
-          qtyBtn.setAttribute('aria-label', 'Edit quantity'); qtyBtn.title = 'Edit quantity'; qtyBtn.textContent = '✎';
-          qtyBtn.onclick = function (e) { e.stopPropagation(); ppBeginEditShedQty(item, category, qtyField, qtyDisplay); };
-          qtyDisplay.appendChild(qtyBtn);
-          qtyField.appendChild(qtyDisplay);
-          editRow.appendChild(qtyField);
+          // Seeds carry no meaningful quantity (owner, 18/07 + 25/07) — a packet is hundreds of seeds, never
+          // duplicated — so the quick-edit quantity field is dropped for the Seeds & Seedlings family too, not
+          // just the read-only sub-line above. Category stays editable (a mis-filed packet still needs fixing).
+          if (!isSeedCat) {
+            const qtyField = document.createElement('span'); qtyField.className = 'pp-edit-field';
+            const qtyDisplay = document.createElement('span'); qtyDisplay.className = 'pp-edit-display';
+            qtyDisplay.appendChild(document.createTextNode('Quantity: ' + (item.quantity || '—')));
+            const qtyBtn = document.createElement('button');
+            qtyBtn.type = 'button'; qtyBtn.className = 'pp-rename-btn';
+            qtyBtn.setAttribute('aria-label', 'Edit quantity'); qtyBtn.title = 'Edit quantity'; qtyBtn.textContent = '✎';
+            qtyBtn.onclick = function (e) { e.stopPropagation(); ppBeginEditShedQty(item, category, qtyField, qtyDisplay); };
+            qtyDisplay.appendChild(qtyBtn);
+            qtyField.appendChild(qtyDisplay);
+            editRow.appendChild(qtyField);
+          }
 
           const catField = document.createElement('span'); catField.className = 'pp-edit-field';
           const catDisplay = document.createElement('span'); catDisplay.className = 'pp-edit-display';
@@ -12650,11 +12776,17 @@ if (typeof module !== 'undefined' && module.exports) {
         const row = document.createElement('div');
         row.className = 'pp-fact' + (isRef ? ' pp-fact-ref' : '');
         const k = document.createElement('div'); k.className = 'pp-fact-k'; k.textContent = label;
-        const val = String(value == null ? '' : value).trim();
+        const raw = String(value == null ? '' : value).trim();
         // A live "go" reading (the Sow line's "✓ Ready to sow") earns the one green — same signal as the
         // seedling card + soil panel. Only a go-state starts with ✓, so every other fact stays uniform/soft.
+        const isGo = raw.charAt(0) === '✓';
+        // Capitalise the first letter for consistency with the Crop Reference (owner, 25/07 — captured OCR
+        // facts printed lowercase on the packet, e.g. "full sun"/"moderate", read as unprofessional beside
+        // the title-cased book values). First letter ONLY, not title-case: mixed-case prose ("Prefers well-
+        // drained soil") stays intact, and a ✓ go-reading is left untouched (its ✓ isn't a letter).
+        const val = (raw && !isGo) ? (raw.charAt(0).toUpperCase() + raw.slice(1)) : raw;
         const v = document.createElement('div');
-        v.className = 'pp-fact-v' + (val.charAt(0) === '✓' ? ' pp-fact-go' : '');
+        v.className = 'pp-fact-v' + (isGo ? ' pp-fact-go' : '');
         v.textContent = val;
         row.appendChild(k); row.appendChild(v);
         return row;
