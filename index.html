@@ -1237,6 +1237,14 @@
         color: var(--text-muted); font-size: 0.7em; line-height: 1; vertical-align: middle; opacity: 0.75; }
       body.edit-unlocked .pp-rename-btn { display: inline-block; }
       .pp-rename-btn:hover { color: var(--text-main); opacity: 1; }
+      /* A2 ▲▼ (Garden list, reorder within a bed) — same edit-unlocked gate as the pencils above, so the
+         daily surface is byte-identical until editing is unlocked. Pushed to the right of the row title with
+         margin-left:auto; touch targets are a full 44px tall even though the glyphs are small. */
+      .pl-arrange { display: none; margin-left: auto; flex: 0 0 auto; gap: 2px; padding-left: 8px; }
+      body.edit-unlocked .pl-arrange { display: inline-flex; align-items: center; }
+      .pl-arrange-btn { border: 0; background: none; cursor: pointer; color: var(--text-muted);
+        font-size: 0.7em; line-height: 1; padding: 6px 7px; min-height: 44px; opacity: 0.75; }
+      .pl-arrange-btn:hover { color: var(--text-main); opacity: 1; }
       .pp-rename-edit { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
       .pp-rename-input { flex: 1 1 140px; min-width: 120px; padding: 5px 8px; font-size: var(--fs-md);
         color: var(--text-main); background: var(--surface-inset-03); border: 1px solid var(--text-muted);
@@ -2064,7 +2072,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.91</span>
+        <span class="header-version">v8.92</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2374,7 +2382,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.91 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.92 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6803,6 +6811,40 @@ if (typeof module !== 'undefined' && module.exports) {
         });
       }
 
+      // A2 (26/07) — ▲▼ reorder a plant within its bed from the Garden list. Deliberately reuses the MAP's
+      // arrange machinery rather than growing a second one: the same whole-bed `setPlotArrange` payload
+      // (plotBuildArrangePayload), the same 600ms debounce/coalesce + in-flight guard (plotScheduleSave), and
+      // the same plotRealPlants definition of which rows carry an order. The debounce is NOT optional — its
+      // comment at Js-Map.html:946 records that per-tap saves piled up on the 30s LockService wait and failed
+      // at the transport. Mirrors plotMoveCrop's swap exactly, so the two surfaces can't drift apart.
+      function gardenMoveCrop(bedId, key, dir) {
+        if (typeof readCachedGardenState !== 'function' || typeof plotRealPlants !== 'function') return;
+        const st = readCachedGardenState() || {};
+        const model = st.stateModel;
+        if (!model || !model.beds) return;
+        let bed = null;
+        model.beds.forEach(function (b) { if ((b.bedId || b.zone) === bedId) bed = b; });
+        if (!bed) return;
+        const reals = plotRealPlants(bed.plants);
+        let idx = -1;
+        for (let i = 0; i < reals.length; i++) if ((reals[i].key || '') === key) { idx = i; break; }
+        const swap = (dir === 'up') ? idx - 1 : idx + 1;
+        if (idx < 0 || swap < 0 || swap >= reals.length) return;   // already at the end — no wrap, no-op
+        const tmp = reals[swap]; reals[swap] = reals[idx]; reals[idx] = tmp;
+        // Non-real rows (free 'Empty' pots, count=0 tombstones) keep their places at the tail: they carry no
+        // BedOrder, and dropping them from bed.plants here would erase them from the rendered bed.
+        const nonReal = (bed.plants || []).filter(function (q) { return reals.indexOf(q) === -1; });
+        bed.plants = reals.concat(nonReal);
+        // Optimistic: cache + repaint from the mutated model so the row moves under the finger, then let the
+        // debounced save catch up. The server returns the authoritative order on the next getState.
+        if (typeof cacheState === 'function') cacheState({ currentState: st.currentState, stateModel: model });
+        renderLayoutModel(model);
+        if (typeof plotSyncModelForArrange === 'function' && typeof plotScheduleSave === 'function'
+            && plotSyncModelForArrange(model)) {
+          plotScheduleSave(bedId, false);
+        }
+      }
+
       function renderLayoutModel(model) {
         const container = document.getElementById('stateContainer');
         container.innerHTML = '';
@@ -6960,6 +7002,29 @@ if (typeof module !== 'undefined' && module.exports) {
               titleSpan.appendChild(countBadge);
             }
             topRow.appendChild(titleSpan);
+
+            // A2 ▲▼ — reorder this plant within its bed without opening the map. Writes the SAME BedOrder the
+            // map's arrange mode does, through the same debounced save. CSS-gated on body.edit-unlocked (the
+            // A1 pencil gate), so the daily surface is unchanged until editing is unlocked from the Dev drawer.
+            // Skipped for Unspecified beds (no bedId to arrange), for tombstones/free pots (they aren't in
+            // plotRealPlants, so they carry no order), and for a bed with nothing to swap against.
+            if (!isUnspecified && bed.bedId && p.key && !isHarvested
+                && typeof plotRealPlants === 'function' && plotRealPlants(bed.plants).length > 1) {
+              const arr = document.createElement('span');
+              arr.className = 'pl-arrange';
+              [['up', '▲', 'Move up'], ['down', '▼', 'Move down']].forEach(function (spec) {
+                const b = document.createElement('button');
+                b.type = 'button'; b.className = 'pl-arrange-btn';
+                b.textContent = spec[1]; b.title = spec[2];
+                b.setAttribute('aria-label', spec[2] + ' — ' + name);
+                b.onclick = function (e) {
+                  e.stopPropagation();          // the row itself opens the passport; arranging must not
+                  gardenMoveCrop(bed.bedId, p.key, spec[0]);
+                };
+                arr.appendChild(b);
+              });
+              topRow.appendChild(arr);
+            }
 
             // (Life-phase, step 4) The raw Stage badge is GONE — the enum is demoted to a Log memory, and
             // the card's lifecycle now reads from the derived phase (🫘/🌱 nursery icons + the harvest/yield
@@ -9435,6 +9500,17 @@ if (typeof module !== 'undefined' && module.exports) {
         const sizes = {}, positions = {};
         reals.forEach(function (p) { if (p.size) sizes[p.key || ''] = p.size; if (p.pos) positions[p.key || ''] = p.pos; });
         return { zone: bedId, order: reals.map(function (p) { return p.key || ''; }), sizes: sizes, positions: positions };
+      }
+      // Point the arrange machinery at a model the MAP may never have painted — the Garden list's ▲▼ (A2).
+      // plotBuildArrangePayload reads plotModelById, which applyMapLive only populates when the full-screen
+      // map is opened; a list-driven reorder must seed it first, or the payload would carry an empty `order`
+      // and blank the bed's BedOrder instead of setting it. Deliberately does NOT touch the SVG.
+      function plotSyncModelForArrange(model) {
+        if (!model || !model.beds) return false;
+        plotModel = model;
+        plotModelById = {};
+        model.beds.forEach(function (b) { plotModelById[b.bedId || b.zone] = b; });
+        return true;
       }
       function plotFlushSave() {
         if (plotSaveTimer) { clearTimeout(plotSaveTimer); plotSaveTimer = null; }
