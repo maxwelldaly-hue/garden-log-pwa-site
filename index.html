@@ -112,6 +112,14 @@
         --r-2xl: 20px;   /* cards (input-container, insights/bed cards, settings drawer) */
         --r-pill: 50%;   /* circles: status dot, toggle knob */
 
+        /* App column width — the phone-width shell the whole app lives in. Content boxes (main 550,
+           .pp-body 560) were always capped, but viewport-FIXED chrome (header contents, .log-fab,
+           .pp-bar) was not, so on a desktop window the furniture flew to the far corners while the
+           content stayed a narrow centred column. Chrome now insets to this same column via max(),
+           which collapses to the original literal on any screen narrower than the column — i.e. no
+           phone change whatsoever. */
+        --app-w: 560px;
+
         /* Letter-spacing — two values for uppercase labels (the 1px playground tag is a
            deliberate one-off and keeps its literal). */
         --ls-tight: 0.03em;
@@ -158,7 +166,10 @@
         backdrop-filter: blur(12px);
         border-bottom: 1px solid var(--border-color);
         display: flex; align-items: center; justify-content: space-between;
-        padding-left: 20px; padding-right: 20px;
+        /* The translucent band still spans the window (a capped band would read as an amputated strip),
+           but its CONTENTS inset to the --app-w column so the logo and status chip sit over the content
+           instead of at the far edges. max() => exactly 20px on any phone. */
+        padding-inline: max(20px, calc((100% - var(--app-w)) / 2 + 20px));
         z-index: 1000;
       }
 
@@ -286,7 +297,10 @@
       /* Left inset bumped 16px->24px (owner feedback 22/07, round 4, on-device photos): 16px of the SAME
          near-black ground colour on both sides gave the eye no cue a gap existed at all — it just read as
          "more dark", i.e. flush. 24px reads as an unambiguous, intentional margin instead. */
-      .log-fab { position: fixed; left: 24px; bottom: calc(16px + var(--safe-area-inset-bottom)); width: 60px;
+      /* left tracks the --app-w column on wide screens so the FAB stays beside the content rather than
+         in the far viewport corner; collapses to the literal 24px on any phone. Covers BOTH #logFab and
+         #ppLogFab by design — they share this class and must move together. */
+      .log-fab { position: fixed; left: max(24px, calc((100vw - var(--app-w)) / 2 + 24px)); bottom: calc(16px + var(--safe-area-inset-bottom)); width: 60px;
         height: 60px; border-radius: var(--r-pill); background: var(--bg-elevated); border: 1px solid var(--border-elevated);
         box-shadow: 0 14px 36px rgba(0,0,0,0.6), 0 4px 10px rgba(0,0,0,0.45); color: var(--text-main); display: flex; align-items: center; justify-content: center;
         cursor: pointer; z-index: 500; transition: opacity 0.25s ease, transform 0.25s ease;
@@ -1131,8 +1145,12 @@
         padding: 6px 0 2px; pointer-events: none;
       }
       @keyframes ppFsIn { from { transform: scale(0.97); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      /* Capped to match its sibling .pp-body — without this the bar is a full-viewport flex row, so
+         space-between threw the crumb to the far left and the arrows/✕ to the far right on desktop
+         while the card sat in a 560px column. No background/border here, so nothing full-bleed is lost. */
       .pp-bar {
         display: flex; align-items: center; justify-content: space-between;
+        max-width: var(--app-w); width: 100%; margin: 0 auto;
         padding: 12px 16px 4px; flex: 0 0 auto;
       }
       .pp-crumb {
@@ -2046,7 +2064,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.89</span>
+        <span class="header-version">v8.90</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2356,7 +2374,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.89 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.90 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -9695,6 +9713,9 @@ if (typeof module !== 'undefined' && module.exports) {
         const input = document.getElementById('logInputContainer');
         if (!overlay || !slot || !input) return;
         if (logSheetReturnTimer) { clearTimeout(logSheetReturnTimer); logSheetReturnTimer = null; }
+        // Any previous return-to-passport marker is void the moment the sheet is opened afresh; openPassportLog
+        // re-sets it immediately after calling us (Js-Passport.html), so only that path carries one.
+        if (typeof _ppReturn !== 'undefined') _ppReturn = null;
         slot.appendChild(input);                 // borrow the one input into the sheet
         overlay.style.display = 'flex';
         requestAnimationFrame(() => overlay.classList.add('open'));  // trigger the slide-down transition
@@ -9705,6 +9726,11 @@ if (typeof module !== 'undefined' && module.exports) {
         const overlay = document.getElementById('logSheetOverlay');
         if (!overlay || overlay.style.display === 'none') return;
         overlay.classList.remove('open');
+        // If the sheet was summoned FROM a passport, go back to that card (SCOPE-PASSPORT-ACTIONS.md's
+        // "wire back/Esc so closing the sheet returns to the passport"). Done in THIS tick, not in the 240ms
+        // timer below: the passport is z-1000 opaque over the z-999 sheet, so reopening now covers the
+        // slide-out instead of flashing the Garden list underneath for a quarter second.
+        if (typeof ppConsumeReturn === 'function') ppConsumeReturn();
         // Return the borrowed input to the Dashboard panel AFTER the slide-out, so it doesn't flash back
         // into view behind the closing sheet when the Dashboard tab is the active one.
         logSheetReturnTimer = setTimeout(() => {
@@ -10746,6 +10772,26 @@ if (typeof module !== 'undefined' && module.exports) {
       // history push — the single open state still owns the back gesture). Null / a lone item hides both arrows.
       let _ppSibs = null;
       let _ppSibIndex = -1;
+      // One-shot "reopen this card when the log sheet closes" marker (owner, 26/07). openPassportLog closes the
+      // passport to get the sheet visible (see there), which used to dump the user back on the Garden list — the
+      // dropped half of SCOPE-PASSPORT-ACTIONS.md's plan ("wire back/Esc so closing the sheet returns to the
+      // passport"). Set only by openPassportLog, cleared by openLogSheet (so the main FAB never inherits it) and
+      // consumed exactly once by closeLogSheet. The passport is only HIDDEN, never torn down, and the card comes
+      // back from _ppCache — so the return is a synchronous re-render, no network.
+      let _ppReturn = null;
+      // Called by closeLogSheet (Js-UI.html). Returns true if it reopened something.
+      function ppConsumeReturn() {
+        const r = _ppReturn;
+        _ppReturn = null;
+        if (!r || ppOpen) return false;
+        if (r.kind === 'shed') { openShedPassport(r.item, r.category, r.sibs, r.i); return true; }
+        // Drop this card's cached Story before reopening: the user may have just logged an event against this
+        // very plant, and a cache hit would render the pre-log story with no sign the entry landed. Deleting
+        // forces openPassport down its ppFetchStory path, so the new event shows.
+        try { delete _ppCache[ppKeyFor(r.p, r.bed)]; } catch (e) {}
+        openPassport(r.p, r.bed, r.sibs, r.i);
+        return true;
+      }
 
       // Scoped capture (SCOPE-PASSPORT-ACTIONS.md ask 1): the pp-bar ✎. Prefills the ONE capture box with this
       // plant/packet, then hands off to the normal summoned sheet. We CLOSE the passport first (rather than
@@ -10770,11 +10816,20 @@ if (typeof module !== 'undefined' && module.exports) {
         // defers the hide to a popstate (async), which would leave the sheet invisible for a beat — so hide here
         // and pop the pushed history entry ourselves; the resulting popstate no-ops (ppOpen is already false).
         const overlay = document.getElementById('passportOverlay');
+        // Remember the card so closing the sheet lands back on it rather than on the Garden list.
+        const ret = _ppLast && _ppLast.p
+          ? { kind: 'plant', p: _ppLast.p, bed: _ppLast.bed, sibs: _ppSibs, i: _ppSibIndex }
+          : (_ppShedLast && _ppShedLast.item
+            ? { kind: 'shed', item: _ppShedLast.item, category: _ppShedLast.category, sibs: _ppSibs, i: _ppSibIndex }
+            : null);
         if (_ppPushed) { _ppPushed = false; try { history.back(); } catch (e) {} }
         if (overlay) overlay.style.display = 'none';
         ppOpen = false; ppCurrentKey = '';
         document.body.style.overflow = '';
+        // Set AFTER openLogSheet, which clears the marker — that self-scopes it to this path, so the main
+        // #logFab can never inherit a stale return and teleport the user into a passport.
         if (typeof openLogSheet === 'function') openLogSheet();
+        _ppReturn = ret;
         if (typeof syncLogEntryState === 'function') syncLogEntryState();  // the box has text now — enable Log
       }
 
@@ -11159,12 +11214,14 @@ if (typeof module !== 'undefined' && module.exports) {
       }
       // Re-render the neighbouring item IN PLACE (no history push, no close/reopen) — the whole point of the
       // arrows. Reuses the exact render path each kind already has; a plant refetches its Story like a fresh
-      // open, a shed packet renders synchronously. Clamped at the ends (no wrap). Scrolls back to the top so
-      // the new card starts at its header, not wherever the last one was scrolled to.
+      // open, a shed packet renders synchronously. WRAPS at the ends (owner call 26/07 — running off the end of
+      // a bed and stopping dead read as broken; the group is a loop). Scrolls back to the top so the new card
+      // starts at its header, not wherever the last one was scrolled to.
       function ppNavTo(delta) {
         if (!ppOpen || !_ppSibs || _ppSibs.length < 2) return;
-        const i = _ppSibIndex + delta;
-        if (i < 0 || i >= _ppSibs.length) return;
+        // Double-modulo: plain % returns -1 for delta=-1 at index 0, so the +n re-floors it into range.
+        const n = _ppSibs.length;
+        const i = ((_ppSibIndex + delta) % n + n) % n;
         _ppSibIndex = i;
         const e = _ppSibs[i];
         if (e.kind === 'shed') {
@@ -11183,17 +11240,16 @@ if (typeof module !== 'undefined' && module.exports) {
         ppSyncNavButtons();
         const body = document.getElementById('passportBody'); if (body) body.scrollTop = 0;
       }
-      // Show the arrows only when there's a group to move through; disable the one at the end of the run.
+      // Show the arrows only when there's a group to move through. Since ppNavTo wraps, neither arrow is ever
+      // a dead end — but they must be actively RE-ENABLED, not just left alone: these are persistent DOM nodes
+      // reused across opens, so a disabled=true left over from the pre-wrap build would survive forever.
       function ppSyncNavButtons() {
         const prev = document.getElementById('ppPrev'), next = document.getElementById('ppNext');
         if (!prev || !next) return;
         const has = !!(_ppSibs && _ppSibs.length > 1);
         prev.style.display = has ? '' : 'none';
         next.style.display = has ? '' : 'none';
-        if (has) {
-          prev.disabled = _ppSibIndex <= 0;
-          next.disabled = _ppSibIndex >= _ppSibs.length - 1;
-        }
+        if (has) { prev.disabled = false; next.disabled = false; }
       }
 
       function closePassport(fromPop) {
