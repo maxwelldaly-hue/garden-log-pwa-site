@@ -2064,7 +2064,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.90</span>
+        <span class="header-version">v8.91</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2374,7 +2374,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v8.90 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v8.91 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6393,10 +6393,24 @@ if (typeof module !== 'undefined' && module.exports) {
       }
 
       // --- Relative-date helpers for the glanceable plant rows (Tier A) ---
+      const DMY_MONTH_NAMES = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
       function parseDMY(dateStr) {
-        const p = String(dateStr || '').split('/');
-        if (p.length !== 3) return null;
-        const d = new Date(parseInt(p[2], 10), parseInt(p[1], 10) - 1, parseInt(p[0], 10));
+        const raw = String(dateStr || '').trim();
+        const p = raw.split('/');
+        if (p.length === 3) {
+          const d = new Date(parseInt(p[2], 10), parseInt(p[1], 10) - 1, parseInt(p[0], 10));
+          return isNaN(d.getTime()) ? null : d;
+        }
+        // "3 Jul 2026" — the shed's PurchaseDate is formatted SERVER-side by shedDateDisplay (GardenState.js)
+        // before it ever reaches us, so the dd/mm/yyyy branch above could never parse it: relativePast returned
+        // '' and both shed surfaces silently fell back to printing the raw date, despite the comment in
+        // Js-Core.html promising "one time-voice with the Garden (bought 6mo ago)". Accepting the display form
+        // here fixes both callers at once and leaves every dd/mm/yyyy path untouched.
+        const m = raw.match(/^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/);
+        if (!m) return null;
+        const mo = DMY_MONTH_NAMES.indexOf(m[2].slice(0, 3).toLowerCase());
+        if (mo < 0) return null;
+        const d = new Date(parseInt(m[3], 10), mo, parseInt(m[1], 10));
         return isNaN(d.getTime()) ? null : d;
       }
       // Whole days from today to dateStr (negative = past), or null.
@@ -6422,11 +6436,17 @@ if (typeof module !== 'undefined' && module.exports) {
       // "2w ago" — so it stays in one unit with the plant-out clock ("Earliest plant out in N days"). Used only
       // for the Sprouted/Sown origin lines (young by definition); established plants keep relativePast's coarser
       // weeks/months/years.
+      // Hands back to relativePast past 70 days: the days-scale exists to share a unit with the plant-out clock,
+      // and nothing that old is still a seedling waiting on one. Without this cap, converging the Garden row
+      // onto this helper would have printed "Sown 400 days ago" on a seed-raised plant that never got marked
+      // transplanted — and the passport, which already used this helper, could too. 70 is relativePast's own
+      // weeks→months boundary, so the two ladders meet without inventing a new threshold.
       function relativePastDays(dateStr) {
         const d = daysUntil(dateStr);
         if (d === null) return '';
         const ago = -d;
         if (ago <= 0) return 'today';
+        if (ago >= 70) return relativePast(dateStr);
         return ago + (ago === 1 ? ' day ago' : ' days ago');
       }
       // Strip any overdue marker the backend baked into Est. Harvest before we compute the line.
@@ -6471,7 +6491,9 @@ if (typeof module !== 'undefined' && module.exports) {
         return 'Est. harvest in ' + overdueDays + (Math.abs(overdueDays) === 1 ? ' day' : ' days');
       }
 
-      // "06/10/2025" -> "6 Oct" for the duplicate-plant (successions) date tag in renderLayoutModel.
+      // "06/10/2025" -> "6 Oct". The bare primitive, deliberately year-LESS: ppShortDate (Js-Passport.html)
+      // layers the "…and the year once it isn't this year" rule on top. Prefer rowShortDate below for anything
+      // user-facing — a bare "6 Oct" can't distinguish last season from next week.
       function shortPlantedDate(s) {
         const m = String(s || '').match(/^(\d{1,2})\/(\d{1,2})\/\d{4}$/);
         if (!m) return '';
@@ -6479,6 +6501,12 @@ if (typeof module !== 'undefined' && module.exports) {
         const d = parseInt(m[1], 10), mo = parseInt(m[2], 10);
         if (mo < 1 || mo > 12) return '';
         return d + ' ' + months[mo - 1];
+      }
+      // Year-aware short date for the Garden-tab rows — one rule with the passport's Story/photo dates
+      // (ppShortDate): "6 Oct" this year, "6 Oct 2025" otherwise. The rows used the bare primitive, so a stale
+      // estimate left over from last season read identically to one due next week.
+      function rowShortDate(s) {
+        return (typeof ppShortDate === 'function') ? ppShortDate(s) : shortPlantedDate(s);
       }
 
       // Plant emoji by name — specific where one exists, herbs are consistently 🌿, and the fallback
@@ -6955,13 +6983,16 @@ if (typeof module !== 'undefined' && module.exports) {
               // seedOrigin = it was sown as a seed (EstSprout is baked at sow and persists). p.transplanted =
               // when it was planted out. See docs/LIFE-PHASE-PLAN.md.
               const seedOrigin = !!p.estSprout;
+              // The two "Sown" lines read in DAYS to match the passport's ppWhenDays (relativePastDays caps
+              // itself back to the coarse ladder past 70 days, so an old seed-raised row can't read "400 days
+              // ago"). The "Planted … (sown …)" line keeps the coarse voice — its passport twin uses ppWhen.
               if (nursery === 'seed') {
-                pl.textContent = 'Sown ' + relativePast(metadata.planted);
+                pl.textContent = 'Sown ' + relativePastDays(metadata.planted);
               } else if (seedOrigin && p.transplanted) {
                 const sownAgo = relativePast(metadata.planted).replace(/\s*ago$/, '');
                 pl.textContent = 'Planted ' + relativePast(p.transplanted) + ' (sown ' + sownAgo + ')';
               } else if (seedOrigin) {
-                pl.textContent = 'Sown ' + relativePast(metadata.planted);
+                pl.textContent = 'Sown ' + relativePastDays(metadata.planted);
               } else {
                 pl.textContent = 'Planted ' + relativePast(metadata.planted);
               }
@@ -6980,7 +7011,7 @@ if (typeof module !== 'undefined' && module.exports) {
                 sp.textContent = 'Est. sprout day passed';
               } else {
                 const sd = daysUntil(p.estSprout);
-                sp.textContent = (sd === null) ? ('Est. sprout by ' + shortPlantedDate(p.estSprout))
+                sp.textContent = (sd === null) ? ('Est. sprout by ' + rowShortDate(p.estSprout))
                                : (sd <= 0)     ? 'Est. sprout today'
                                                : ('Est. sprout in ' + sd + (sd === 1 ? ' day' : ' days'));
               }
@@ -6994,13 +7025,17 @@ if (typeof module !== 'undefined' && module.exports) {
               if (p.sprouted) {
                 const sr = document.createElement('span');
                 sr.className = 'pl-line pl-planted';
-                sr.textContent = 'Sprouted ' + relativePast(p.sprouted);
+                // DAYS, matching the passport's own "Sprouted 14 days ago" (ppWhenDays) — the row and the card
+                // were describing the same milestone in different units ("2w ago" vs "14 days ago"). Days is the
+                // right side to converge on here: this block is nursery-only, and it shares the unit with the
+                // "Earliest plant out in N days" line directly beneath it (owner 25/07).
+                sr.textContent = 'Sprouted ' + relativePastDays(p.sprouted);
                 metaContainer.appendChild(sr);
               }
               if (p.estTransplant) {
                 const tp = document.createElement('span');
                 tp.className = 'pl-line pl-countdown';
-                tp.textContent = 'Plant out ~' + shortPlantedDate(p.estTransplant);
+                tp.textContent = 'Plant out ~' + rowShortDate(p.estTransplant);
                 metaContainer.appendChild(tp);
               }
             }
@@ -11834,6 +11869,12 @@ if (typeof module !== 'undefined' && module.exports) {
         const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
         return m ? (m[3] + '/' + m[2] + '/' + m[1]) : '';
       }
+      // The inverse — seeds a native date input from a stored DD/MM/YYYY cell. Returns '' for a blank or
+      // unparseable cell so the picker simply opens empty rather than on some coerced wrong day.
+      function ppDmyToIso(dmy) {
+        const m = String(dmy || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        return m ? (m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0')) : '';
+      }
       // Returns { el, getDate }. el is a .resolve-field wrapper (already styled — Stylesheet.html) holding a
       // labelled date input; getDate() yields DD/MM/YYYY only when the user picked a day other than today,
       // else '' (leave item.date unset -> server defaults to today).
@@ -12459,10 +12500,15 @@ if (typeof module !== 'undefined' && module.exports) {
         } catch (e) { /* decoration must never break a render */ }
       }
 
-      // The inline editor: swap the field's line for a text input, post editPlantField, then re-render the
+      // The inline editor: swap the field's line for an input, post editPlantField, then re-render the
       // passport from the fresh (recomputed) plant + repaint the Garden. Mirrors ppBeginEditShedQty's skeleton;
-      // dates take a dd/mm/yyyy text box, Count a numeric one. The server owns validation (validatePlantFieldEdit)
-      // — a bad value / a Count of 0 (which is a Pull-out, not a correction) comes back as a decline message.
+      // dates take a NATIVE date picker, Count a numeric box. The server owns validation
+      // (validatePlantFieldEdit) — a bad value / a Count of 0 (which is a Pull-out, not a correction) comes back
+      // as a decline message.
+      // The date field shipped in v8.89 as a plain dd/mm/yyyy TEXT box — the only typed date entry left in the
+      // app, and an ambiguous one: "07/11/2026" is valid under both readings, so a dd/mm slip stored 7 November
+      // silently. Now uses type="date" like every other date entry (ppDateField), with ppIsoToDMY converting
+      // back to the DD/MM/YYYY the Sheet stores. The picker also removes the whole class of parse-decline.
       function ppBeginEditPlantField(p, bedName, field, lineEl) {
         if (!p || !p.plantId || !lineEl) return;
         const isDate = (field !== 'count');
@@ -12472,10 +12518,18 @@ if (typeof module !== 'undefined' && module.exports) {
         const host = row.parentNode; if (!host) return;
         if (host.querySelector('.pp-rename-edit')) return; // already editing a field here
         const editor = document.createElement('div'); editor.className = 'pp-rename-edit';
-        const input = document.createElement('input'); input.type = 'text'; input.className = 'pp-rename-input'; input.value = cur;
+        const input = document.createElement('input'); input.className = 'pp-rename-input';
         input.setAttribute('aria-label', field === 'count' ? 'How many' : field === 'estharvest' ? 'Estimated harvest date' : 'Planted date');
         input.autocomplete = 'off';
-        if (isDate) { input.placeholder = 'dd/mm/yyyy'; } else { input.inputMode = 'numeric'; input.placeholder = 'e.g. 4'; }
+        if (isDate) {
+          input.type = 'date';
+          input.value = ppDmyToIso(cur);   // '' when the stored cell is blank/odd — picker just opens empty
+          // Planted is a correction to something that already happened, so it can't be in the future; an
+          // Est. harvest is a prediction and must be able to be.
+          if (field === 'planted') input.max = ppTodayIso();
+        } else {
+          input.type = 'text'; input.value = cur; input.inputMode = 'numeric'; input.placeholder = 'e.g. 4';
+        }
         const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'pp-rename-ok'; ok.textContent = '✓'; ok.title = 'Save';
         const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'pp-rename-cancel'; cancel.textContent = '✕'; cancel.title = 'Cancel';
         const note = document.createElement('div'); note.className = 'pp-rename-note';
@@ -12485,7 +12539,10 @@ if (typeof module !== 'undefined' && module.exports) {
         try { input.focus(); input.select(); } catch (e) {}
         const close = function () { editor.remove(); lineEl.style.display = ''; };
         const commit = function () {
-          const nv = String(input.value || '').replace(/\s+/g, ' ').trim();
+          // A date input hands back YYYY-MM-DD; the server/Sheet speak DD/MM/YYYY. Convert BEFORE the
+          // no-op check so an untouched picker compares equal to the stored cell and closes silently.
+          const raw = String(input.value || '').replace(/\s+/g, ' ').trim();
+          const nv = isDate ? ppIsoToDMY(raw) : raw;
           if (!nv || nv === cur) { close(); return; }
           const pin = localStorage.getItem('garden_log_pin'), token = localStorage.getItem('garden_log_token');
           if (!pin && !token) { note.textContent = 'Enter your PIN first.'; return; }
