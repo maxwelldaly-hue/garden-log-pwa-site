@@ -2046,7 +2046,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.88</span>
+        <span class="header-version">v8.89</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2356,7 +2356,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.88 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.89 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -12419,6 +12419,98 @@ if (typeof module !== 'undefined' && module.exports) {
         select.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); close(); } });
       }
 
+      // --- Core plant quick-edits (SCOPE-FIELD-EDITABILITY.md Track A1) ---------------------------------
+      // Inline ✎ for a plant's own INSTANCE facts — Planted / EstHarvest date, or Count — a one-cell twin of
+      // the shed Quantity editor above, posting editPlantField BY PlantId. These decorate the fields WHERE
+      // they already show (Option A, owner 26/07): Planted on the origin line, Count on the subtitle, and
+      // EstHarvest on the harvest countdown line — never a separate box, so the fact keeps one home and can't
+      // read inconsistently with the story line above it.
+
+      // Find the freshly-recomputed plant (new derived phase / harvest line after a Planted/Count edit) in the
+      // bundle editPlantField returns, so the passport re-renders from authoritative data, not the stale local p.
+      function ppFindPlantInModel(model, plantId) {
+        if (!model || !model.beds || !plantId) return null;
+        const want = String(plantId);
+        for (let i = 0; i < model.beds.length; i++) {
+          const ps = model.beds[i].plants || [];
+          for (let j = 0; j < ps.length; j++) { if (ps[j] && String(ps[j].plantId || '') === want) return ps[j]; }
+        }
+        return null;
+      }
+
+      // Append a quiet ✎ (CSS-gated by body.edit-unlocked, same as the title rename pencil) to a shown field
+      // element. Only a real, id-bearing plant gets one. `field` is 'planted' | 'estharvest' | 'count'.
+      function ppAttachFieldPencil(anchorEl, p, bedName, field) {
+        try {
+          if (!anchorEl || !p || !p.plantId) return;
+          if (anchorEl.querySelector && anchorEl.querySelector('.pp-field-edit-btn')) return;
+          const b = document.createElement('button');
+          b.type = 'button'; b.className = 'pp-rename-btn pp-field-edit-btn';
+          b.setAttribute('aria-label', 'Edit'); b.title = 'Edit'; b.textContent = '✎';
+          b.onclick = function (e) { e.stopPropagation(); ppBeginEditPlantField(p, bedName, field, anchorEl); };
+          anchorEl.appendChild(b);
+        } catch (e) { /* decoration must never break a render */ }
+      }
+
+      // The inline editor: swap the field's line for a text input, post editPlantField, then re-render the
+      // passport from the fresh (recomputed) plant + repaint the Garden. Mirrors ppBeginEditShedQty's skeleton;
+      // dates take a dd/mm/yyyy text box, Count a numeric one. The server owns validation (validatePlantFieldEdit)
+      // — a bad value / a Count of 0 (which is a Pull-out, not a correction) comes back as a decline message.
+      function ppBeginEditPlantField(p, bedName, field, lineEl) {
+        if (!p || !p.plantId || !lineEl) return;
+        const isDate = (field !== 'count');
+        const cur = field === 'planted' ? (p.planted || '') : field === 'estharvest' ? (p.estHarvest || '') : (p.count == null ? '' : String(p.count));
+        // Insert the editor right after the line (or its flex row), and hide the line while editing.
+        const row = (lineEl.parentNode && lineEl.parentNode.classList && lineEl.parentNode.classList.contains('pl-line-row')) ? lineEl.parentNode : lineEl;
+        const host = row.parentNode; if (!host) return;
+        if (host.querySelector('.pp-rename-edit')) return; // already editing a field here
+        const editor = document.createElement('div'); editor.className = 'pp-rename-edit';
+        const input = document.createElement('input'); input.type = 'text'; input.className = 'pp-rename-input'; input.value = cur;
+        input.setAttribute('aria-label', field === 'count' ? 'How many' : field === 'estharvest' ? 'Estimated harvest date' : 'Planted date');
+        input.autocomplete = 'off';
+        if (isDate) { input.placeholder = 'dd/mm/yyyy'; } else { input.inputMode = 'numeric'; input.placeholder = 'e.g. 4'; }
+        const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'pp-rename-ok'; ok.textContent = '✓'; ok.title = 'Save';
+        const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'pp-rename-cancel'; cancel.textContent = '✕'; cancel.title = 'Cancel';
+        const note = document.createElement('div'); note.className = 'pp-rename-note';
+        editor.appendChild(input); editor.appendChild(ok); editor.appendChild(cancel); editor.appendChild(note);
+        lineEl.style.display = 'none';
+        host.insertBefore(editor, row.nextSibling);
+        try { input.focus(); input.select(); } catch (e) {}
+        const close = function () { editor.remove(); lineEl.style.display = ''; };
+        const commit = function () {
+          const nv = String(input.value || '').replace(/\s+/g, ' ').trim();
+          if (!nv || nv === cur) { close(); return; }
+          const pin = localStorage.getItem('garden_log_pin'), token = localStorage.getItem('garden_log_token');
+          if (!pin && !token) { note.textContent = 'Enter your PIN first.'; return; }
+          input.disabled = ok.disabled = cancel.disabled = true; note.textContent = 'Saving…';
+          google.script.run
+            .withSuccessHandler(function (resStr) {
+              let res = null; try { res = JSON.parse(resStr); } catch (e) {}
+              if (res && res.status === 'success' && res.data && res.data.updated) {
+                if (field === 'planted') p.planted = res.data.value;
+                else if (field === 'estharvest') p.estHarvest = res.data.value;
+                else p.count = res.data.value;
+                const fresh = ppFindPlantInModel(res.data.stateModel, p.plantId) || p;
+                if (_ppLast && _ppLast.p) _ppLast.p = fresh;
+                try { ppRender(fresh, bedName, _ppCache[ppCurrentKey], false); } catch (e) {} // rebuilds the card (drops the editor)
+                if (typeof refreshStateView === 'function') refreshStateView(true);            // pull the change into the Garden tab + map + cache
+              } else {
+                input.disabled = ok.disabled = cancel.disabled = false;
+                note.textContent = (res && res.data && res.data.message) || (res && res.message) || 'Could not update — try again.';
+              }
+            })
+            .withFailureHandler(function () { input.disabled = ok.disabled = cancel.disabled = false; note.textContent = 'Could not update — try again.'; })
+            .processClientRequest(JSON.stringify({ action: 'editPlantField', plantId: p.plantId, field: field, value: nv, token: token, pin: pin }));
+        };
+        ok.onclick = function (e) { e.stopPropagation(); commit(); };
+        cancel.onclick = function (e) { e.stopPropagation(); close(); };
+        input.addEventListener('click', function (e) { e.stopPropagation(); });
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); commit(); }
+          else if (e.key === 'Escape') { e.preventDefault(); close(); }
+        });
+      }
+
 </script>
 
     <script>
@@ -12465,6 +12557,8 @@ if (typeof module !== 'undefined' && module.exports) {
         if (isFinite(count) && count > 1) bits.push('×' + count);
         bits.push(bedDisplayName ? bedDisplayName(bedName) : bedName);
         sub.textContent = bits.join(' · ');
+        // A1 quick-edit: ✎ on the subtitle corrects Count (edit-unlocked-gated via .pp-rename-btn CSS).
+        if (typeof ppAttachFieldPencil === 'function') ppAttachFieldPencil(sub, p, bedName, 'count');
         txt.appendChild(sub);
         // Botanical name (owner, 15/07): the packet's captured LabelLatin wins; the species reference
         // fills in otherwise (but only when Filler is on — the reference latin is overlay data). Quiet italic.
@@ -12629,6 +12723,16 @@ if (typeof module !== 'undefined' && module.exports) {
             hrow.appendChild(stageBtn);
             wrap.appendChild(hrow);
           }
+        }
+        // A1 quick-edits (Option A, owner 26/07): decorate the fields WHERE they show — Planted on the origin
+        // line, EstHarvest on the harvest countdown/check line — with an ✎ (edit-unlocked-gated by CSS). Only
+        // the lines actually rendered above get a pencil, so the fact keeps one home (no separate box, nothing
+        // to read inconsistently). Count is decorated on the identity subtitle (ppBuildIdentity).
+        if (p.plantId && typeof ppAttachFieldPencil === 'function') {
+          const plantedEl = wrap.querySelector('.pl-planted');
+          if (plantedEl) ppAttachFieldPencil(plantedEl, p, bedName, 'planted');
+          const harvEl = wrap.querySelector('.pl-countdown, .pl-harvest-check');
+          if (harvEl) ppAttachFieldPencil(harvEl, p, bedName, 'estharvest');
         }
         return wrap.children.length ? wrap : null;
       }
