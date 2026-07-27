@@ -1225,8 +1225,19 @@
       }
       .pp-stepper-btn:disabled { opacity: 0.35; cursor: default; }
       .pp-stepper-val { min-width: 2.5em; text-align: center; font-size: var(--fs-lg); font-weight: 600; }
+      /* flex-GROW is deliberately 0 (thin-card rhythm, 27/07). The body still SHRINKS (0 1 auto) and still
+         scrolls, so a long card is byte-for-byte what it was — measured: a 4×-length card caps at the same
+         452px and stays scrollable. But a SHORT card now ends where its content ends instead of stretching to
+         fill the sheet, which drags the .pp-fs::after "⌄ tap below to close" cue up with it. Measured on a
+         375×812 sheet with the real emitted DOM (DUMP_SHED): a bare Tools card (identity block only, 51px of
+         content) carried 402px of dead space inside the card and put the closing cue 497px down the sheet —
+         the card ended but its frame didn't, which is the whole "reads as broken" tell. Now: body 78px, cue at
+         122px, 27px of breathing room (this rule's own padding-bottom). No content added, nothing removed.
+         The dead space below simply becomes overlay ground, which already closes on tap exactly as the body
+         did (ppBindBackdrop treats #passportBody and the overlay identically) — so the touch behaviour of
+         every pixel is unchanged. Shared with #inSeasonBody by design: same shell, same gain when short. */
       .pp-body {
-        flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch;
+        flex: 0 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch;
         padding: 8px 16px 28px;
         display: flex; flex-direction: column; gap: 18px;
         max-width: 560px; width: 100%; margin: 0 auto; box-sizing: border-box;
@@ -2127,7 +2138,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.06</span>
+        <span class="header-version">v9.07</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2443,7 +2454,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.06 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.07 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
