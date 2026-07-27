@@ -2138,7 +2138,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.07</span>
+        <span class="header-version">v9.08</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2454,7 +2454,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.07 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.08 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6706,6 +6706,37 @@ if (typeof module !== 'undefined' && module.exports) {
         if (ago >= 70) return relativePast(dateStr);
         return ago + (ago === 1 ? ' day ago' : ' days ago');
       }
+      // --- Watering memory: the passport's one quiet line (docs/SCOPE-WATERING-MEMORY.md) ---------------
+      // The PURE render DECISION (AGENTS rule 43 — the renderer, ppLedgerLinesEl in Js-Passport3.html, is a
+      // dumb consumer of this, so what the owner SEES is what a test can assert). Input is the plant's raw
+      // Watered ring cell: a ' · '-separated list of DD/MM/YYYY dates, oldest first, capped server-side by
+      // stampGardenPlantWatered (GardenState.js). Output is the line text, or '' for NO LINE AT ALL.
+      //   >= WATERED_RHYTHM_MIN dates inside the last 7 days -> the frequency: "Watered ~4× this week".
+      //   fewer                                              -> the smaller TRUE thing: "Last watered 2d ago".
+      // WATERED_RHYTHM_MIN is 3 because two dates is one interval, not a rhythm — a "this week" count built
+      // from a single data point would be the app inventing a pattern it cannot evidence, and this app gives
+      // vibes, not commands. Reuses relativePast for the time voice rather than inventing new phrasing.
+      // Takes the NEWEST date by parsed value, not by position, so a hand-reordered cell still reads right.
+      const WATERED_RHYTHM_MIN = 3;
+      function wateredMemoryLine(cell) {
+        const dates = String(cell || '').split(/[·,;\s]+/)
+          .map(function (s) { return s.trim(); })
+          .filter(function (s) { return /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s); });
+        if (!dates.length) return '';
+        let week = 0, newest = null, newestAge = null;
+        dates.forEach(function (d) {
+          const n = daysUntil(d);
+          if (n === null) return;
+          if (n > -7 && n <= 0) week++;                              // today back through 6 days ago
+          if (newestAge === null || n > newestAge) { newestAge = n; newest = d; }
+        });
+        if (week >= WATERED_RHYTHM_MIN) return 'Watered ~' + week + '× this week';
+        if (!newest) return '';
+        const rel = relativePast(newest);
+        if (!rel) return '';
+        return rel === 'today' ? 'Watered today' : 'Last watered ' + rel;
+      }
+
       // Strip any overdue marker the backend baked into Est. Harvest before we compute the line.
       function stripOverdueClient(s) {
         return String(s || '').replace(/\s*(?:⚠\s*overdue|\(overdue\))\s*$/i, '').trim();
@@ -7769,12 +7800,14 @@ if (typeof module !== 'undefined' && module.exports) {
         chip.textContent = '✓ Logged';
         chip.style.display = 'flex';
       }
-      function resolveLogChip(logId, domain, canChange) {
+      // `text`, when given, REPLACES the "✓ Logged to <domain>" phrasing — used by the watering case, whose
+      // note genuinely wasn't logged (see chipDomainFromRouted). Every other caller omits it and is unchanged.
+      function resolveLogChip(logId, domain, canChange, text) {
         if (_chipLogId !== logId) return; // a newer submit owns the chip now
         const chip = document.getElementById('logChip'); if (!chip) return;
         _clearChipFade(); chip.classList.remove('fading'); chip.textContent = '';
         const label = document.createElement('span');
-        label.textContent = '✓ Logged to ' + domain + (canChange ? ' · ' : '');
+        label.textContent = text || ('✓ Logged to ' + domain + (canChange ? ' · ' : ''));
         chip.appendChild(label);
         if (canChange) {
           const a = document.createElement('span'); a.className = 'log-chip-change'; a.textContent = 'tap to change';
@@ -7829,7 +7862,13 @@ if (typeof module !== 'undefined' && module.exports) {
       }
       // Compute the chip's domain label + whether "tap to change" applies, from handleLogAction's `routed`
       // summary. Absent routed = a plain garden log; a compound (both) is correctly split, so no single move.
-      function chipDomainFromRouted(routed) {
+      // `wateredOnly` (server flag) is the honest exception: a routine watering note writes NO Log row and NO
+      // state — the server took a quiet Watered care stamp instead — so "✓ Logged to Garden · tap to change"
+      // was a FALSE acknowledgement offering to reroute a row that doesn't exist. Say the shorter true thing
+      // and drop the affordance. Deliberately not an apology or an explanation (Total Silent Success, rule 2):
+      // the chip gets shorter, not chattier.
+      function chipDomainFromRouted(routed, wateredOnly) {
+        if (wateredOnly) return { domain: 'Garden', canChange: false, text: '✓ Watered — noted' };
         if (routed && routed.garden > 0 && routed.shed > 0) return { domain: 'Garden + Shed', canChange: false };
         if (routed && routed.shed > 0) return { domain: 'Shed', canChange: true };
         return { domain: 'Garden', canChange: true };
@@ -8652,7 +8691,7 @@ if (typeof module !== 'undefined' && module.exports) {
                   // the dismiss did not — an OLDER queued log returning `unreadable` would clear a NEWER submit's
                   // optimistic "✓ Logged" chip and its routed "✓ Logged to …" would never show. Only touch the chip this response owns.
                   if (res.data.unreadable) { if (_chipLogId === currentLog.id) dismissLogChip(); }
-                  else { const cd = chipDomainFromRouted(res.data.routed); resolveLogChip(currentLog.id, cd.domain, cd.canChange); }
+                  else { const cd = chipDomainFromRouted(res.data.routed, res.data.wateredOnly); resolveLogChip(currentLog.id, cd.domain, cd.canChange, cd.text); }
                 }
               } else {
                 isSyncing = false;
@@ -13256,6 +13295,16 @@ if (typeof module !== 'undefined' && module.exports) {
           const harvEl = wrap.querySelector('.pl-countdown, .pl-harvest-check');
           if (harvEl) ppAttachFieldPencil(harvEl, p, bedName, 'estharvest');
         }
+        // WATERING MEMORY (docs/SCOPE-WATERING-MEMORY.md) — ONE quiet line, in the ledger's own register:
+        // "Watered ~4× this week" when the ring holds enough dates to say that honestly, otherwise the
+        // smaller true thing ("Last watered 2d ago"). No colour, no badge, no nudge, no "you should water" —
+        // this is the ambient ledger, not a command centre. The DECISION lives in wateredMemoryLine
+        // (Js-State.html) so this renderer stays a dumb consumer of a testable pure function (rule 43);
+        // '' means no line at all, which is every plant that has never been watered by name.
+        // Placed LAST, after the stage/harvest button attach on purpose: those attach to wrap.lastElementChild,
+        // so adding this earlier would hang the Harvest button off the watering line.
+        const wLine = (typeof wateredMemoryLine === 'function') ? wateredMemoryLine(p.watered) : '';
+        if (wLine) line('pl-watered', wLine);
         return wrap.children.length ? wrap : null;
       }
       // Bell icon (design pass 23/07 round 6, "harvest alarm" redesign) — plain inline SVG (no sprite
