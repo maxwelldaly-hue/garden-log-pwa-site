@@ -1449,6 +1449,13 @@
       }
       .pp-ref-k, .pp-ref-v { color: var(--text-muted); }
       .pp-ref-v { overflow-wrap: anywhere; }
+      /* B1 (SCOPE-FIELD-EDITABILITY.md): the crop-fact ✎ writes the SPECIES row, not this plant — the one
+         thing about this editor that isn't obvious from where it sits. Gated with the pencils themselves
+         (body.edit-unlocked), so the daily surface is byte-identical: it appears exactly when it's a
+         warning and never as trivia. The sage rule ties it to the rows it's about without a box. */
+      .pp-crop-hint { display: none; margin-top: 8px; font-size: var(--fs-xs); line-height: 1.45;
+        color: var(--text-muted); border-left: 2px solid rgba(45, 138, 96, 0.55); padding-left: 9px; }
+      body.edit-unlocked .pp-crop-hint { display: block; }
       /* Story milestones + photo rows: the Recent-row register (mark · text · short date). */
       .pp-ms-row {
         display: flex; gap: 10px; padding: 7px 2px; align-items: baseline;
@@ -2138,7 +2145,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.12</span>
+        <span class="header-version">v9.14</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2454,7 +2461,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.12 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.14 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11389,6 +11396,16 @@ if (typeof module !== 'undefined' && module.exports) {
         ['harvest', 'Harvest'], ['helps', 'Companion'], ['avoid', 'Avoid'], ['usage', 'Usage']
       ];
 
+      // The SPECIES-level care facts (SCOPE-FIELD-EDITABILITY.md Track B1, decision §2) — the Crops-book
+      // cells the app can correct in place. Their General-reference row renders ALWAYS, even on a plant that
+      // captured its own value, which every other field's row does not: the reference row is the crop-level
+      // ✎'s only host, and a plant with a scanned packet is exactly where the species value most needs
+      // fixing (suppress the row there and the pencil is unreachable on the plants that matter). The captured
+      // fact still wins the bright box above — this line is explicitly "what the book says about the
+      // species", which is also the honest reading of decision §6. Keys match the client reference model;
+      // the values map to Crops columns server-side (CROP_FACT_EDITABLE, CropsBook.js).
+      const PP_CROP_FACTS = { water: 'Water', feederClass: 'Feeder' };
+
       const PP_MONTH_ABBR = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
       // "Sep, Oct, Nov, Dec, Jan, Feb" -> "Sep–Feb" when the months form ONE contiguous run on the 12-month
       // wheel (wrap-aware); a full year -> "Year-round"; anything gappy stays a capitalised list. Degrades to
@@ -13023,6 +13040,91 @@ if (typeof module !== 'undefined' && module.exports) {
         });
       }
 
+      // --- Crop-reference care facts (SCOPE-FIELD-EDITABILITY.md Track B1) ------------------------------
+      // The fix-once editor. Unlike every pencil above it, this one does NOT edit the row it sits on: it
+      // writes the SPECIES row on the Crops book, so the correction is true for every plant of that crop
+      // that hasn't captured its own value. It hangs off the dimmed "General reference" rows (the only
+      // place a species fact is shown) and the line beneath them says exactly that.
+
+      // Closed vocabularies, mirroring CROP_FACT_EDITABLE (CropsBook.js) — the server re-validates, this
+      // just keeps the client from ever offering a value the book would reject. 'light–medium' carries the
+      // book's own en dash; the server matches dash-insensitively either way.
+      const PP_CROP_FACT_VALUES = {
+        water: ['Light', 'Moderate', 'Thirsty'],
+        feederClass: ['light', 'light–medium', 'medium', 'heavy']
+      };
+
+      // Quiet ✎ on a reference row's value. Reuses .pp-rename-btn, so it inherits the edit-unlocked gate
+      // (and edit mode itself) for free — no new gating logic. Only a plant whose crop we can name gets one.
+      function ppAttachCropPencil(anchorEl, p, field) {
+        try {
+          if (!anchorEl || !p || !p.name) return;
+          if (!PP_CROP_FACT_VALUES[field]) return;
+          if (anchorEl.querySelector && anchorEl.querySelector('.pp-crop-edit-btn')) return;
+          const b = document.createElement('button');
+          b.type = 'button'; b.className = 'pp-rename-btn pp-crop-edit-btn';
+          b.setAttribute('aria-label', 'Edit for this crop'); b.title = 'Edit for this crop'; b.textContent = '✎';
+          b.onclick = function (e) { e.stopPropagation(); ppBeginEditCropFact(p, field, anchorEl); };
+          anchorEl.appendChild(b);
+        } catch (e) { /* decoration must never break a render */ }
+      }
+
+      // The inline <select>, mirroring ppBeginEditShedCategory's skeleton. Posts editCropFact BY BASE CROP
+      // NAME — the server base-strips "Tomato (Roma)" itself, and matches exact-then-normalised (never the
+      // fuzzy read resolver, which would edit the wrong species row). On success the server hands back a
+      // freshly-built bundle, so the whole Garden repaints: this write changes what OTHER plants show too,
+      // which a local patch of `p` alone could never reflect.
+      function ppBeginEditCropFact(p, field, anchorEl) {
+        if (!p || !p.name || !anchorEl) return;
+        const values = PP_CROP_FACT_VALUES[field] || [];
+        const row = anchorEl.parentNode; if (!row) return;
+        const host = row.parentNode; if (!host) return;
+        if (host.querySelector('.pp-rename-edit')) return;   // one crop-fact editor at a time
+        const cur = String((p.reference && p.reference[field]) || '').trim();
+        const editor = document.createElement('div'); editor.className = 'pp-rename-edit';
+        const select = document.createElement('select'); select.className = 'pp-rename-input';
+        select.setAttribute('aria-label', field === 'water' ? 'Water for this crop' : 'Feeder class for this crop');
+        values.forEach(function (v) {
+          const opt = document.createElement('option'); opt.value = v; opt.textContent = v.charAt(0).toUpperCase() + v.slice(1);
+          if (v.toLowerCase() === cur.toLowerCase()) opt.selected = true;
+          select.appendChild(opt);
+        });
+        const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'pp-rename-ok'; ok.textContent = '✓'; ok.title = 'Save';
+        const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'pp-rename-cancel'; cancel.textContent = '✕'; cancel.title = 'Cancel';
+        const note = document.createElement('div'); note.className = 'pp-rename-note';
+        editor.appendChild(select); editor.appendChild(ok); editor.appendChild(cancel); editor.appendChild(note);
+        row.style.display = 'none';
+        host.insertBefore(editor, row.nextSibling);
+        const close = function () { editor.remove(); row.style.display = ''; };
+        const commit = function () {
+          const nv = String(select.value || '').trim();
+          if (!nv || nv.toLowerCase() === cur.toLowerCase()) { close(); return; }
+          const pin = localStorage.getItem('garden_log_pin'), token = localStorage.getItem('garden_log_token');
+          if (!pin && !token) { note.textContent = 'Enter your PIN first.'; return; }
+          select.disabled = ok.disabled = cancel.disabled = true; note.textContent = 'Saving…';
+          google.script.run
+            .withSuccessHandler(function (resStr) {
+              let res = null; try { res = JSON.parse(resStr); } catch (e) {}
+              if (res && res.status === 'success' && res.data && res.data.updated) {
+                const fresh = ppFindPlantInModel(res.data.stateModel, p.plantId) || p;
+                if (fresh === p && p.reference) p.reference[field] = res.data.value;   // no bundle: patch locally
+                if (_ppLast && _ppLast.p) _ppLast.p = fresh;
+                try { ppRender(fresh, (_ppLast && _ppLast.bed) || '', _ppCache[ppCurrentKey], false); } catch (e) {}
+                if (typeof refreshStateView === 'function') refreshStateView(true);     // every plant of this crop just changed
+              } else {
+                select.disabled = ok.disabled = cancel.disabled = false;
+                note.textContent = (res && res.data && res.data.message) || (res && res.message) || 'Could not update — try again.';
+              }
+            })
+            .withFailureHandler(function () { select.disabled = ok.disabled = cancel.disabled = false; note.textContent = 'Could not update — try again.'; })
+            .processClientRequest(JSON.stringify({ action: 'editCropFact', crop: p.name, field: field, value: nv, token: token, pin: pin }));
+        };
+        ok.onclick = function (e) { e.stopPropagation(); commit(); };
+        cancel.onclick = function (e) { e.stopPropagation(); close(); };
+        select.addEventListener('click', function (e) { e.stopPropagation(); });
+        select.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); close(); } });
+      }
+
 </script>
 
     <script>
@@ -13440,7 +13542,10 @@ if (typeof module !== 'undefined' && module.exports) {
           .map(function (s) { return [s[0], s[1], String((f && f[s[0]]) || '').trim()]; })
           .filter(function (r) { return r[2]; });
         const refRows = fields
-          .filter(function (s) { return !String((f && f[s[0]]) || '').trim(); }) // already captured -> not a reference row
+          // Already captured -> not a reference row. EXCEPT the B1 species-editable facts (PP_CROP_FACTS):
+          // their reference row always renders, because it hosts the crop-level ✎ and a captured value must
+          // not hide the species line it exists to correct. See the PP_CROP_FACTS comment (Js-Passport.html).
+          .filter(function (s) { return PP_CROP_FACTS[s[0]] || !String((f && f[s[0]]) || '').trim(); })
           .map(function (s) {
             if (!refOn || !p || !p.reference || !p.reference[s[0]]) return null;
             let v = p.reference[s[0]];
@@ -13516,13 +13621,27 @@ if (typeof module !== 'undefined' && module.exports) {
           const refSec = document.createElement('div'); refSec.className = 'pp-ref-group';
           const h = document.createElement('div'); h.className = 'pp-sec-h'; h.textContent = 'General reference';
           refSec.appendChild(h);
+          let cropEditable = 0;
           refRows.forEach(function (r) {
             const row = document.createElement('div'); row.className = 'pp-ref-row';
             const k = document.createElement('div'); k.className = 'pp-ref-k'; k.textContent = r[1];
             const v = document.createElement('div'); v.className = 'pp-ref-v'; v.textContent = r[2];
             row.appendChild(k); row.appendChild(v);
+            // B1: the two species-level care facts carry a ✎ that writes the CROPS BOOK, not this row.
+            if (PP_CROP_FACTS[r[0]]) {
+              cropEditable++;
+              if (typeof ppAttachCropPencil === 'function') ppAttachCropPencil(v, p, r[0]);
+            }
             refSec.appendChild(row);
           });
+          // The one line that resolves the mismatch this editor creates: the ✎ sits on a plant's card but the
+          // write lands on the species. CSS-gated with the pencils (.pp-crop-hint), so the daily surface is
+          // unchanged — it appears only once editing is unlocked, where it's a warning and not trivia.
+          if (cropEditable) {
+            const hint = document.createElement('div'); hint.className = 'pp-crop-hint';
+            hint.textContent = 'These are the crop’s own facts — a change applies to every plant of this crop, now and later.';
+            refSec.appendChild(hint);
+          }
           sec.appendChild(refSec);
         }
         return sec;
