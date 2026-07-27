@@ -2122,7 +2122,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.03</span>
+        <span class="header-version">v9.04</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2438,7 +2438,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.03 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.04 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -5256,6 +5256,28 @@ if (typeof module !== 'undefined' && module.exports) {
         if (/pest|weed|treatment|control|fung|spray/.test(c)) return shedPestIconId(item);
         return 'generic-plant'; // unknown / "Other" — a neutral drawn fallback, still never emoji
       }
+      // PURE. What lead mark does a shed ROW show? → 'crop' (the crop sprite, resolved from the packet name)
+      // | 'seasol' (the bespoke seaweed mark) | a ci-* icon id | null (no mark).
+      //
+      // Extracted v9.04 because this decision is where the v8.99 relight actually failed. That release shipped
+      // correct resolvers, correct sprites and passing drift-lock tests — and every Feed & Soil and Pest & Weed
+      // row still rendered BLANK, because a leftover `feedOrPest` suppression from the reversed 09/07
+      // "those rows are text-only" call sat at the RENDER SITE, inside a DOM builder no Node test could see.
+      // Owner, 27/07: "I can't see it yet". The lesson is the shape, not the typo: **a pipeline test that
+      // stops at the resolver proves the art exists, not that anyone can see it.** Keep this pure and keep
+      // the renderer a dumb consumer of it, so the next such gate has nowhere to hide.
+      function shedRowLeadMark(item, description, category) {
+        // Seeds & Seedlings rows carry the CROP sprite — the actual thing being grown (owner, 25/07). This
+        // precedes the resolver, which deliberately returns null for the seed category (header-only art).
+        if (/seed/i.test(String(category || ''))) return 'crop';
+        // Seasol's bespoke mark keys on the item NAME only. It used to also test the description, but that
+        // string is product marketing copy where "seaweed" is an INGREDIENT — PowerFeed's "Fish - Compost -
+        // Seaweed Plant Food" matched, so it wore Seasol's mark instead of its own liquid-feed one.
+        // (isSeasolText itself keeps `seaweed`: its other caller reads a log line's free prose, where
+        // "fed the beds with seaweed" genuinely does mean Seasol.)
+        if (isSeasolText(item)) return 'seasol';
+        return resolveShedIconId(item, description, category);
+      }
       // The category HEADER icon = the cat-* sprite for that category (drawn, not emoji). Tolerant of the old
       // AND new category names. null for an unknown/"Other" category so the header keeps its emoji fallback.
       function shedCategoryIconId(category) {
@@ -5406,17 +5428,8 @@ if (typeof module !== 'undefined' && module.exports) {
             // tool/seed icon or its category header (resolveShedIconId). The separate 📷 photo link below is
             // unchanged — Drive images don't inline reliably, so the row carries the drawn icon + the 📷
             // affordance rather than a photo thumbnail.
-            const isSeasol = isSeasolText(it.item) || isSeasolText(it.description);
-            const iconId = isSeasol ? null : resolveShedIconId(it.item, it.description, g.category || it.category);
-            // Feed & Soil and Pest rows are deliberately icon-free: the colour-coded category header carries
-            // the meaning and the products themselves don't each earn a mark. Suppressing here (incl. Seasol's
-            // bespoke seaweed) keeps those two categories uniform — no row iconned while its neighbour is blank.
-            const rowCat = (g.category || it.category || '');
-            const feedOrPest = /feed|nutrition|fertil|compost|conditioner|soil|mulch|pest|weed|treatment|control|fung/i.test(rowCat);
-            // A row shows its own icon ONLY when it's distinct from the category header: Tools/Seeds items +
-            // Seasol. Feed & Soil / Pest items are text only (would duplicate the header).
-            const showLead = !feedOrPest && (isSeasol || iconId);
-            if (isSeedCat && typeof plantIconSvgEl === 'function') {
+            const lead = shedRowLeadMark(it.item, it.description, g.category || it.category);
+            if (lead === 'crop' && typeof plantIconSvgEl === 'function') {
               // Seeds & Seedlings rows now carry the CROP sprite — the actual thing being grown (owner, 25/07,
               // reversing the 10/07 header-only call): a packet is named by its crop, so the crop icon reads at
               // a glance and matches the seed passport's left tile + the Garden-tab plant rows. Same name→crop
@@ -5425,10 +5438,10 @@ if (typeof module !== 'undefined' && module.exports) {
               ic.className = 'lead-chip';
               ic.appendChild(plantIconSvgEl(it.item));
               name.appendChild(ic);
-            } else if (showLead) {
+            } else if (lead) {
               const ic = document.createElement('span');
               ic.className = 'lead-chip';
-              ic.innerHTML = isSeasol ? seasolIconSvg(26) : spriteIconHtml(iconId);
+              ic.innerHTML = (lead === 'seasol') ? seasolIconSvg(26) : spriteIconHtml(lead);
               name.appendChild(ic);
             }
             // No leading space: the lead-chip's margin-right handles the gap, identical to the Garden .plant-ic.
@@ -5984,8 +5997,9 @@ if (typeof module !== 'undefined' && module.exports) {
 
       // Awareness twin of cropIconCoverage for the SHED: resolve every distinct supply to its icon id and flag
       // the ones showing a GENERIC box, so we know which supplies still want bespoke art. Categories that are
-      // header-only BY DESIGN (Seeds / Feed & Soil / Pest — resolveShedIconId returns null so the category
-      // header carries identity, owner 09–10/07) are NOT gaps and are excluded. A gap = an item resolving to
+      // header-only BY DESIGN (**Seeds only** since v8.99 relit Feed & Soil and Pest & Weed — resolveShedIconId
+      // returns null so the category header carries identity, owner 10/07, re-confirmed 27/07 "keep seeds for
+      // now") are NOT gaps and are excluded. A gap = an item resolving to
       // the neutral 'supply-box' (misc hardware, an acceptable fallback) or to 'generic-plant' (an unrecognised
       // category showing a PLANT icon in the shed — a categorisation smell worth a look). Reads the cached
       // inventory; PURE aside from that read. Mirrors cropIconCoverage's row shape + gaps-first sort.
