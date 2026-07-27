@@ -724,20 +724,17 @@
          the derived phase (nursery icons + harvest/yield lines), not a botanical badge. */
       .queue-banner { background-color: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: var(--r-md); padding: 10px 16px; font-size: var(--fs-base); color: var(--amber-400); display: none; align-items: center; justify-content: space-between; margin-bottom: 15px; }
 
-      /* Shed item rows reuse .plant-row; the quantity sits right (muted), the description/link below. */
-      /* The name grows so the ×N + 📷 always cluster at the RIGHT together — otherwise justify-content:
-         space-between floats the ×N to the middle whenever a row also has a photo (owner 10/07: "×1 all
-         over the place"). min-width:0 lets a long name wrap instead of shoving the ×N. */
+      /* Shed item rows reuse .plant-row. Since v9.05 a row is icon + name + quantity and NOTHING else — the
+         description, link, bought date and photo all moved inside the shed passport (ROADMAP: "Extend the
+         passport model to the Shed"), so .inv-sub / .inv-bought / .inv-link / .inv-photo-link are GONE rather
+         than left as dead rules waiting to be re-adopted by accident. */
+      /* The name grows so the ×N stays hard RIGHT — otherwise justify-content: space-between floats it to the
+         middle (owner 10/07: "×1 all over the place"). min-width:0 lets a long name wrap instead of shoving it. */
       .plant-row-top .inv-title { flex: 1 1 auto; min-width: 0; }
-      /* A row with nothing below the name (no description / no bought date) doesn't earn the full card
-         height — tighten it so bare Tools rows stop looking over-padded (owner 10/07). */
+      /* Every shed row is bare now, so this is the shed row height, not a special case (owner 10/07 — bare
+         Tools rows looked over-padded at the full card height). */
       .plant-row.inv-row--bare { padding-top: 8px; padding-bottom: 8px; }
       .inv-qty { flex: none; font-size: var(--fs-sm); color: var(--text-muted); padding-left: 10px; }
-      .inv-sub { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.35; }
-      .inv-bought { font-size: var(--fs-2xs); color: var(--text-muted); line-height: 1.3; margin-top: 2px; opacity: 0.85; }
-      .inv-link { color: var(--blue-400); text-decoration: none; }
-      /* 📷 latest-photo link on a shed item's top row — sits right of the quantity, tap-sized. */
-      .inv-photo-link { flex: none; padding-left: 8px; font-size: var(--fs-sm); text-decoration: none; }
       .inv-empty { color: var(--text-muted); font-style: italic; padding: 8px 2px; font-size: var(--fs-base); }
 
       /* Settings Drawer */
@@ -1472,6 +1469,11 @@
       }
       .pp-photo-meta { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding-top: 1px; }
       .pp-photo-cap { font-size: var(--fs-sm); color: var(--text-muted); overflow-wrap: anywhere; line-height: 1.35; }
+      /* Shed passport: the product link (v9.05, off the row). A quiet single line under the facts box —
+         deliberately NOT the description-as-anchor the row used to draw, which is part of what made a long
+         description read as clutter. Same blue the rest of the app links in. */
+      .pp-shed-link { margin: 10px 2px 0; font-size: var(--fs-sm); }
+      .pp-shed-link a { color: var(--blue-400); text-decoration: none; }
       .pp-quiet { color: var(--text-muted); font-size: var(--fs-xs); opacity: 0.85; }
       /* Loading shimmer for the async story/photos half (mirrors .pending-spin's quiet pulse). */
       .pp-skel {
@@ -2122,7 +2124,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.04</span>
+        <span class="header-version">v9.05</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2438,7 +2440,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.04 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.05 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3200,7 +3202,7 @@
            a read-only view (you log changes from the Dashboard, not by editing here). Collapsible category
            cards reuse the Current Layout bed-card pattern; categories sorted by the Order column. -->
       <div id="tab-inventory" class="tab-content">
-        <button type="button" class="ui-hint ui-hint--tab" data-q="How do things get in here?" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">Tools, fertilisers, treatments and seeds, grouped by type. A read-only view — you add things just by logging them from the Dashboard (the app files a supply to the Shed on its own), by voice or a product photo. Tap a captured seed packet for its sowing facts. Uncertain reads wait as a ⚠ To confirm draft.</span></button>
+        <button type="button" class="ui-hint ui-hint--tab" data-q="How do things get in here?" onclick="toggleHint(this)" aria-expanded="false"><span class="ui-hint-text">Tools, fertilisers, treatments and seeds, grouped by type. A read-only view — you add things just by logging them from the Dashboard (the app files a supply to the Shed on its own), by voice or a product photo. Tap any item for its details — description, feeding rates, purchase date, link and photo. Uncertain reads wait as a ⚠ To confirm draft.</span></button>
         <div class="state-container" id="inventoryContainer">Loading inventory…</div>
       </div>
 
@@ -5455,70 +5457,29 @@ if (typeof module !== 'undefined' && module.exports) {
               qty.textContent = shedQuantityParts(it.quantity).display;
               top.appendChild(qty);
             }
-            // 📷 link to the latest product/label photo (Drive), when one exists. Mirrors the Recent
-            // tab's photo link (textContent only — no injected markup). Emoji-only to keep the row tight.
-            // Seeds & Seedlings rows drop it (owner, 25/07): the packet already reads by its crop icon + name,
-            // and the captured facts live one tap away in the passport — the raw photo link added no value here.
-            if (it.image && !isSeedCat) {
-              const cam = document.createElement('a');
-              cam.className = 'inv-photo-link';
-              cam.href = it.image;
-              cam.target = '_blank';
-              cam.rel = 'noopener noreferrer';
-              cam.innerHTML = uiMarkSvg('ui-camera', 14);   // mono camera mark (was the per-device 📷)
-              cam.title = 'Latest photo';
-              cam.onclick = function (e) { e.stopPropagation(); };   // don't also open the passport
-              top.appendChild(cam);
-            }
             row.appendChild(top);
 
-            let hasBelow = false;
-            if (it.description || it.link) {
-              hasBelow = true;
-              const sub = document.createElement('div');
-              sub.className = 'inv-sub';
-              if (it.link) {
-                // Link + text joined: the description itself is the clickable link (host label as
-                // fallback when there's no description). One element, trailing ↗ marks it external.
-                const a = document.createElement('a');
-                a.className = 'inv-link';
-                a.href = it.link;
-                a.target = '_blank';
-                a.rel = 'noopener';
-                a.textContent = it.description ? (it.description + ' ↗') : invLinkLabel(it.link);
-                a.onclick = function (e) { e.stopPropagation(); };   // don't also open the passport
-                sub.appendChild(a);
-              } else {
-                sub.textContent = it.description;
-              }
-              row.appendChild(sub);
-            }
-            if (it.purchasedate) {
-              hasBelow = true;
-              const bought = document.createElement('div');
-              bought.className = 'inv-bought';
-              bought.innerHTML = uiMarkSvg('ui-cart', 12);   // mono trolley mark (was the per-device 🛒)
-              // One time-voice with the Garden: relative ("bought 6mo ago") via the same relativePast the
-              // plant cards use, with the exact date on tap/hover. Falls back to the raw date if unparseable.
-              const boughtRel = relativePast(it.purchasedate);
-              bought.appendChild(document.createTextNode(' bought ' + (boughtRel || it.purchasedate)));
-              if (boughtRel) bought.title = 'Bought ' + it.purchasedate;
-              row.appendChild(bought);
-            }
-            // Nothing under the name → a tighter card (no wasted height on a bare Tools row).
-            if (!hasBelow) row.classList.add('inv-row--bare');
-            // Tap → the shed passport, but ONLY when the packet was read (it.labelFacts present). That
-            // self-scopes the affordance to seed packets / plant labels; fertilisers & tools stay inert
-            // (docs/SCOPE-SHED-PASSPORT.md). Same kill switch as the plant passports (ppEnabled).
-            if (it.labelFacts && typeof openShedPassport === 'function'
+            // THE ROW IS THE QUIET LEDGER (v9.05, ROADMAP "Extend the passport model to the Shed"). It carries
+            // icon + name + quantity and NOTHING else. Everything that used to render inline here — the product
+            // description (the Snail & Slug Killer row was an entire paragraph of active-constituent copy), the
+            // external link, the "bought 6mo ago" line and the 📷 photo link — now lives one tap away inside the
+            // shed passport (ppRenderShed, Js-Passport.html). The owner's complaint was clutter, and a per-item
+            // icon earns nothing sitting next to a paragraph of body copy. Always bare, so the class is
+            // unconditional rather than the old hasBelow branch.
+            row.classList.add('inv-row--bare');
+            // Tap → the shed passport, for EVERY supply (v9.05). This used to be gated on `it.labelFacts`,
+            // which self-scoped the affordance to captured seed packets / plant labels — so seeds were tappable
+            // and a fertiliser was inert, which read as a bug once the row's own detail moved behind the card.
+            // The gate is gone: the card is now the only place an item's detail lives, so every row must open it
+            // (it's also the only route to the name/quantity/category pencils, which a fertiliser never had).
+            // Same kill switch as the plant passports (ppEnabled).
+            if (typeof openShedPassport === 'function'
                 && (typeof ppEnabled !== 'function' || ppEnabled())) {
               row.dataset.pp = '1';
-              // Prev/next arrows flick through THIS category's passport-eligible packets (owner, 25/07) — the
-              // rows that carry captured facts, i.e. exactly the ones a tap can open. Built at tap time so the
-              // group matches what's on screen in this category.
+              // Prev/next arrows flick through THIS category's supplies (owner, 25/07) — now the whole group,
+              // since every row opens. Built at tap time so the group matches what's on screen in this category.
               row.onclick = function () {
-                const sibs = g.items.filter(function (x) { return x.labelFacts; })
-                                    .map(function (x) { return { kind: 'shed', item: x, category: g.category }; });
+                const sibs = g.items.map(function (x) { return { kind: 'shed', item: x, category: g.category }; });
                 const idx = sibs.findIndex(function (s) { return s.item === it; });
                 openShedPassport(it, g.category, sibs, idx);
               };
@@ -11275,8 +11236,70 @@ if (typeof module !== 'undefined' && module.exports) {
         ['companion', 'Companion'],
         ['harvest', 'Harvest'],
         ['seedcount', 'Seed count'],
-        ['bestbefore', 'Best before']
+        ['bestbefore', 'Best before'],
+        // The feeding-spec trio (v9.05). Not label facts at all — they're their own Shed columns (NPK /
+        // Dilution / FeedFrequency, DEBUGGING.md §8), synthesised into the fact object by
+        // shedPassportSections below so they render in the one box rather than a second one. They only
+        // ever populate for a feed product, and ppFactsEl drops an empty value, so a seed packet's card is
+        // byte-identical to before. `dilution` may carry a leading ⚠ from markUncertainFeed — kept verbatim:
+        // it means "the label gave a per-crop table, check the bottle", which is exactly what a dosing line
+        // must admit.
+        ['npk', 'N-P-K'],
+        ['dilution', 'Dilution'],
+        ['feedfrequency', 'How often']
       ];
+
+      // PURE. What does a shed item's passport actually SHOW? Returns the card's content decision — the About
+      // prose, the external link, the photo, and the fact object ppFactsEl renders — with `factKeys` naming
+      // exactly which fact rows survive, in display order.
+      //
+      // This exists for AGENTS rule 43. The v8.99 shed relight shipped correct resolvers, baked sprites and a
+      // green suite, and still rendered blank rows, because the decision that mattered lived at the RENDER
+      // SITE where no Node test could reach it. The shape of the fix was `shedRowLeadMark` (Js-Core.html):
+      // pull the decision out, keep the renderer a dumb consumer. This is the same move for the card — and it
+      // matters more here, because v9.05 DELETES the row's inline copy: if a fact silently fails to reappear
+      // in the passport, it isn't relocated, it's gone.
+      function shedPassportSections(item, category) {
+        const cs = function (v) { return String(v == null ? '' : v).trim(); };
+        const lf = (item && item.labelFacts) || {};
+        const other = lf.other || '';
+        const cat = cs(category || (item && item.category));
+        // About: a captured LABEL description wins (it describes the variety); the Shed row's own Description
+        // column is the fallback, and for a non-packet supply it's the ONLY source — it's the product blurb
+        // that used to sit on the row (the Snail & Slug Killer paragraph the owner called clutter).
+        const about = cs(lf.description) || cs(item && item.description);
+        const facts = Object.assign({}, lf, {
+          description: about,
+          water: (typeof ppWaterLevel === 'function') ? ppWaterLevel(lf.water) : lf.water,
+          germination: (typeof ppGermination === 'function') ? ppGermination(lf.germination) : lf.germination,
+          // Typed columns when captured, else recovered from the LabelOther catch-all (the beta test packet
+          // predates those columns).
+          seedcount: lf.seedcount || (typeof ppOtherFact === 'function' ? ppOtherFact(other, /seed ?count|seeds per|no\.? of seeds/i) : ''),
+          bestbefore: lf.bestbefore || (typeof ppOtherFact === 'function' ? ppOtherFact(other, /best ?before|use ?by|sell ?by|expir/i) : ''),
+          npk: cs(item && item.npk),
+          dilution: cs(item && item.dilution),
+          feedfrequency: cs(item && item.feedfrequency)
+        });
+        // Mirrors ppFactsEl's own filter exactly (displaySpec minus 'description', non-empty only) — so this
+        // list IS what the box will contain, not a hopeful description of it.
+        const factKeys = PP_SHED_FACT_DISPLAY
+          .filter(function (s) { return s[0] !== 'description' && cs(facts[s[0]]); })
+          .map(function (s) { return s[0]; });
+        const isSeed = /seed/i.test(cat);
+        return {
+          about: about,
+          link: cs(item && item.link),
+          // The latest product/label photo (the row's old 📷). Rendered inline as a thumbnail here rather than
+          // as a bare link-out — the passport has the room the row never did.
+          photoUrl: cs(item && item.image),
+          facts: facts,
+          factKeys: factKeys,
+          isSeed: isSeed,
+          // Seeds carry no meaningful quantity (owner, 18/07): a packet is hundreds of seeds and is never
+          // duplicated. One predicate for the sub-line AND the quick-edit field, so they can't disagree.
+          showQuantity: !isSeed && !!cs(item && item.quantity)
+        };
+      }
 
       // Plant-card fact fields, split into two DISPLAY-ORDER lists only (reverted 23/07 — these used to
       // also decide provenance grouping; a plant with nothing captured at all could show generic Sun/
@@ -11607,14 +11630,19 @@ if (typeof module !== 'undefined' && module.exports) {
         });
       }
 
-      // === Shed passport (docs/SCOPE-SHED-PASSPORT.md) — tap a seed packet / plant label → its captured
-      // packet facts. A supply has no lifecycle and no meaningful event story (restock events are noise by
-      // the owner's own thesis), so this is the plant passport with the time half removed: identity + "From
-      // the label" only. Reuses the SAME overlay, close/back-gesture scaffolding, kill switch, and ppFactsEl.
-      // Everything renders synchronously — labelFacts already ship in the inventory model, so ZERO network.
+      // === Shed passport (docs/SCOPE-SHED-PASSPORT.md) — tap ANY shed supply → everything known about it.
+      // A supply has no lifecycle and no meaningful event story (restock events are noise by the owner's own
+      // thesis), so this is the plant passport with the time half removed: identity + the item's facts.
+      // Reuses the SAME overlay, close/back-gesture scaffolding, kill switch, and ppFactsEl.
+      // Everything renders synchronously — the inventory model already carries every field, so ZERO network
+      // (the one exception is the photo THUMBNAIL, which streams in behind a skeleton like the plant card's).
+      //
+      // v9.05: this card is no longer seed-only. It used to refuse anything without captured `labelFacts`,
+      // which made seeds tappable and left a fertiliser inert — tolerable while the row carried its own
+      // detail, incoherent now that the row is icon + name + quantity and the card is the ONLY place an
+      // item's description / feeding specs / link / photo / purchase date live.
       function openShedPassport(item, category, siblings, index) {
         if (!item || ppOpen || !ppEnabled()) return;
-        if (!item.labelFacts) return;   // only items with captured packet facts — self-scopes to seeds/labels
         const overlay = document.getElementById('passportOverlay');
         if (!overlay) return;
         ppOpen = true;
@@ -11640,6 +11668,7 @@ if (typeof module !== 'undefined' && module.exports) {
         body.innerHTML = '';
         const overlay = document.getElementById('passportOverlay');
         overlay.classList.remove('pp-done');   // a supply is never a tombstoned/harvested plant
+        const sec = shedPassportSections(item, category);
 
         // Identity — sprite · name (variety) · quantity · bought-when. The same quiet register as the plant
         // card's header, read off the shed row's own fields.
@@ -11647,11 +11676,17 @@ if (typeof module !== 'undefined' && module.exports) {
         wrap.className = 'pp-id';
         const ic = document.createElement('div');
         ic.className = 'pp-id-ic';
-        // A shed item is a SUPPLY. A SEED packet now reads like the plant card (owner's "missing piece"): the
-        // crop fruit on the LEFT (identity), the seed-bag on the RIGHT (it's a packet, in the shed). Any OTHER
-        // supply (feed, tool…) isn't a crop, so it keeps its single TYPE glyph — the shedCategoryIconId the list draws.
+        // A shed item is a SUPPLY. A SEED packet reads like the plant card (owner's "missing piece"): the crop
+        // fruit on the LEFT (identity), the seed-bag on the RIGHT (it's a packet, in the shed). Any OTHER supply
+        // (feed, tool…) isn't a crop, so it keeps a single TYPE glyph — and that glyph is now the row's OWN mark
+        // via shedRowLeadMark (v9.05), not the category header icon. Before, every Feed & Soil item's card wore
+        // the same generic sack while its row wore a specific bottle/sack/box, so tapping PowerFeed showed a
+        // different picture than the row you tapped. One decision function, two surfaces — the coupling
+        // shedRowLeadMark was extracted for (AGENTS rule 43).
         const catId = (typeof shedCategoryIconId === 'function') ? shedCategoryIconId(category || item.category) : null;
-        const isSeed = /seed|seedling/i.test(String(category || item.category || ''));
+        const isSeed = sec.isSeed;
+        const leadId = (typeof shedRowLeadMark === 'function')
+          ? shedRowLeadMark(item.item, item.description, category || item.category) : null;
         let bagTile = null;
         if (isSeed && catId && typeof spriteIconHtml === 'function') {
           ic.appendChild(plantIconSvgEl(item.item));
@@ -11659,8 +11694,14 @@ if (typeof module !== 'undefined' && module.exports) {
           bagTile.className = 'pp-id-ic pp-id-status';
           bagTile.innerHTML = spriteIconHtml(catId);
           bagTile.title = 'Seeds in the shed';
+        } else if (leadId === 'crop') {
+          ic.appendChild(plantIconSvgEl(item.item));
+        } else if (leadId === 'seasol' && typeof seasolIconSvg === 'function') {
+          ic.innerHTML = seasolIconSvg(26);
+        } else if (leadId && typeof spriteIconHtml === 'function') {
+          ic.innerHTML = spriteIconHtml(leadId);
         } else if (catId && typeof spriteIconHtml === 'function') {
-          ic.innerHTML = spriteIconHtml(catId);
+          ic.innerHTML = spriteIconHtml(catId);   // unknown item mark → the category's header glyph
         } else {
           ic.appendChild(plantIconSvgEl(item.item));
         }
@@ -11668,7 +11709,12 @@ if (typeof module !== 'undefined' && module.exports) {
         const txt = document.createElement('div');
         const h = document.createElement('h2');
         const parts = ppSplitName(item.item);
-        h.appendChild(document.createTextNode(parts[0]));
+        // Sentence-case the display heading, exactly as the row does (_renderInventory, Js-Core.html) — the
+        // Sheet holds "wooden spoon" beside "Knife" and the two must read alike. Display only: the rename
+        // editor reads item.item, so the true cell value is untouched. Not needed before v9.05, when only
+        // seed packets (already crop-cased) could open this card.
+        const head = parts[0] ? (parts[0].charAt(0).toUpperCase() + parts[0].slice(1)) : parts[0];
+        h.appendChild(document.createTextNode(head));
         if (parts[1] && parts[1].indexOf('·') === -1) {
           const v = document.createElement('span');
           v.className = 'pp-variety';
@@ -11688,11 +11734,12 @@ if (typeof module !== 'undefined' && module.exports) {
         const sub = document.createElement('div');
         sub.className = 'pp-id-sub';
         const bits = [];
-        // Seeds carry no meaningful quantity (owner, 18/07) — a packet is hundreds of seeds and never duplicated;
-        // the shed passport opens for seed packets, so drop the count and lead with when it was bought.
-        const isSeedCat = /seed/i.test(String(category || item.category || ''));
+        // Seeds carry no meaningful quantity (owner, 18/07) — a packet is hundreds of seeds and never
+        // duplicated — so a seed card leads with when it was bought instead. sec.showQuantity is the single
+        // predicate, shared with the quick-edit field below so the two can't drift apart.
+        const isSeedCat = sec.isSeed;
         const qty = (typeof shedQuantityParts === 'function') ? shedQuantityParts(item.quantity).display : String(item.quantity || '');
-        if (qty && !isSeedCat) bits.push(qty);
+        if (sec.showQuantity) bits.push(qty);
         if (item.purchasedate) {
           const rel = (typeof relativePast === 'function') ? relativePast(item.purchasedate) : '';
           bits.push('bought ' + (rel || item.purchasedate));
@@ -11766,28 +11813,63 @@ if (typeof module !== 'undefined' && module.exports) {
           body.appendChild(lines);
         }
 
-        // "From the label" — the whole point. Same renderer as the plant card, but the SHED's fuller tier
+        // The facts box — the whole point. Same renderer as the plant card, but the SHED's fuller tier
         // (PP_SHED_FACT_DISPLAY): an unsown packet is defined by its sowing facts, so Sow/Spacing/Germination
-        // show here where the plant card hides them. A few fields are SYNTHESISED / tidied before rendering:
-        //   • sowWhen — the LOCAL Adelaide window (item.sowMonths) wins the slot; the packet's own sow text
-        //     is only the fallback (owner, 16/07 — sow timing is location-dependent, the one fact where the
-        //     region's calendar outranks the label).
-        //   • water / germination — OCR literals tidied to plain words (ppWaterLevel / ppGermination).
-        //   • seedcount / bestbefore — typed columns when captured, else recovered from the LabelOther
-        //     catch-all (the beta test packet predates those columns).
-        const lf = item.labelFacts || {};
-        const other = lf.other || '';
-        // Sow timing moved OUT of the fact list (Item 1, 25/07): it now renders as the coloured verdict line
+        // show here where the plant card hides them, and a feed product's N-P-K / dilution / frequency lands in
+        // the same box. Every synthesis (About fallback, water/germination tidying, seedcount/bestbefore
+        // recovery, the feeding trio) happens in the PURE shedPassportSections above, so the decision is
+        // testable without a browser; this is a dumb consumer of it.
+        //
+        // Sow timing is deliberately NOT in this list (Item 1, 25/07): it renders as the coloured verdict line
         // under the Sow button above (ppShedSowLineEl) — where the action is, coloured to match the guide —
-        // rather than as a buried grey "Sow:" fact. The full Adelaide window still shows there (grey), so no
-        // info is lost. Every other packet fact (Spacing/Germination/…) still renders here as before.
-        const facts = ppFactsEl({ labelFacts: Object.assign({}, lf, {
-          water: ppWaterLevel(lf.water),
-          germination: ppGermination(lf.germination),
-          seedcount: lf.seedcount || ppOtherFact(other, /seed ?count|seeds per|no\.? of seeds/i),
-          bestbefore: lf.bestbefore || ppOtherFact(other, /best ?before|use ?by|sell ?by|expir/i)
-        }), name: item.item, reference: item.reference || null }, PP_SHED_FACT_DISPLAY, true);
+        // rather than as a buried grey "Sow:" fact. The full Adelaide window still shows there (grey), and the
+        // LOCAL window outranks the packet's own season (owner, 16/07), so no info is lost.
+        const facts = ppFactsEl({ labelFacts: sec.facts, name: item.item, reference: item.reference || null },
+                                PP_SHED_FACT_DISPLAY, true);
         if (facts) body.appendChild(facts);
+
+        // The product link (v9.05 — off the row, into the card). One quiet line carrying the host, e.g.
+        // "richgro.com.au ↗". The row used to make the DESCRIPTION itself the anchor, which is part of why a
+        // paragraph-long description read as clutter; here the prose is prose and the link is a link.
+        if (sec.link) {
+          const lk = document.createElement('div');
+          lk.className = 'pp-shed-link';
+          const a = document.createElement('a');
+          a.href = sec.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
+          a.textContent = (typeof invLinkLabel === 'function') ? invLinkLabel(sec.link) : 'link ↗';
+          lk.appendChild(a);
+          body.appendChild(lk);
+        }
+
+        // The item's photo (v9.05 — the row's old 📷, now an inline thumbnail). Same private-Drive base64 path
+        // as the plant card's Photos section: the card paints instantly, the thumb pops in when it arrives, and
+        // the still-tappable soft square links out if it never does. Reuses ppExtractFileId / _ppThumbs /
+        // ppLoadThumbs verbatim — a photo's bytes never change, so a device fetches each thumb once, forever.
+        if (sec.photoUrl) {
+          const phSec = document.createElement('div');
+          const hh = document.createElement('div'); hh.className = 'pp-sec-h'; hh.textContent = 'Photo';
+          phSec.appendChild(hh);
+          const prow = document.createElement('div'); prow.className = 'pp-photo';
+          const pa = document.createElement('a');
+          pa.className = 'pp-photo-a'; pa.href = sec.photoUrl; pa.target = '_blank'; pa.rel = 'noopener noreferrer';
+          pa.title = 'Open the full photo';
+          const img = document.createElement('img');
+          img.className = 'pp-photo-img'; img.alt = ''; img.loading = 'lazy';
+          const fid = (typeof ppExtractFileId === 'function') ? ppExtractFileId(sec.photoUrl) : '';
+          if (fid) img.setAttribute('data-fid', fid);
+          // _ppThumbs lives in Js-Passport3.html (a later <script> block, same global scope) — guarded so a
+          // read can never throw on the temporal-dead-zone if the load order ever changes.
+          let cached = '';
+          try { cached = fid ? (_ppThumbs[fid] || '') : ''; } catch (e) { cached = ''; }
+          if (cached) { img.src = cached; }
+          else { prow.classList.add('pp-photo-loading'); }
+          img.onload = function () { prow.classList.remove('pp-photo-loading'); };
+          img.onerror = function () { prow.classList.remove('pp-photo-loading'); img.style.display = 'none'; };
+          pa.appendChild(img); prow.appendChild(pa);
+          phSec.appendChild(prow);
+          body.appendChild(phSec);
+          if (fid && !cached && typeof ppLoadThumbs === 'function') ppLoadThumbs([fid]);
+        }
       }
 
       // --- Shed crossover: Sow / Plant outside (SCOPE-STAGE-BUTTON.md Phase 4) --------------------------
