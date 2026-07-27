@@ -2145,7 +2145,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.16</span>
+        <span class="header-version">v9.18</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2461,7 +2461,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.16 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.18 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11425,13 +11425,22 @@ if (typeof module !== 'undefined' && module.exports) {
         if (idxs.length === 12) return 'Year-round';
         const set = {}; idxs.forEach(function (i) { set[i] = true; });
         const cap = function (i) { return PP_MONTH_ABBR[i].charAt(0).toUpperCase() + PP_MONTH_ABBR[i].slice(1); };
-        let start = -1;
-        for (let i = 0; i < 12; i++) { if (set[i] && !set[(i + 11) % 12]) { if (start !== -1) { start = -2; break; } start = i; } }
-        if (start >= 0) {
-          let n = 0, i = start; while (set[i % 12]) { n++; i++; }
-          if (n === idxs.length) return cap(start) + '–' + cap((start + n - 1) % 12);
+        // EVERY contiguous run, not just a lone one (owner, 28/07: "if there's two different seasons can it
+        // read March–May & July–Sep"). A month whose predecessor is absent starts a run; walking forward mod
+        // 12 keeps a wrap-around season (Sep–Feb) as ONE run. Two spring/autumn windows — the normal shape for
+        // lettuce, brassicas, coriander in Adelaide — used to fall through to a bare comma list of five or six
+        // months, which is the same information with the seasons hidden inside it.
+        const runs = [];
+        for (let i = 0; i < 12; i++) {
+          if (set[i] && !set[(i + 11) % 12]) {
+            let n = 0, j = i;
+            while (set[j % 12]) { n++; j++; }
+            runs.push([i, (i + n - 1) % 12]);
+          }
         }
-        return idxs.slice().sort(function (a, b) { return a - b; }).map(cap).join(', ');
+        if (!runs.length) return idxs.slice().sort(function (a, b) { return a - b; }).map(cap).join(', ');
+        // A one-month run is its own name — the old code rendered a lone month as "Feb–Feb".
+        return runs.map(function (r) { return r[0] === r[1] ? cap(r[0]) : cap(r[0]) + '–' + cap(r[1]); }).join(' & ');
       }
 
       // Build the sow-readiness context from the CACHED forecast (the same data the weather card uses), so the
@@ -12029,7 +12038,11 @@ if (typeof module !== 'undefined' && module.exports) {
           s.appendChild(t);
         } else {
           s.className = 'pl-line';                                     // grey: the static window, or the packet's own sow text
-          s.textContent = tail;
+          // Out of season the line is a bare list of months with nothing saying WHAT they are (owner, 28/07).
+          // Label it — but only when we formatted the crop's own sow window: the fallback branch above carries
+          // the packet's own prose ("Sow direct in spring…"), which is already a sentence and reads wrong
+          // behind a colon. In season the coloured verdict ("✓ Sow direct · …") is the label, so no prefix.
+          s.textContent = item.sowMonths ? ('Season: ' + tail) : tail;
         }
         return s;
       }
