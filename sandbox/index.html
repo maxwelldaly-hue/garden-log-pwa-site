@@ -2072,7 +2072,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v8.98</span>
+        <span class="header-version">v8.99</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2241,7 +2241,7 @@
                      the Shed Nutrition header) — COUPLED PAIR, edit both together. Inline (not a <use>) so it
                      paints instantly on the dashboard without waiting for the lazy sprite. Muted by design.
                      (Label reads "Fertilise" — a slight mismatch with the Nutrition-bag art, accepted by the owner.) -->
-                <div class="care-tile-label"><span class="care-tile-ic" aria-hidden="true"><svg viewBox="45.4 55.4 109.1 113.1" preserveAspectRatio="xMidYMid meet" width="20" height="20" style="display:block"><path d="M58 94 Q58 84 68 82 L132 82 Q142 84 142 94 L145 150 Q146 160 136 160 L64 160 Q54 160 55 150 Z" fill="#6FB03F"/><path d="M68 82 Q60 68 78 64 L122 64 Q140 68 132 82 Z" fill="#4E8C3E"/><rect x="80" y="104" width="40" height="34" rx="5" fill="#EDE1C6"/><path d="M100 132 V114" fill="none" stroke="#4E8C3E" stroke-width="3" stroke-linecap="round"/><path d="M100 122 Q90 118 85 110 Q96 111 100 120 Z" fill="#6FB03F"/><path d="M100 122 Q110 118 115 110 Q104 111 100 120 Z" fill="#6FB03F"/></svg></span>Fertilise</div>
+                <div class="care-tile-label"><span class="care-tile-ic" aria-hidden="true"><svg viewBox="44.3 52.3 113.4 125.4" preserveAspectRatio="xMidYMid meet" width="20" height="20" style="display:block"><path d="M62 96 Q62 84 74 82 L132 82 Q144 84 144 96 L147 152 Q148 164 136 164 L66 164 Q54 164 55 152 Z" fill="#6FB03F"/><path d="M118 82 L132 82 Q144 84 144 96 L147 152 Q148 164 136 164 L116 164 Z" fill="#4A7A2B"/><path d="M74 82 Q64 66 82 62 L124 62 Q142 66 132 82 Z" fill="#4E8C3E"/><path d="M116 63 Q142 67 132 82 L114 82 Z" fill="#335E22"/><path d="M74 82 L132 82 L130 88 L76 88 Z" fill="#2F5622"/><rect x="80" y="104" width="40" height="34" rx="5" fill="#EDE1C6"/><path d="M108 104 h12 a5 5 0 0 1 5 5 v24 a5 5 0 0 1-5 5 h-12 z" fill="#C9BCA0"/><path d="M100 134 V116" fill="none" stroke="#184c28" stroke-width="4" stroke-linecap="round"/><path d="M100 124 Q88 120 83 110 Q97 111 100 122 Z" fill="#22b573"/><path d="M100 124 Q112 120 117 110 Q103 111 100 122 Z" fill="#184c28"/><path d="M58 168 Q76 152 96 168 Z" fill="#6E4A28"/><path d="M62 166 Q76 156 88 166 Z" fill="#8A5A30"/><rect x="69" y="92" width="7" height="34" rx="3.5" fill="#fff" opacity=".7"/><rect x="69" y="132" width="5" height="12" rx="2.5" fill="#fff" opacity=".45"/></svg></span>Fertilise</div>
               </div>
               <div class="care-tile" id="seasolRingTap" role="button" tabindex="0"
                    aria-label="Seasol: tap when you've fed the whole garden with Seasol"
@@ -2382,7 +2382,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.98 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v8.99 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -4747,13 +4747,8 @@ if (typeof module !== 'undefined' && module.exports) {
       // SAME icon as the Care ring instead of the old 💩 (owner, 09/07 — consistency across tabs). Inline-sized.
       function fertiliserIconSvg(px) {
         const s = px || 16;
-        return '<svg viewBox="45.4 55.4 109.1 113.1" width="' + s + '" height="' + s + '" aria-hidden="true" style="display:inline-block;vertical-align:-0.2em">'
-          + '<path d="M58 94 Q58 84 68 82 L132 82 Q142 84 142 94 L145 150 Q146 160 136 160 L64 160 Q54 160 55 150 Z" fill="#6FB03F"/>'
-          + '<path d="M68 82 Q60 68 78 64 L122 64 Q140 68 132 82 Z" fill="#4E8C3E"/>'
-          + '<rect x="80" y="104" width="40" height="34" rx="5" fill="#EDE1C6"/>'
-          + '<path d="M100 132 V114" fill="none" stroke="#4E8C3E" stroke-width="3" stroke-linecap="round"/>'
-          + '<path d="M100 122 Q90 118 85 110 Q96 111 100 120 Z" fill="#6FB03F"/>'
-          + '<path d="M100 122 Q110 118 115 110 Q104 111 100 120 Z" fill="#6FB03F"/>'
+        return '<svg viewBox="44.3 52.3 113.4 125.4" width="' + s + '" height="' + s + '" aria-hidden="true" style="display:inline-block;vertical-align:-0.2em">'
+          + '<path d="M62 96 Q62 84 74 82 L132 82 Q144 84 144 96 L147 152 Q148 164 136 164 L66 164 Q54 164 55 152 Z" fill="#6FB03F"/><path d="M118 82 L132 82 Q144 84 144 96 L147 152 Q148 164 136 164 L116 164 Z" fill="#4A7A2B"/><path d="M74 82 Q64 66 82 62 L124 62 Q142 66 132 82 Z" fill="#4E8C3E"/><path d="M116 63 Q142 67 132 82 L114 82 Z" fill="#335E22"/><path d="M74 82 L132 82 L130 88 L76 88 Z" fill="#2F5622"/><rect x="80" y="104" width="40" height="34" rx="5" fill="#EDE1C6"/><path d="M108 104 h12 a5 5 0 0 1 5 5 v24 a5 5 0 0 1-5 5 h-12 z" fill="#C9BCA0"/><path d="M100 134 V116" fill="none" stroke="#184c28" stroke-width="4" stroke-linecap="round"/><path d="M100 124 Q88 120 83 110 Q97 111 100 122 Z" fill="#22b573"/><path d="M100 124 Q112 120 117 110 Q103 111 100 122 Z" fill="#184c28"/><path d="M58 168 Q76 152 96 168 Z" fill="#6E4A28"/><path d="M62 166 Q76 156 88 166 Z" fill="#8A5A30"/><rect x="69" y="92" width="7" height="34" rx="3.5" fill="#fff" opacity=".7"/><rect x="69" y="132" width="5" height="12" rx="2.5" fill="#fff" opacity=".45"/>'
           + '</svg>';
       }
 
@@ -5133,21 +5128,50 @@ if (typeof module !== 'undefined' && module.exports) {
         if (/tape ?measure|measur|ruler/.test(n)) return 'tape-measure';
         return null;
       }
-      // item name + description + category -> a ci-<id> icon id, or NULL when the row should show no icon
-      // (Nutrition/Compost/Pest items, which would just repeat the category header). Callers must handle null.
+      // --- Feed & Soil per-item art (v8.99 relight) -------------------------------------------------
+      // Distinct marks per PRODUCT FORM, not per brand: a bulk sack (contents tell compost from
+      // fertiliser), or a capped concentrate bottle. Deliberately NOT the cat-nutrition header sack —
+      // that one is upright and tied-neck, these are wide, rolled-open and contents-forward, so a row
+      // never reads as a smaller copy of its own header (the 09/07 repetition complaint).
+      function shedFeedIconId(item) {
+        const n = String(item || '').toLowerCase();
+        // Seasol is drawn by its own bespoke seaweed mark at the call site, before this runs.
+        if (/seasol/.test(n)) return null;
+        if (/compost|soil improver|manure|mulch|potting mix/.test(n)) return 'compost';
+        // Liquid concentrates — checked BEFORE the granular branch because "PowerFeed All Purpose
+        // Dynamic Fertiliser" contains "fertilis" but is a 1.2 L bottle, not a bag.
+        if (/powerfeed|power feed|liquid|concentrate|tonic|fish|seaweed|charlie carp|\bml\b|litre|\bl\b/.test(n)) return 'liquid-feed';
+        return 'fertiliser';   // the category's honest default: a sack of plant food
+      }
+      // --- Pest & Weed per-item art (v8.99 relight) -------------------------------------------------
+      // Living antagonists get the creature; chemicals get the bottle. No abstract colour-coding —
+      // an earlier teal-means-intervention scheme read as an arbitrary wrong colour and was cut.
+      function shedPestIconId(item) {
+        const n = String(item || '').toLowerCase();
+        if (/snail|slug|slater/.test(n)) return 'snail-bait';
+        if (/caterpillar|dipel|grub|looper|armyworm|cabbage (white|moth)|\bbt\b/.test(n)) return 'caterpillar';
+        // Non-killers first: "Wetter & Spreader" and "Spray Dye" are additives that go INTO another
+        // spray, so they must not fall through to the herbicide bottle.
+        if (/wetter|spreader|surfactant|adjuvant|\bdye\b|marker|penetrant/.test(n)) return 'spray-adjunct';
+        // Both herbicides share one mark on purpose (owner 27/07: "same thing really") — so the
+        // weed/path ordering trap that used to matter here no longer exists.
+        if (/weed|herbicid|glyphosate|\bpath\b|moss|blackberry/.test(n)) return 'herbicide';
+        return 'spray-adjunct';   // unknown treatment → the plainest bottle in the set
+      }
+      // item name + description + category -> a ci-<id> icon id, or NULL when the row should show no icon.
+      // Callers must still handle null (Seeds rows, and Seasol).
       function resolveShedIconId(item, description, category) {
         const c = String(category || '').toLowerCase();
         if (/tool|hardware/.test(c)) return shedToolIconId(item) || 'supply-box';
-        // Seeds & Seedlings items carry NO per-item icon — the cat-seeds-seedlings HEADER carries identity
-        // (owner 10/07: the repeated seed glyph down every row added nothing). Same header-only treatment as
-        // Feed & Soil / Pest below; only Tools & Hardware keep distinct per-item art.
+        // Seeds & Seedlings stays header-only (owner 10/07, re-confirmed 27/07 — "keep seeds for now").
+        // The packet glyph repeated down every row added nothing, and unlike Feed/Pest these rows have
+        // no distinct product forms to draw.
         if (/seed|seedling/.test(c)) return null;
-        // Feed & Soil (Nutrition + Compost & Conditioner, now merged) and Pest items carry no distinct per-item
-        // art — resolving them to the category icon just repeats the HEADER icon down the whole list (the
-        // duplication owner flagged 09/07). Return null so the row shows NO icon and the category header carries
-        // identity. Tools + Seeds (above) keep their distinct per-item icons; Seasol keeps its bespoke mark at
-        // the call site. Tolerant of both the old split names and the new "Feed & Soil".
-        if (/feed|nutrition|fertil|compost|conditioner|soil|mulch|pest|weed|treatment|control|fung/.test(c)) return null;
+        // Feed & Soil and Pest & Weed now DO carry per-item art (v8.99). This reverses the 09/07
+        // "text-only" call, which was right about repetition but was fixed by drawing genuinely
+        // different objects rather than by removing the icon. Tolerant of the old split category names.
+        if (/feed|nutrition|fertil|compost|conditioner|soil|mulch/.test(c)) return shedFeedIconId(item);
+        if (/pest|weed|treatment|control|fung|spray/.test(c)) return shedPestIconId(item);
         return 'generic-plant'; // unknown / "Other" — a neutral drawn fallback, still never emoji
       }
       // The category HEADER icon = the cat-* sprite for that category (drawn, not emoji). Tolerant of the old
