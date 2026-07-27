@@ -1245,6 +1245,39 @@
       .pp-id-status { margin-left: auto; }   /* the right-hand lifecycle/place tile pushes to the far right, name in the middle */
       .pp-id h2 { margin: 0; font-size: var(--fs-lg); font-weight: 600; line-height: 1.25; color: var(--text-main); }
       .pp-id h2 .pp-variety { color: var(--text-muted); font-weight: 400; }
+      /* ── Edit mode, the modal half (owner, 26/07) ──────────────────────────────────────────────────
+         `body.edit-unlocked` used to only REVEAL pencils (the rules below). It now also has an edge and a
+         cost: while it's on, the log FAB gives up its corner to a "Done editing" pill, and every control
+         that would log a NEW EVENT reads as paused. The JS gate is editModeBlock() in Js-Core.html — the
+         dimming here is the visual half only, so nothing depends on CSS for correctness.
+         Deliberately NOT paused: scrolling, tabs, bed collapse, opening a passport/map/Guide, and the
+         to-confirm resolve flow — see the editModeBlock comment for why that line sits where it does. */
+      .edit-exit-fab { display: none; position: fixed;
+        left: max(24px, calc((100vw - var(--app-w)) / 2 + 24px)); bottom: calc(16px + var(--safe-area-inset-bottom));
+        min-height: 48px; padding: 0 18px; border: none; border-radius: var(--r-lg);
+        background: var(--color-sage); color: #fff; font-family: inherit; font-weight: 600; font-size: var(--fs-base);
+        box-shadow: 0 14px 36px rgba(0,0,0,0.6), 0 4px 10px rgba(0,0,0,0.45); cursor: pointer;
+        align-items: center; justify-content: center;
+        /* Above the passport/resolve overlays (both z-index 1000) — most editing happens INSIDE the
+           passport, so an exit stuck underneath it would be exactly the mode-with-no-edge problem. Stays
+           below the toast container (2000) so a blocked-action toast still reads over it. */
+        z-index: 1002;
+        -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+      body.edit-unlocked .edit-exit-fab { display: inline-flex; }
+      /* The swap. Covers BOTH #logFab and #ppLogFab through the shared class, by design — they must move
+         together (see the .log-fab comment above). */
+      body.edit-unlocked .log-fab { display: none; }
+      /* Paused controls read as paused. pointer-events stays ON so a tap still lands on the guarded
+         handler and gets the explaining toast — a dead control that says nothing is worse than a dim one
+         that tells you why. */
+      body.edit-unlocked .care-tile,
+      body.edit-unlocked .pp-stage-btn,
+      body.edit-unlocked .pp-harvest-btn,
+      body.edit-unlocked .pp-bell-btn,
+      body.edit-unlocked .save-log,
+      body.edit-unlocked #addPhotoBtn,
+      body.edit-unlocked #uploadPhotoBtn { opacity: 0.4; filter: saturate(0.4); }
+
       /* Rename (SCOPE-STABLE-IDENTITY step 6): a quiet inline ✎ + one-cell edit. The pencil sits by the title
          and stays low-key (muted, brightening on hover) so it never competes with the plant identity.
          Hidden by default — every ✎ (plant, shed item, bed, shed quantity/category) only shows once the
@@ -2089,7 +2122,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.02</span>
+        <span class="header-version">v9.03</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2391,6 +2424,12 @@
                Per-device, instant (fillerEnabled / toggleFiller). -->
           <label class="dev-toggle" style="margin-top:14px;"><input type="checkbox" id="fillerToggle" checked onchange="toggleFiller(this)"> Filler</label>
           <p class="dev-note" style="margin-top:4px;">Fills gaps on the passport cards with typical facts from your Crop Reference book — the “Typical <span aria-hidden="true">…</span>” box and the local sow window. Turn off to see only what you’ve captured yourself.</p>
+          <!-- Edit mode graduated out of the Dev drawer (owner, 26/07): it's a thing the owner uses on the
+               real garden, not maintenance config, so it belongs beside Filler on the everyday surface. The
+               Dev-drawer twin stays (EDIT_TOGGLE_IDS keeps the two checkboxes in step) — same pattern as the
+               hints switch, which lives on both the Info tab and in Dev. -->
+          <label class="dev-toggle" style="margin-top:14px;"><input type="checkbox" id="settingsEditUnlockToggle" onchange="toggleEditMode(this)"> Edit mode</label>
+          <p class="dev-note" style="margin-top:4px;">Shows a ✎ on plant names, bed names and shed items so you can fix a typo or a count without going through the log. While it's on, logging is paused — the log button becomes <strong>Done editing</strong>.</p>
         </div>
 
         <!-- Dashboard outbound links (Oracle + Spreadsheet) removed 12/07/2026: the oracle is now a
@@ -2399,7 +2438,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.02 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.03 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2480,9 +2519,9 @@
           </div>
 
           <div class="dev-section">
-            <h4 class="dev-h">Unlock editing</h4>
-            <p class="dev-note">Reveals a ✎ on plant names, shed items (name, quantity, category) and bed names so you can fix a typo or move something without going through the log. Off by default — nothing changes on the daily surface until you switch this on.</p>
-            <label class="dev-toggle"><input type="checkbox" id="devEditUnlockToggle" onchange="toggleEditMode(this)"> Unlock edit pencils</label>
+            <h4 class="dev-h">Edit mode</h4>
+            <p class="dev-note">Reveals a ✎ on plant names, shed items (name, quantity, category) and bed names so you can fix a typo or move something without going through the log. While it's on the app pauses anything that would log a new event — the log button, the care rings, stage and harvest buttons — and the log button becomes <strong>Done editing</strong>. Off by default. Same switch as the one in App Settings.</p>
+            <label class="dev-toggle"><input type="checkbox" id="devEditUnlockToggle" onchange="toggleEditMode(this)"> Edit mode</label>
           </div>
 
           <div class="dev-section">
@@ -3378,6 +3417,15 @@
     <button type="button" id="logFab" class="log-fab" aria-label="Log activity" title="Log activity">
       <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#ui-log-entry" xlink:href="#ui-log-entry"></use></svg>
     </button>
+
+    <!-- Edit mode's visible edge (owner, 26/07 — "never get stuck in a mode you can't see the edge of",
+         the same worry Js-Map.html:827 records for the map's arrange mode). It TAKES THE LOG FAB'S CORNER
+         for the duration rather than stacking beside it: logging is one of the things edit mode pauses, so
+         the swap is honest — the primary action's own spot tells you the mode is on, on every tab, and it
+         can't be scrolled away. CSS-swapped in Stylesheet.html (body.edit-unlocked), not JS-toggled, so it
+         can never disagree with the body class. -->
+    <button type="button" id="editModeExit" class="edit-exit-fab" onclick="exitEditMode()"
+            aria-label="Done editing" title="Done editing">✓ Done editing</button>
 
     <!-- Plant passport (docs/SCOPE-PLANT-HISTORY.md): tap a Garden plant row → this full-screen overlay.
          Same open/close mechanics as #plotFullscreen (fixed inset:0, scroll lock, Esc/✕). The body is
@@ -5524,18 +5572,54 @@ if (typeof module !== 'undefined' && module.exports) {
 
       // Edit-mode master switch. Same shape as the hints toggle above: `edit-unlocked` on <body> reveals
       // every rename/edit pencil (plant, shed item, bed, shed quantity/category — CSS in Stylesheet.html)
-      // that's otherwise hidden, so the daily surface stays clean until the owner deliberately unlocks it
-      // from the Dev drawer. Off by default on every instance — no beta/prod split like hints.
+      // that's otherwise hidden, so the daily surface stays clean until the owner deliberately unlocks it.
+      // Off by default on every instance — no beta/prod split like hints. Twin controls (App Settings +
+      // Dev drawer) stay in step via EDIT_TOGGLE_IDS, exactly like HINT_TOGGLE_IDS above.
+      //
+      // MODAL, not passive (owner, 26/07). The class no longer only *reveals* pencils — while it's on, the
+      // actions that would LOG A NEW EVENT are switched off, so you can't advance a stage or fire off a
+      // capture in the middle of correcting the record. The line is deliberate and narrow:
+      //   OFF  — log FAB (both), send/submit, camera, the three care rings, every stage-advance + harvest
+      //          button (incl. the shed twin), the harvest reminder bell.  → editModeBlock() below.
+      //   ON   — scrolling, tab-switching, bed collapse, opening the map/Guide, opening a passport (the
+      //          passport IS the main editing surface), prev/next, to-confirm resolve (fixing a mis-parse
+      //          is record-correction, same family as editing), and every pencil/▲▼.
+      // The visible edge is #editModeExit (Index.html) — a "Done editing" pill that takes the log FAB's
+      // corner for the duration, so the mode can never be entered without its exit being on screen
+      // (`Js-Map.html:830` records the same worry for the map's arrange mode).
+      const EDIT_TOGGLE_IDS = ['devEditUnlockToggle', 'settingsEditUnlockToggle'];
       function applyEditMode() {
         const on = localStorage.getItem('garden_edit_unlocked') === 'true';
         document.body.classList.toggle('edit-unlocked', on);
-        const cb = document.getElementById('devEditUnlockToggle');
-        if (cb) cb.checked = on;
+        EDIT_TOGGLE_IDS.forEach(function (id) {
+          const cb = document.getElementById(id);
+          if (cb) cb.checked = on;
+        });
       }
       function toggleEditMode(cb) {
         const on = !!(cb && cb.checked);
         localStorage.setItem('garden_edit_unlocked', on ? 'true' : 'false');
         document.body.classList.toggle('edit-unlocked', on);
+        EDIT_TOGGLE_IDS.forEach(function (id) {   // keep the twin checkbox in step
+          const other = document.getElementById(id);
+          if (other && other !== cb) other.checked = on;
+        });
+      }
+      // The "Done editing" pill (and anything else that wants a one-tap exit). Writes through the same
+      // storage key + checkbox sync as the toggles, so the two controls can never disagree.
+      function exitEditMode() {
+        localStorage.setItem('garden_edit_unlocked', 'false');
+        applyEditMode();
+      }
+      function editModeOn() { return document.body.classList.contains('edit-unlocked'); }
+      // Guard for the paused actions above. Call at the TOP of the entry function (not the listener) so
+      // every route in — inline onclick, keyboard, a programmatic call — is covered by the one check.
+      // Returns true when the caller should bail. The CSS dims these controls too (Stylesheet.html), but
+      // dimming is a hint, not a gate: this is the gate.
+      function editModeBlock(what) {
+        if (!editModeOn()) return false;
+        showToast('Editing', (what || 'That') + ' is paused while you’re editing. Tap Done editing to finish.');
+        return true;
       }
       // One hint's tap-to-reveal (see .ui-hint in Stylesheet.html). The master switch shows the ⓘ; tapping
       // expands just that caption. Two shapes: a header ⓘ pairs with the sibling .ui-hint-caption inside
@@ -7354,6 +7438,7 @@ if (typeof module !== 'undefined' && module.exports) {
       // never leave the Camera button dead.
       let _cameraStream = null;
       function openCamera() {
+        if (editModeBlock('The camera')) return;   // also covers the FAB long-press, which skips fabClick
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           document.getElementById('photoInput').click();
           return;
@@ -8330,6 +8415,9 @@ if (typeof module !== 'undefined' && module.exports) {
       // leftover text can never be mis-sent.
       function submitLog(explicitText, structuredItem) {
         const programmatic = (typeof explicitText === 'string');
+        // Edit mode pauses the send arrow, but NOT the programmatic path: a to-confirm card resolving
+        // itself is record-correction, which stays live while editing (see editModeBlock, Js-Core.html).
+        if (!programmatic && editModeBlock('Logging')) return;
         let text = (programmatic ? explicitText : document.getElementById('logTextarea').value).trim();
         const pin = localStorage.getItem('garden_log_pin');
         if (!text.trim() && !(programmatic ? false : currentPhotoData)) return;
@@ -10003,6 +10091,7 @@ if (typeof module !== 'undefined' && module.exports) {
       function fabClick() {
         fabPressCancel();
         if (_fabLongPressed) { _fabLongPressed = false; return; } // swallow the click a handled hold leaves behind
+        if (editModeBlock('Logging')) return;   // edit mode is modal — the pill has this corner instead
         openLogSheet();
       }
       (function wireFabLongPress() {
@@ -10172,6 +10261,7 @@ if (typeof module !== 'undefined' && module.exports) {
         careArmed.key = null;
       }
       function careTileTap(key) {
+        if (editModeBlock('Care logging')) return;   // a ring tap writes an event — paused while editing
         if (careArmed.key === key) { disarmCare(); commitCare(key); return; } // second tap → commit
         disarmCare();                                                          // arm this tile (clear any other)
         careArmed.key = key;
@@ -11018,6 +11108,7 @@ if (typeof module !== 'undefined' && module.exports) {
       // user can delete it and log anything, or log against another plant entirely. No auto-focus (owner pref,
       // 17/07 — the keyboard shouldn't slam up), so the box stays a calm, tap-to-edit draft.
       function openPassportLog() {
+        if (editModeBlock('Logging')) return;   // twin of the main FAB's gate (fabClick, Js-UI.html)
         const ta = document.getElementById('logTextarea');
         if (!ta) return;
         let prefill = '';
@@ -11702,7 +11793,10 @@ if (typeof module !== 'undefined' && module.exports) {
         const btn = document.createElement('button');
         btn.type = 'button'; btn.className = 'pp-stage-btn';
         btn.textContent = seedling ? 'Plant outside' : 'Sow';
-        btn.onclick = function () { ppOpenShedToGarden(item, category, seedling ? 'plant' : 'sow'); };
+        btn.onclick = function () {   // twin of the garden stage buttons' gate (mk, Js-Passport2.html)
+          if (editModeBlock(btn.textContent)) return;
+          ppOpenShedToGarden(item, category, seedling ? 'plant' : 'sow');
+        };
         return btn;
       }
       // The sow-verdict line for a seed packet's shed card (Item 1, COLOUR-SYSTEM §3 "seed card") — the coloured
@@ -11982,11 +12076,13 @@ if (typeof module !== 'undefined' && module.exports) {
       // perennial mid-season, a tombstone) so the caller skips the row entirely.
       function ppStageAdvanceBtnEl(p, bedName) {
         if (!p || p.isTombstone || p.isEmpty) return null;
+        // One factory, so the edit-mode pause below covers EVERY stage-advance and harvest button at once
+        // — advancing a plant's story is exactly what edit mode switches off (editModeBlock, Js-Core.html).
         const mk = function (label, cls, onClick) {
           const btn = document.createElement('button');
           btn.type = 'button'; btn.className = cls;
           btn.textContent = label;
-          btn.onclick = onClick;
+          btn.onclick = function (e) { if (editModeBlock(label)) return; onClick(e); };
           return btn;
         };
         if (p.phase === 'Sown') {
@@ -13003,7 +13099,10 @@ if (typeof module !== 'undefined' && module.exports) {
         btn.setAttribute('aria-label', pending
           ? 'Harvest reminder in ' + alert.remindDays + (alert.remindDays === 1 ? ' day' : ' days') + ' — tap to change'
           : 'Set a harvest reminder');
-        btn.onclick = function () { ppOpenHarvestReminderPopup(p, bedName); };
+        btn.onclick = function () {
+          if (editModeBlock('The harvest reminder')) return;
+          ppOpenHarvestReminderPopup(p, bedName);
+        };
         return btn;
       }
       // Bell tap (design pass 23/07 round 6) — two choices, reusing the shared resolve-modal shell (same
