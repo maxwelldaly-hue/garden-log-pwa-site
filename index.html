@@ -1217,6 +1217,12 @@
         background: var(--surface-inset-01); border: 1px solid var(--surface-inset-03); color: var(--text-main);
       }
       .pp-reason-choice:hover { border-color: var(--text-muted); }
+      /* Picked state — used where the choice list is a SELECTION awaiting Confirm (the shed Sow / Plant-outside
+         bed picker) rather than a straight-to-submit list. Sage border + lift, no fill: the row still reads as
+         a quiet list, with one row obviously current. */
+      .pp-reason-choice.is-picked {
+        border-color: var(--color-sage); background: var(--surface-inset-02); color: var(--text-main);
+      }
       /* One-shot quantity-picker stepper, inside the shared resolve-modal shell. */
       .pp-stepper { display: flex; align-items: center; justify-content: center; gap: 18px; padding: 12px 0; }
       .pp-stepper-btn {
@@ -2145,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.18</span>
+        <span class="header-version">v9.19</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2461,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.18 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.19 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -12046,8 +12052,12 @@ if (typeof module !== 'undefined' && module.exports) {
         }
         return s;
       }
-      // Combined popup: how many + which bed + when (backdate), all in the shared resolve-modal shell. Tapping
-      // a bed submits with the current count + date (same read-before-close pattern as ppOpenMovedOutside).
+      // Combined popup: how many + which bed + when (backdate), all in the shared resolve-modal shell. The bed
+      // row is a SELECTION, not a submit: tapping only picks (owner, 28/07 — a stray tap on the bed list used to
+      // fire the whole sow with whatever count/date happened to be showing). Confirm is the only thing that
+      // writes, and it stays disabled until a bed is picked. A Sow pre-picks the nursery (House Window) since
+      // that's where a packet almost always starts; a "Plant outside" deliberately pre-picks NOTHING — moving a
+      // seedling INTO the nursery is not the move, so the owner must name the bed.
       function ppOpenShedToGarden(item, category, mode) {
         const base = ppSplitName(item.item)[0];
         const sow = mode === 'sow';
@@ -12069,20 +12079,40 @@ if (typeof module !== 'undefined' && module.exports) {
         const df = ppDateField();
         body.appendChild(df.el);
         const beds = (typeof getKnownBeds === 'function') ? getKnownBeds() : [];
+        // Pre-pick the nursery on a Sow. Matched by shape, not by an exact string, so a renamed/spaced
+        // "House Window" still lands (same loose reading GardenDoc.js's nursery zone uses). No match (or a
+        // Plant outside) simply leaves nothing picked — we never invent a bed the layout doesn't have.
+        let picked = sow ? (beds.filter(function (b) { return /house\s*window/i.test(b); })[0] || '') : '';
+        const btns = [];
         const choices = document.createElement('div');
         choices.className = 'pp-reason-choices';
+        const paint = function () {
+          btns.forEach(function (b) {
+            const on = b.dataset.bed === picked;
+            b.classList.toggle('is-picked', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+          });
+          confirmBtn.disabled = !picked;
+        };
         beds.forEach(function (b) {
           const btn = document.createElement('button');
           btn.type = 'button'; btn.className = 'pp-reason-choice';
+          btn.dataset.bed = b;
           btn.textContent = b;
-          btn.onclick = function () {
-            const date = df.getDate(); // read before closeResolve wipes the modal body
-            closeResolve();
-            ppSubmitShedToGarden(item, mode, b, val, date);
-          };
+          btn.onclick = function () { picked = b; paint(); };
+          btns.push(btn);
           choices.appendChild(btn);
         });
         body.appendChild(choices);
+        const confirmBtn = rButton('Confirm', 'rbtn-primary', function () {
+          if (!picked) return;
+          const date = df.getDate();   // read before closeResolve wipes the modal body
+          const bed = picked;
+          closeResolve();
+          ppSubmitShedToGarden(item, mode, bed, val, date);
+        });
+        paint();
+        actions.appendChild(confirmBtn);
         actions.appendChild(rButton('Cancel', 'rbtn-secondary', closeResolve));
         presentResolveModal();
       }
