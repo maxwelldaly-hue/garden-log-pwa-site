@@ -2089,7 +2089,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.01</span>
+        <span class="header-version">v9.02</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2399,7 +2399,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.01 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.02 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -4080,11 +4080,21 @@ function monthsUntilSowMonth(months, cur) {
 // tails in the seed catalogue — agrees with the old month rule on 36 and fixes the three it got wrong
 // (Cauliflower Jul→Nov = summer; Celeriac and Pumpkins Jan→May = winter).
 //
-// Two riders. An `ongoing` cropper in the WARM lane is never ended by heat — first pick isn't the deadline,
+// The question the ready month answers is "what is ARRIVING as this crop finishes", so the year splits in
+// half at the turns, not into hot/cold bands with a gap: ready Sep–Feb and summer is what's bearing down;
+// ready Mar–Aug and it's winter. (First cut used Nov–Mar hot / May–Sep cold with a lane fallback on the
+// Apr/Oct shoulder — but that read September as "cold" when September is spring, so Pak Choi and the winter
+// bedding annuals all pointed at winter while they were actually racing the spring warm-up.)
+//
+// One rider. An `ongoing` cropper in the WARM lane is never ended by heat — first pick isn't the deadline,
 // the end of its productive run is, and autumn ends that (Zucchini plants in January and picks from March,
-// but you stop planting because of what comes after). And Apr/Oct land between the hot and cold bands, so a
-// shoulder falls back to the lane: a warm crop is racing autumn, a cool crop is racing summer.
+// but you stop planting because of what comes after).
 // No MaturityDays (an unclassified or ornamental row) → the old month rule, unchanged.
+//
+// Known-soft: `MaturityDays` is measured from SOWING while the tail is a PLANTING month, so ready runs late
+// by roughly the lead — most visible on a long-season crop (Storage Onions, 150 days, reads Mar and so calls
+// winter where summer is the likelier limit). Not corrected for: the tail itself is ceil(lead/4) arithmetic,
+// and stacking a second approximation on the first buys precision the inputs don't have.
 function leavingDirection(plantWindowEnd, model) {
   if (!plantWindowEnd) return null;
   const monthRule = (plantWindowEnd >= 2 && plantWindowEnd <= 7) ? 'cold' : 'warm';
@@ -4094,9 +4104,7 @@ function leavingDirection(plantWindowEnd, model) {
   const ongoing = String(model.harvestType || '').toLowerCase() === 'ongoing';
   if (ongoing && lane === 'warm') return 'cold';
   const ready = ((plantWindowEnd - 1 + Math.round(mat / 30)) % 12) + 1;
-  if (ready >= 11 || ready <= 3) return 'warm';   // Nov–Mar — Adelaide's hot band
-  if (ready >= 5 && ready <= 9) return 'cold';    // May–Sep — the cold band
-  return lane === 'warm' ? 'cold' : 'warm';       // Apr / Oct shoulder → the lane decides
+  return (ready >= 9 || ready <= 2) ? 'warm' : 'cold';   // Sep–Feb → summer coming · Mar–Aug → winter coming
 }
 
 // The ONE fact a blocked row states: why you can't act outside today, as "<gate> N° too <cold|hot>".
@@ -13704,11 +13712,13 @@ if (typeof module !== 'undefined' && module.exports) {
       //   "Soil 5° too hot"              the blocking gate — soil | Nights | Days, cold | hot
       //   "From Jul"                     nothing is blocking; the window simply hasn't opened (the fallback)
       // Sentence case, because the note now sits alone on the row's second line rather than mid-row.
+      // WHOLE degrees, rounded UP. A gap is a "how far short are we" reading, and 0.1° of precision is noise a
+      // gardener can't act on ("Nights 5.9° too cold" — owner, 27/07). Ceiling rather than nearest so a real
+      // 0.4° gap can never render as a self-contradicting "Nights 0° too cold".
       function isFmtBlocker(b) {
         if (!b) return '';
         const gate = b.gate === 'soil' ? 'Soil' : (b.gate === 'nights' ? 'Nights' : 'Days');
-        const deg = String(Math.round(b.deg * 10) / 10).replace(/\.0$/, '');
-        return gate + ' ' + deg + '° too ' + b.dir;
+        return gate + ' ' + Math.ceil(b.deg) + '° too ' + b.dir;
       }
       function isUntil(monthIdx) {
         const mon = (typeof SOW_MONDISP !== 'undefined') ? SOW_MONDISP : null;
