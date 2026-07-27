@@ -2145,7 +2145,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.15</span>
+        <span class="header-version">v9.16</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2461,7 +2461,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.15 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.16 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6778,12 +6778,20 @@ if (typeof module !== 'undefined' && module.exports) {
         }
         return { mode: 'amber', overdueDays: overdueDays };
       }
-      // The shared "Est. harvest in N days" / negative-overdue text, one wording for both quiet states
-      // ('off' and 'pending' read identically — see harvestAlertState's header comment on why) and the
-      // ordinary future countdown. PURE.
+      // The shared harvest-estimate text, one wording for both quiet states ('off' and 'pending' read
+      // identically — see harvestAlertState's header comment on why) and the ordinary future countdown.
+      // Past-due reads as PROSE ("Est. harvest was 11 days ago"), not as the raw signed number: this
+      // rendered "Est. harvest in -11 days" until 28/07, which is the sort of thing that reads as a broken
+      // app rather than a considered one (owner-spotted on the alarm's first real run-through). The signed
+      // number itself is unchanged and still the single honest overdue count that harvestAlertState's header
+      // describes — only its ENGLISH differs by sign. PURE.
       function harvestCountdownText(overdueDays) {
         if (overdueDays === 0) return 'Est. harvest today';
-        return 'Est. harvest in ' + overdueDays + (Math.abs(overdueDays) === 1 ? ' day' : ' days');
+        if (overdueDays < 0) {
+          const past = -overdueDays;
+          return 'Est. harvest was ' + past + (past === 1 ? ' day' : ' days') + ' ago';
+        }
+        return 'Est. harvest in ' + overdueDays + (overdueDays === 1 ? ' day' : ' days');
       }
 
       // "06/10/2025" -> "6 Oct". The bare primitive, deliberately year-LESS: ppShortDate (Js-Passport.html)
