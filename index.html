@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.22</span>
+        <span class="header-version">v9.23</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.22 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.23 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -12311,6 +12311,20 @@ if (typeof module !== 'undefined' && module.exports) {
       // from "move the season along" to "there's a crop to pick". The earlier moves are GREY (pp-stage-btn):
       // quiet, nothing you have to act on yet. Returns null when no forward move applies (an established
       // perennial mid-season, a tombstone) so the caller skips the row entirely.
+      // PARTLY UP — the one state that breaks the single-slot rule (SCOPE-BATCH-CLOCKS step 4, which amends
+      // SCOPE-STAGE-BUTTON.md Phase 2's "exclusive by construction"). Some of a tray are up and some are
+      // still to come, so BOTH moves are legal at once: record the rest as they appear, or plant out the ones
+      // that made it. PURE + test-guarded (rule 43) — the button set is a decision, not a render detail.
+      // Needs both numbers tracked: an untracked Count (or no tally yet) can't say "some", so it falls
+      // through to today's single button. Gated on raisingUnderCover so it can only ever apply to a nursery
+      // row — a bed row's tally is cleared on plant-out (stampTransplantOnMove) and never comes back.
+      function ppPartlyUp(p) {
+        if (!p || !p.raisingUnderCover) return false;
+        const total = parseInt(p.count, 10);
+        const up = parseInt(p.sproutedCount, 10);
+        if (!isFinite(total) || total <= 0 || !isFinite(up)) return false;
+        return up > 0 && up < total;
+      }
       function ppStageAdvanceBtnEl(p, bedName) {
         if (!p || p.isTombstone || p.isEmpty) return null;
         // One factory, so the edit-mode pause below covers EVERY stage-advance and harvest button at once
@@ -12332,7 +12346,15 @@ if (typeof module !== 'undefined' && module.exports) {
           // pp-stage-btn (a quiet "not yet", never a nag). Degrade-safe: no model/forecast → grey.
           const po = ppPlantOutLine(p);
           const ready = !!(po && !po.weather && po.time && po.time.cls === 'pl-ready');
-          return mk('Plant outside', ready ? 'pp-harvest-btn' : 'pp-stage-btn', function () { ppOpenMovedOutside(p, bedName); });
+          const plantOut = mk('Plant outside', ready ? 'pp-harvest-btn' : 'pp-stage-btn', function () { ppOpenMovedOutside(p, bedName); });
+          if (!ppPartlyUp(p)) return plantOut;
+          // Partly up: TWO buttons, "More sprouted" first (the cheaper, more likely tap). Returned as a
+          // DocumentFragment rather than a wrapper div so both land as direct children of whichever
+          // .pl-line-row the caller is filling (Js-Passport3.html) — same flex row, no new element, no CSS.
+          const frag = document.createDocumentFragment();
+          frag.appendChild(mk('More sprouted', 'pp-stage-btn', function () { ppMoreSproutedTap(p, bedName); }));
+          frag.appendChild(plantOut);
+          return frag;
         }
         // A deciduous perennial resting over winter (phase Dormant, derived from species + season) — a quiet
         // rest with no manual move, and deliberately NO stray Harvest button (which ppHarvestEligible would
@@ -12640,24 +12662,62 @@ if (typeof module !== 'undefined' && module.exports) {
         document.getElementById('resolveSub').textContent = 'How many of the ' + total + ' are up?';
         const body = document.getElementById('resolveBody'); body.innerHTML = '';
         const actions = document.getElementById('resolveActions'); actions.innerHTML = '';
-        let val = total;
-        const stepper = document.createElement('div'); stepper.className = 'pp-stepper';
-        const minus = document.createElement('button'); minus.type = 'button'; minus.className = 'pp-stepper-btn'; minus.textContent = '−';
-        const disp = document.createElement('span'); disp.className = 'pp-stepper-val'; disp.textContent = String(val);
-        const plus = document.createElement('button'); plus.type = 'button'; plus.className = 'pp-stepper-btn'; plus.textContent = '+';
-        const render = function () { disp.textContent = String(val); minus.disabled = val <= 1; plus.disabled = val >= total; };
-        minus.onclick = function () { if (val > 1) { val--; render(); } };
-        plus.onclick = function () { if (val < total) { val++; render(); } };
-        render();
-        stepper.appendChild(minus); stepper.appendChild(disp); stepper.appendChild(plus);
-        body.appendChild(stepper);
+        const st = ppSproutStepper(1, total, total);
+        body.appendChild(st.el);
         const df = ppDateField();
         body.appendChild(df.el);
         actions.appendChild(rButton('Confirm', 'rbtn-primary', function () {
           closeResolve();
           // Full count -> omit the field: the server's first-emergence default is already "all up",
           // so the submitted item stays byte-identical to the pre-stepper tap.
+          const val = st.get();
           ppSubmitSprouted(p, bedName, df.getDate(), (val < total) ? String(val) : '');
+        }));
+        actions.appendChild(rButton('Cancel', 'rbtn-secondary', closeResolve));
+        presentResolveModal();
+      }
+      // The shared −/N/+ control behind both sprout popups (extracted when "More sprouted" became the second
+      // copy). Returns { el, get } — the caller reads the value at Confirm time. The harvest quantity picker
+      // keeps its own inline copy on purpose: it is a shipped path with a different min, and re-plumbing it
+      // buys nothing here.
+      function ppSproutStepper(min, max, initial) {
+        let val = initial;
+        const stepper = document.createElement('div'); stepper.className = 'pp-stepper';
+        const minus = document.createElement('button'); minus.type = 'button'; minus.className = 'pp-stepper-btn'; minus.textContent = '−';
+        const disp = document.createElement('span'); disp.className = 'pp-stepper-val'; disp.textContent = String(val);
+        const plus = document.createElement('button'); plus.type = 'button'; plus.className = 'pp-stepper-btn'; plus.textContent = '+';
+        const render = function () { disp.textContent = String(val); minus.disabled = val <= min; plus.disabled = val >= max; };
+        minus.onclick = function () { if (val > min) { val--; render(); } };
+        plus.onclick = function () { if (val < max) { val++; render(); } };
+        render();
+        stepper.appendChild(minus); stepper.appendChild(disp); stepper.appendChild(plus);
+        return { el: stepper, get: function () { return val; } };
+      }
+      // "More sprouted" — the second nursery button (SCOPE-BATCH-CLOCKS step 4), offered only while a tray is
+      // partly up (ppPartlyUp). Sends an ABSOLUTE tally, never a delta: the server treats an explicit repeat
+      // as a correction (stampSproutedOnStage), so "how many are up NOW" is the one number that can't drift
+      // out of step with the stored one. It therefore also sends the value at the FULL count — unlike the
+      // first tap, which omits it. A countless repeat deliberately never resets a partial server-side, so
+      // omitting the field at 20-of-20 would silently leave the tally sitting at 12.
+      function ppMoreSproutedTap(p, bedName) {
+        const total = parseInt(p.count, 10);
+        const up = parseInt(p.sproutedCount, 10);
+        if (!isFinite(total) || total <= 0 || !isFinite(up)) return; // ppPartlyUp guarantees both; belt-and-braces
+        // No crop name in the title on purpose: the card already names the plant, and a bare base crop
+        // ("How many Tomato are up?") can't be pluralised reliably (VOICE-AND-COPY — plain, no odd plurals).
+        document.getElementById('resolveTitle').textContent = 'Did more sprout?';
+        document.getElementById('resolveSub').textContent = up + ' of the ' + total + ' so far.';
+        const body = document.getElementById('resolveBody'); body.innerHTML = '';
+        const actions = document.getElementById('resolveActions'); actions.innerHTML = '';
+        // Opens on the recorded tally and steps up from there; stepping DOWN is allowed (min 1) so a mis-tap
+        // is fixable in the same place it was made, which is exactly what the server's correction semantics do.
+        const st = ppSproutStepper(1, total, up);
+        body.appendChild(st.el);
+        const df = ppDateField();
+        body.appendChild(df.el);
+        actions.appendChild(rButton('Confirm', 'rbtn-primary', function () {
+          closeResolve();
+          ppSubmitSprouted(p, bedName, df.getDate(), String(st.get()));
         }));
         actions.appendChild(rButton('Cancel', 'rbtn-secondary', closeResolve));
         presentResolveModal();
@@ -12667,7 +12727,10 @@ if (typeof module !== 'undefined' && module.exports) {
         const where = bedName ? ' in ' + bedName : '';
         const total = parseInt(p.count, 10);
         // A partial tally reads as the tally in the Log's Action cell; the whole-batch phrasing is untouched.
-        const text = (sproutedCount && isFinite(total))
+        // The "All N" arm is reachable only from More sprouted (the first tap omits the field at full count).
+        const text = (sproutedCount && isFinite(total) && parseInt(sproutedCount, 10) >= total)
+          ? ('All ' + total + ' ' + base + ' sprouted' + where)
+          : (sproutedCount && isFinite(total))
           ? (sproutedCount + ' of the ' + total + ' ' + base + ' sprouted' + where)
           : ('The ' + base + ' sprouted' + where);
         // batchHint: p.planted — see ppSubmitHarvestQuantity's comment (the passport-tap disambiguation fix).
