@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.25</span>
+        <span class="header-version">v9.26</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.25 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.26 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6821,8 +6821,21 @@ if (typeof module !== 'undefined' && module.exports) {
       // 'pending' quiet text and (via ppHarvestReminderText, Js-Passport.html) the passport's negative
       // countdown read directly, so "how overdue is this really" stays one honest, undying number regardless
       // of how many times the alert has been armed/silenced/fired. PURE.
+      // NURSERY GATE (owner-spotted 28/07): a plant still under cover has NO harvest question to answer, so
+      // there is no alert of any kind — not the countdown, not the amber check, not the bell. Two reasons, and
+      // either alone would be enough. (1) You cannot harvest something that is still in a seed tray; a Radish
+      // sown 18/06 read "Check for harvest" on the window ledge because its estimate had simply passed.
+      // (2) The estimate it would fire on is PROVISIONAL by construction — `stampTransplantOnMove` re-anchors
+      // `EstHarvest` on the transplant date, so nudging off the sow-anchored number is nudging off a figure the
+      // app intends to recompute. It lives HERE rather than at either call site because the row and the card
+      // were genuinely disagreeing: `ppLedgerLinesEl` puts its under-cover branch BEFORE the harvest branch and
+      // so never asked, while the Garden row's nursery lines are additive and the harvest cascade ran anyway.
+      // Branch ORDER was doing the gating on one surface and nothing on the other — this makes it one decision
+      // both inherit (and it matches `ppHarvestEligible`, which already refuses the Harvest BUTTON here).
+      // The plant-out lines carry this stretch of the plant's life; the estimate returns, re-anchored, the
+      // moment it goes in the ground.
       function harvestAlertState(p) {
-        if (!p || !p.estHarvest) return null;
+        if (!p || !p.estHarvest || p.raisingUnderCover) return null;
         const overdueDays = daysUntil(stripOverdueClient(p.estHarvest));
         if (overdueDays === null) return null;
         if (overdueDays > 0) return { mode: 'countdown', overdueDays: overdueDays };
