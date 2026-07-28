@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.23</span>
+        <span class="header-version">v9.24</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.23 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.24 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -12325,6 +12325,25 @@ if (typeof module !== 'undefined' && module.exports) {
         if (!isFinite(total) || total <= 0 || !isFinite(up)) return false;
         return up > 0 && up < total;
       }
+      // ONLY DUDS LEFT — the "Clear the tray" gate (SCOPE-BATCH-CLOCKS step 5). PURE + test-guarded (rule 43).
+      // The doc's one condition: `SproutedCount === 0` AND `Count > 0` AND the estimated sprout date has
+      // passed. It covers BOTH real cases with no branch of its own —
+      //   (a) a tray where nothing ever came up  (phase 'Sown', no tally recorded → blank reads as zero)
+      //   (b) the dud remainder after the good ones were planted out (tally decremented to 0 by the step-4
+      //       invariant, count = the seeds that never made it)
+      // — and stays hidden while seedlings might still appear, so it never nags. NURSERY ONLY (`underCover`,
+      // the zone flag GardenProjection ships): a bed row keeps its single slot, and "clear the tray" would be
+      // the wrong words for a direct-sow anyway. Needs a real sow (`estSprout` — a bought seedling has none,
+      // so there is no dud story to tell) and a TRACKED count, since "clear the 3" is what the confirm names.
+      function ppOnlyDudsLeft(p) {
+        if (!p || p.isTombstone || p.isEmpty || !p.underCover || !p.estSprout) return false;
+        const total = parseInt(p.count, 10);
+        if (!isFinite(total) || total <= 0) return false;
+        const up = parseInt(p.sproutedCount, 10);
+        if (isFinite(up) && up > 0) return false;           // something is up -> not duds (blank = none up)
+        const d = daysUntil(p.estSprout);                   // null on a blank/garbled date -> no button
+        return d !== null && d < 0;                          // strictly past, matching isSproutOverdue server-side
+      }
       function ppStageAdvanceBtnEl(p, bedName) {
         if (!p || p.isTombstone || p.isEmpty) return null;
         // One factory, so the edit-mode pause below covers EVERY stage-advance and harvest button at once
@@ -12336,10 +12355,26 @@ if (typeof module !== 'undefined' && module.exports) {
           btn.onclick = function (e) { if (editModeBlock(label)) return; onClick(e); };
           return btn;
         };
+        // Both nursery branches below can gain the step-5 "Clear the tray" button, so build it once here.
+        // Grey (pp-stage-btn), never the red Pull-out treatment: seeds that never germinated aren't a plant
+        // that died, and the ending is a tidy-up, not a loss (SCOPE-BATCH-CLOCKS "Deliberately NOT Pull-out").
+        const duds = ppOnlyDudsLeft(p);
+        const clearTray = duds ? mk('Clear the tray', 'pp-stage-btn', function () { ppClearTrayTap(p, bedName); }) : null;
         if (p.phase === 'Sown') {
-          return mk('Sprouted', 'pp-stage-btn', function () { ppSproutedTap(p, bedName); });
+          const sprouted = mk('Sprouted', 'pp-stage-btn', function () { ppSproutedTap(p, bedName); });
+          if (!clearTray) return sprouted;
+          // Sown + its sprout-by date gone with nothing up: BOTH moves are honest at once — a late seed can
+          // still appear (so Sprouted stays, first: it's the hopeful tap), or the tray is done. Same
+          // DocumentFragment shape as the partly-up pair, so both land in the caller's existing .pl-line-row.
+          const frag = document.createDocumentFragment();
+          frag.appendChild(sprouted); frag.appendChild(clearTray);
+          return frag;
         }
         if (p.raisingUnderCover) {
+          // The dud REMAINDER (some came up and were planted out; what's left never did) — "Plant outside"
+          // would offer to plant nothing, so the slot is REPLACED rather than doubled. The doc's button
+          // table, "Only duds left | Clear the tray".
+          if (clearTray) return clearTray;
           // GREEN only when every gate has cleared (Phase 2, COLOUR-SYSTEM.md §1): the same readiness the
           // status line reports (ppPlantOutLine → 'pl-ready' = weather AND seedling-age both satisfied) lights
           // the button as the earned GO, reusing the harvest go-button style. Any gate still holding → grey
@@ -12740,6 +12775,40 @@ if (typeof module !== 'undefined' && module.exports) {
         closePassport();
         if (typeof submitLog === 'function') submitLog(text, item);
         if (typeof showToast === 'function') showToast('Sprouted', text);
+      }
+
+      // "Clear the tray" — the dud ending (SCOPE-BATCH-CLOCKS step 5), offered only while ppOnlyDudsLeft.
+      // A LIGHT confirm: it names exactly what is being cleared and nothing else. No backdate field — a
+      // non-event has no day it happened on ("they never came up" is a state, not a moment), and no reason
+      // list — the reason is already known, which is the whole point of not routing this through Pull-out.
+      function ppClearTrayTap(p, bedName) {
+        const base = ppSplitName(p.name)[0];
+        const total = parseInt(p.count, 10);
+        document.getElementById('resolveTitle').textContent = 'Clear the tray?';
+        document.getElementById('resolveSub').textContent = total + ' ' + base + ' never came up.';
+        const body = document.getElementById('resolveBody'); body.innerHTML = '';
+        const actions = document.getElementById('resolveActions'); actions.innerHTML = '';
+        actions.appendChild(rButton('Clear', 'rbtn-primary', function () {
+          closeResolve();
+          ppSubmitClearTray(p, bedName, total);
+        }));
+        actions.appendChild(rButton('Cancel', 'rbtn-secondary', closeResolve));
+        presentResolveModal();
+      }
+      // Structured bypass (see ppSubmitHarvestQuantity), category 'Removal' with NO count: applyLogToState's
+      // countless-removal arm is the existing tombstone-with-grace path — count 0, struck through, recoverable
+      // until the 1am flush. No new server action, no new persistence machinery. The number in the text is
+      // deliberately followed by the CROP name, never a plant-unit word ("seeds"/"seedlings"), so
+      // extractCount can't read it back as a partial-removal quantity (StateLookups.js).
+      function ppSubmitClearTray(p, bedName, total) {
+        const base = ppSplitName(p.name)[0];
+        const from = bedName ? ' from ' + bedName : '';
+        const text = 'Cleared ' + total + ' ' + base + from + ' — never came up';
+        // batchHint: p.planted — see ppSubmitHarvestQuantity's comment (the passport-tap disambiguation fix).
+        const item = { zone: bedName || 'Unspecified', category: 'Removal', crop: p.name, batchHint: p.planted || '' };
+        closePassport();
+        if (typeof submitLog === 'function') submitLog(text, item);
+        if (typeof showToast === 'function') showToast('Cleared', text);
       }
 
       // "End season" (SCOPE-STAGE-BUTTON.md Phase 5) — a returning perennial's "I'm done picking for now".
