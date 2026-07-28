@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.33</span>
+        <span class="header-version">v9.34</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.33 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.34 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2642,6 +2642,22 @@
               <button class="settings-save-btn" onclick="runFormulaEscapeCheck(this)">Run formula-escape check</button>
               <div id="devFormulaEscape" class="dev-kv" style="margin-top:8px;"></div>
             </div>
+
+            
+            <div class="dev-section">
+              <h4 class="dev-h">DB adapter (spike)</h4>
+              <p class="dev-note">The dormant database mirror of the Garden tab (one table, sandbox only — the Sheet stays the real record). <strong>Connection check</strong> says whether this project can reach the database (no secrets shown). <strong>Seed snapshot</strong> copies every Garden row into the mirror. <strong>Read diff</strong> compares the two, row by row. <strong>Round-trip</strong> nudges one plant's count through the normal edit path, checks it landed in both, and puts it back. The <strong>ON/OFF</strong> switch is the per-table rollback: OFF (the default) means the app behaves exactly as before.</p>
+              <button class="dev-simbtn" onclick="runDbTool('dbConnectionCheck', this)">Connection check</button>
+              <button class="dev-simbtn" onclick="runDbTool('dbSeedSnapshot', this)" style="margin-left:6px;">Seed snapshot</button>
+              <button class="dev-simbtn" onclick="runDbTool('dbReadDiff', this)" style="margin-left:6px;">Read diff</button>
+              <div class="dev-simrow" style="margin-top:6px;">
+                <button class="dev-simbtn" onclick="runDbTool('dbRoundTrip', this)">Round-trip</button>
+                <button class="dev-simbtn" onclick="runDbTool('dbSetAdapterFlag', this, { on: true })" style="margin-left:6px;">Adapter ON</button>
+                <button class="dev-simbtn" onclick="runDbTool('dbSetAdapterFlag', this, { on: false })" style="margin-left:6px;">Adapter OFF</button>
+              </div>
+              <div id="devDbOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
+            </div>
+            
 
             <div class="dev-section">
               <h4 class="dev-h">Map binding</h4>
@@ -6322,6 +6338,38 @@ if (typeof module !== 'undefined' && module.exports) {
             box.appendChild(line);
           });
         }
+      }
+
+      // DB-adapter spike buttons (beta-only section, DbStore.js): ONE handler for all five actions —
+      // each returns a small diagnostics object; we render it as readable key: value lines via
+      // textContent (values echo sheet/DB content, so never innerHTML). Mirrors runFormulaEscapeCheck.
+      function runDbTool(action, btn, extra) {
+        const box = document.getElementById('devDbOut');
+        if (!box) return;
+        const pin = localStorage.getItem('garden_log_pin');
+        const token = localStorage.getItem('garden_log_token');
+        if (!isOnline || !(pin || token)) { box.textContent = 'Connect + enter your PIN to run this.'; return; }
+        const label0 = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Running…';
+        box.textContent = 'Asking the server…';
+        const payload = { action: action, token: token, pin: pin };
+        if (extra) Object.keys(extra).forEach(function (k) { payload[k] = extra[k]; });
+        google.script.run
+          .withSuccessHandler(function (resStr) {
+            btn.disabled = false; btn.textContent = label0;
+            let res = null; try { res = JSON.parse(resStr); } catch (e) {}
+            if (!res || res.status !== 'success' || !res.data) {
+              box.textContent = 'Could not run — ' + ((res && res.message) || 'try again.');
+              return;
+            }
+            const d = res.data.dbCheck || res.data.dbSeed || res.data.dbDiff || res.data.dbRoundTrip || res.data.dbFlag;
+            box.textContent = d ? JSON.stringify(d, null, 2) : 'No result.';
+          })
+          .withFailureHandler(function (e) {
+            btn.disabled = false; btn.textContent = label0;
+            box.textContent = 'Could not run — ' + (e && e.message ? e.message : 'try again.');
+          })
+          .processClientRequest(JSON.stringify(payload));
       }
 
       // Formula-escape self-test (audit Finding 11): tap → the backend writes each trigger raw + guarded to a
