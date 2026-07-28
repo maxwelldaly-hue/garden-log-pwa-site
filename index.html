@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.30</span>
+        <span class="header-version">v9.31</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.30 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.31 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -7433,6 +7433,7 @@ if (typeof module !== 'undefined' && module.exports) {
             }
 
             const yieldVal = metadata['yield to date'];
+            const stageWord = String(p.stage || '').trim();
             if (p.phase === 'Dormant') {
               // Deciduous perennial resting over winter (life-phase, DEBUGGING §2.5): no harvest nag, no
               // "overdue", no stale "Harvesting" — just a quiet, honest line. It leafs back up in spring.
@@ -7465,6 +7466,30 @@ if (typeof module !== 'undefined' && module.exports) {
               y.className = 'pl-line pl-yield';
               y.textContent = 'Harvesting';
               metaContainer.appendChild(y);
+            } else if (stageWord === 'Fruiting' || stageWord === 'Flowering') {
+              // Fruiting/Flowering on the ROW (owner ruling, 28/07). Until now these two stages reached the
+              // PASSPORT only: this row branches on `phase`, and computePhase folds both of them into
+              // `Growing` — so one plant read "Fruiting · since 12 Apr" on its card and "Est. harvest in 12
+              // days" on its row. Textbook AGENTS rule 47: two renderers over one plant, disagreeing purely by
+              // which field each happened to branch on. The row now reads the STAGE, in the same slot the
+              // passport does (after the yield/Producing branch, before the harvest alert), so the two
+              // cascades line up branch for branch.
+              // The observed FACT leads and the estimate is KEPT as a tail: they answer different questions —
+              // what the plant is doing now, and when you get to eat it — and the row is the scanning surface
+              // where the second still earns its place. Deliberately NO "· since ⟨date⟩" as the passport
+              // carries: that date comes from the async Story, which the card has and the Garden tab does not
+              // (the same asymmetry that makes this row say a bare "Clears tonight").
+              // The tail is harvestCountdownText VERBATIM — the ONE canonical estimate phrase, shared with the
+              // passport and §C of the register, so a future rewording lands in one place instead of two.
+              const falert = harvestAlertState(p);
+              const tail = !falert ? ''
+                         : (falert.mode === 'amber') ? 'Check for harvest'
+                         : harvestCountdownText(falert.overdueDays);
+              const f = document.createElement('span');
+              // Both classes are the same muted grey today; the split is semantic, matching what the tail is.
+              f.className = tail ? 'pl-line pl-countdown' : 'pl-line';
+              f.textContent = tail ? (stageWord + ' · ' + tail) : stageWord;
+              metaContainer.appendChild(f);
             } else {
               // Design pass 23/07 round 6 ("harvest alarm" redesign) — harvestAlertState is the SAME
               // function the passport uses, so the two surfaces can never disagree again. Not tappable here
@@ -13547,13 +13572,18 @@ if (typeof module !== 'undefined' && module.exports) {
         const seedOrigin = !!p.estSprout;
         // Origin line: absolute date first, relative age in parens — "Planted 1 July 2025 (12mo ago)"
         // (owner, 15/07).
+        // THE LEAD DATE IS THE CLOCK THE PLANT'S CURRENT STAGE RUNS ON (owner ruling, 28/07): the sow date
+        // while it's in the nursery, the transplant date once it's in a bed. That is already the rule the
+        // state layer merges cohorts on (docs/SCOPE-BATCH-IDENTITY.md), so display and identity now say the
+        // same thing — and it stays honest for a DIRECT-SOW, which never gets a transplant date to move it on.
+        // Until 28/07 this branch led with the SPROUT date once a tray was up, while the Garden row led with
+        // the sow date: one plant, two lead dates, depending which surface you looked at. Sprouted is not lost
+        // — it drops to a secondary line below, which is exactly where the row has always carried it (§D).
         if (p.planted) {
           if (seedOrigin && p.transplanted) {
             line('pl-planted', 'Planted ' + ppWhen(p.transplanted));
-          } else if (seedOrigin && p.sprouted) {
-            line('pl-planted', 'Sprouted ' + ppWhenDays(p.sprouted));   // seedling age in DAYS (owner 25/07); up, not yet planted out
           } else if (seedOrigin) {
-            line('pl-planted', 'Sown ' + ppWhenDays(p.planted));   // a still-under-soil sow — also days-scale
+            line('pl-planted', 'Sown ' + ppWhenDays(p.planted));   // nursery clock — days-scale (owner 25/07)
           } else {
             line('pl-planted', 'Planted ' + ppWhen(p.planted));
           }
@@ -13566,6 +13596,15 @@ if (typeof module !== 'undefined' && module.exports) {
         // added after it would silently steal the button.
         const tally = (typeof sproutTallyLine === 'function') ? sproutTallyLine(p) : '';
         if (tally) line('', tally);
+        // Sprouted, demoted to a secondary line (28/07) now the lead is the stage's own clock, above. Same
+        // slot the Garden row puts it in — under the origin line and the tally, above the plant-out clock —
+        // and the same DAYS unit (ppWhenDays), so the two surfaces read as one record. Only while it is still
+        // in the nursery: once a plant is out, "Planted" leads and the sprout date belongs to the Story, not
+        // the ledger. `.pl-planted` matches the row's class for this line; the origin line above is still the
+        // FIRST `.pl-planted`, so the `planted` ✎ pencil (below) stays on the origin line where it belongs.
+        if (seedOrigin && p.sprouted && !p.transplanted) {
+          line('pl-planted', 'Sprouted ' + ppWhenDays(p.sprouted));
+        }
         const st = String(p.stage || '').trim();
         // "· since <date>" — the stamp's own log date, from the async story (absent until it lands).
         const since = function (dmy) { const d = ppShortDate(dmy); return d ? ' · since ' + d : ''; };
