@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.28</span>
+        <span class="header-version">v9.29</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.28 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.29 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -8264,7 +8264,7 @@ if (typeof module !== 'undefined' && module.exports) {
         lead.appendChild(document.createTextNode('Which plant? The ' + doing + ' will be recorded against the one you pick.'));
         body.appendChild(lead);
 
-        let selKey = '', selPlanted = '';
+        let selKey = '', selPlanted = '', selPlantId = '';
         const list = document.createElement('div');
         list.className = 'candidate-list';
 
@@ -8285,7 +8285,7 @@ if (typeof module !== 'undefined' && module.exports) {
           if (c.count) bits.push('×' + c.count);
           btn.appendChild(document.createTextNode(bits.join(' · ')));
           btn.onclick = function () {
-            selKey = c.key; selPlanted = c.planted || '';
+            selKey = c.key; selPlanted = c.planted || ''; selPlantId = c.plantId || '';
             Array.prototype.forEach.call(list.children, function (el) { el.classList.remove('candidate-selected'); });
             btn.classList.add('candidate-selected');
           };
@@ -8295,7 +8295,9 @@ if (typeof module !== 'undefined' && module.exports) {
 
         actions.appendChild(rButton('Confirm', 'rbtn-primary', function () {
           if (!selKey) { showToast('Pick a plant', 'Tap the plant this belongs to — or Discard.'); return; }
-          postResolve('resolveCard', { verb: 'confirmExisting', targetPlant: name, candidateKey: selKey, candidatePlanted: selPlanted });
+          // candidatePlantId (SCOPE-BATCH-CLOCKS step 8): the tapped row's own id, so the change lands on
+          // the plant that was tapped. key+date alone took the first of two cohorts sharing a sow date.
+          postResolve('resolveCard', { verb: 'confirmExisting', targetPlant: name, candidateKey: selKey, candidatePlanted: selPlanted, candidatePlantId: selPlantId });
         }));
         actions.appendChild(rButton('Move to Shed', 'rbtn-shed', function () {
           postResolve('resolveCard', { verb: 'moveToShed', targetPlant: name });
@@ -11744,10 +11746,15 @@ if (typeof module !== 'undefined' && module.exports) {
       let _ppPushed = false;
       window.addEventListener('popstate', function () { if (ppOpen) closePassport(true); });
 
-      // Batch-identity passport key (docs/SCOPE-BATCH-IDENTITY.md rule 8): '#planted' rides the key so
-      // two batches of one crop in one bed open DISTINCT cards. Must mirror getAllPlantPassports'
-      // server key exactly (GardenSheet.js) or the bulk cache misses every plant.
+      // Batch-identity passport key (docs/SCOPE-BATCH-IDENTITY.md rule 8): the plant's STABLE ID, falling
+      // back to the legacy name@zone#planted for an id-less row. Must mirror plantPassportCacheKey
+      // (GardenLog.js) exactly or the bulk prefetch misses every plant. The date key wasn't enough: two
+      // plant-out waves of one sow batch are two rows sharing crop@bed#planted (SCOPE-BATCH-CLOCKS step
+      // 8), so one card overwrote the other. Entries cached under the old key simply miss and refetch —
+      // the next prefetch replaces the whole map, so nothing needs migrating.
       function ppKeyFor(p, bedName) {
+        const id = String((p && p.plantId) || '').trim();
+        if (id) return 'id:' + id;
         return String(p.key || (p.name + '@' + bedName)) + '#' + String(p.planted || '');
       }
 
@@ -13037,7 +13044,12 @@ if (typeof module !== 'undefined' && module.exports) {
         const base = ppSplitName(p.name)[0];
         const text = 'Moved the ' + base + ' to ' + targetBed;
         // batchHint: p.planted — see ppSubmitHarvestQuantity's comment (the passport-tap disambiguation fix).
-        const item = { zone: targetBed, category: 'Relocation', crop: p.name, fromZone: fromBed || '', batchHint: p.planted || '' };
+        // targetPlantId: the row's own stable id (SCOPE-BATCH-CLOCKS step 8) — the EXACT answer to "which
+        // one", where the date hint above is only usually one. Since plant-out waves stopped collapsing,
+        // two cohorts sharing a sow date is routine, and the date alone parked a to-confirm card on a tap
+        // that named the plant unambiguously. Blank on an id-less row -> server falls back to the date.
+        const item = { zone: targetBed, category: 'Relocation', crop: p.name, fromZone: fromBed || '',
+                       batchHint: p.planted || '', targetPlantId: p.plantId || '' };
         if (date) item.date = date; // backdate (SCOPE-STAGE-BUTTON.md Phase 1); '' -> server defaults to today
         closePassport();
         if (typeof submitLog === 'function') submitLog(text, item);
