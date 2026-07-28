@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.20</span>
+        <span class="header-version">v9.21</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.20 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.21 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -12625,16 +12625,54 @@ if (typeof module !== 'undefined' && module.exports) {
         // (SCOPE-STAGE-BUTTON.md Phase 1). The backdated date stamps Sprouted itself (StateUpdate.js
         // stampSproutedOnStage reads item.date), so downstream tender-window / phase math uses the real day.
         const base = ppSplitName(p.name)[0];
-        ppOpenBackdateConfirm('Did the ' + base + ' sprout?', 'Marks it as up and growing.', function (date) {
-          ppSubmitSprouted(p, bedName, date);
-        });
+        const total = parseInt(p.count, 10);
+        // Untracked total — nothing to count up against; the plain backdate confirm stands unchanged.
+        if (!isFinite(total) || total <= 0) {
+          ppOpenBackdateConfirm('Did the ' + base + ' sprout?', 'Marks it as up and growing.', function (date) {
+            ppSubmitSprouted(p, bedName, date, '');
+          });
+          return;
+        }
+        // SproutedCount stepper (SCOPE-BATCH-CLOCKS step 3) — defaults to ALL up, so a thoughtless
+        // Confirm is byte-identical to the old whole-batch tap; dial down for a partial emergence
+        // ("12 of 20 up"). Min 1: tapping Sprouted asserts at least one is up (0 up = Cancel).
+        document.getElementById('resolveTitle').textContent = 'Did the ' + base + ' sprout?';
+        document.getElementById('resolveSub').textContent = 'How many of the ' + total + ' are up?';
+        const body = document.getElementById('resolveBody'); body.innerHTML = '';
+        const actions = document.getElementById('resolveActions'); actions.innerHTML = '';
+        let val = total;
+        const stepper = document.createElement('div'); stepper.className = 'pp-stepper';
+        const minus = document.createElement('button'); minus.type = 'button'; minus.className = 'pp-stepper-btn'; minus.textContent = '−';
+        const disp = document.createElement('span'); disp.className = 'pp-stepper-val'; disp.textContent = String(val);
+        const plus = document.createElement('button'); plus.type = 'button'; plus.className = 'pp-stepper-btn'; plus.textContent = '+';
+        const render = function () { disp.textContent = String(val); minus.disabled = val <= 1; plus.disabled = val >= total; };
+        minus.onclick = function () { if (val > 1) { val--; render(); } };
+        plus.onclick = function () { if (val < total) { val++; render(); } };
+        render();
+        stepper.appendChild(minus); stepper.appendChild(disp); stepper.appendChild(plus);
+        body.appendChild(stepper);
+        const df = ppDateField();
+        body.appendChild(df.el);
+        actions.appendChild(rButton('Confirm', 'rbtn-primary', function () {
+          closeResolve();
+          // Full count -> omit the field: the server's first-emergence default is already "all up",
+          // so the submitted item stays byte-identical to the pre-stepper tap.
+          ppSubmitSprouted(p, bedName, df.getDate(), (val < total) ? String(val) : '');
+        }));
+        actions.appendChild(rButton('Cancel', 'rbtn-secondary', closeResolve));
+        presentResolveModal();
       }
-      function ppSubmitSprouted(p, bedName, date) {
+      function ppSubmitSprouted(p, bedName, date, sproutedCount) {
         const base = ppSplitName(p.name)[0];
         const where = bedName ? ' in ' + bedName : '';
-        const text = 'The ' + base + ' sprouted' + where;
+        const total = parseInt(p.count, 10);
+        // A partial tally reads as the tally in the Log's Action cell; the whole-batch phrasing is untouched.
+        const text = (sproutedCount && isFinite(total))
+          ? (sproutedCount + ' of the ' + total + ' ' + base + ' sprouted' + where)
+          : ('The ' + base + ' sprouted' + where);
         // batchHint: p.planted — see ppSubmitHarvestQuantity's comment (the passport-tap disambiguation fix).
         const item = { zone: bedName || 'Unspecified', category: 'Observation', crop: p.name, stage: 'Seedling', batchHint: p.planted || '' };
+        if (sproutedCount) item.sproutedCount = sproutedCount; // DISTINCT from item.count — that would rewrite the stored total (normalizeStructuredItem)
         if (date) item.date = date; // backdate; '' -> server defaults to today
         closePassport();
         if (typeof submitLog === 'function') submitLog(text, item);
