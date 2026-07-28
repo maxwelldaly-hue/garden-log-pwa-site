@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.29</span>
+        <span class="header-version">v9.30</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.29 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.30 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6750,17 +6750,20 @@ if (typeof module !== 'undefined' && module.exports) {
         return rel === 'today' ? 'Watered today' : 'Last watered ' + rel;
       }
 
-      // --- The sprout tally + germination story (docs/SCOPE-BATCH-CLOCKS.md step 6) --------------------
+      // --- The sprout tally + germination story (docs/archive/SCOPE-BATCH-CLOCKS.md step 6) --------------------
       // Two PURE render decisions (rule 43), consumed unchanged by BOTH surfaces: the Garden row
       // (renderLayoutModel, below) and the passport ledger (ppLedgerLinesEl, Js-Passport3.html). Those two
       // renderers are hand-coupled with nothing enforcing it, so the DECISION lives here once — a test
       // renders both against the same state row and asserts they agree (run-tests "the two renderers agree").
       //
       // sproutTallyLine — the count line `SproutedCount` exists for. NO LINE unless at least one is actually
-      // up: "nothing up yet" is already said by the "Est. sprout in N days" / "Est. sprout day passed" line
+      // up: "nothing up yet" is already said by the "Est. sprout in N days" / "Check the tray" line
       // above it, and a second way of saying it would be noise (minimal surface). A tracked total reads
-      // "12 of 20 up"; the full count reads "All 20 up" (a different fact — the tray is done germinating —
-      // and worth its own words); an UNtracked total still says the true smaller thing, "5 up".
+      // "12 of 20 sprouted"; the full count reads "All 20 sprouted" (a different fact — the tray is done
+      // germinating — and worth its own words); an UNtracked total still says the true smaller thing,
+      // "5 sprouted". The word is SPROUTED, not "up" (owner, 28/07): one word per concept (VOICE §6) — the
+      // button beside this line says "More sprouted" and the origin line says "Sprouted 3 days ago", so a
+      // third word for the same event on the same card was drift, not brevity.
       // Bounded to the seed-raising stretch by PHASE: the tally is a tray concept (stampTransplantOnMove
       // clears it on plant-out), but a DIRECT-sow in a bed keeps its tally forever with no transplant to
       // clear it, and "12 of 20 up" on a mature carrot patch is a stale label, not a memory.
@@ -6770,9 +6773,9 @@ if (typeof module !== 'undefined' && module.exports) {
         const up = parseInt(p.sproutedCount, 10);
         if (!isFinite(up) || up <= 0) return '';
         const total = parseInt(p.count, 10);
-        if (!isFinite(total) || total <= 0) return up + ' up';
-        if (up >= total) return 'All ' + total + ' up';
-        return up + ' of ' + total + ' up';
+        if (!isFinite(total) || total <= 0) return up + ' sprouted';
+        if (up >= total) return 'All ' + total + ' sprouted';
+        return up + ' of ' + total + ' sprouted';
       }
       // There is NO second, passport-only version of this line. v9.25 shipped a `germinationStoryLine` that
       // appended how emergence went against the estimate ("· 2 days early" / "· on time"); the owner cut it
@@ -7199,7 +7202,9 @@ if (typeof module !== 'undefined' && module.exports) {
         container.innerHTML = '';
 
         if (!model || !model.beds || !model.beds.length) {
-          container.textContent = 'No layout data available.';
+          // Plain, and no full stop — the only string on this surface that had either (phrase audit, 28/07).
+          // Reached when the state model is missing or empty: a first run, or a read that came back bare.
+          container.textContent = 'Nothing in the garden yet';
           return;
         }
 
@@ -7425,23 +7430,33 @@ if (typeof module !== 'undefined' && module.exports) {
               metaContainer.appendChild(tl);
             }
             // Nursery timeline (seed-raising Stage 2): quiet date lines in the existing register.
-            // Amber sprout-by = past due with nothing recorded up — the whole "check the tray" nudge.
             if (nursery === 'seed' && p.estSprout) {
               const sp = document.createElement('span');
               // One voice with the harvest line ("Est. harvest in N days"): future countdown → "today" on the
-              // estimate day → a grey "Est. sprout day passed" nudge once it's overdue (owner 25/07). Grey, not
-              // amber — the sprout nudge is the twin of the grey "Check for harvest"; a seed can't be snoozed, so
-              // it rests at the nudge rather than counting negative days.
+              // estimate day → a grey "Check the tray" nudge once it's overdue. Grey, not amber — the sprout
+              // nudge is the twin of the grey "Check for harvest"; a seed can't be snoozed, so it rests at the
+              // nudge rather than counting negative days.
               sp.className = 'pl-line pl-countdown';
               if (p.overdueSprout) {
-                sp.textContent = 'Est. sprout day passed';
+                // "Check the tray" (owner, 28/07) — the TRUE twin of the grey "Check for harvest". The old
+                // wording, "Est. sprout day passed", reported that a date went by where its documented twin
+                // tells you what to do: same situation, opposite register (phrase audit, 28/07).
+                sp.textContent = 'Check the tray';
               } else {
+                // No `daysUntil === null` fallback: the only date this branch would catch is one parseDMY
+                // can't read, and rowShortDate is STRICTER than parseDMY (dd/mm/yyyy only, no "3 Jul 2026"),
+                // so the old 'Est. sprout by ' + rowShortDate(...) could never print a date — only its own
+                // label with an empty tail. A garbled date now shows no line, which is the honest answer.
                 const sd = daysUntil(p.estSprout);
-                sp.textContent = (sd === null) ? ('Est. sprout by ' + rowShortDate(p.estSprout))
-                               : (sd <= 0)     ? 'Est. sprout today'
-                                               : ('Est. sprout in ' + sd + (sd === 1 ? ' day' : ' days'));
+                if (sd !== null) {
+                  sp.textContent = (sd <= 0) ? 'Est. sprout today'
+                                             : ('Est. sprout in ' + sd + (sd === 1 ? ' day' : ' days'));
+                }
               }
-              metaContainer.appendChild(sp);
+              if (sp.textContent) metaContainer.appendChild(sp);   // nothing honest to say -> no line
+                                                                   // (append-guarded, NOT an early return —
+                                                                   // this is inside the per-plant forEach, so
+                                                                   // returning would drop every line below it)
             }
             // The Sprouted + Plant-out timeline. Gated on raisingUnderCover (not the ICON) since the 25/07
             // reversal decoupled the two: an under-cover seedling that has aged past its tender week now shows
@@ -7471,13 +7486,21 @@ if (typeof module !== 'undefined' && module.exports) {
               // Deciduous perennial resting over winter (life-phase, DEBUGGING §2.5): no harvest nag, no
               // "overdue", no stale "Harvesting" — just a quiet, honest line. It leafs back up in spring.
               const dz = document.createElement('span');
-              dz.className = 'pl-line pl-countdown';
+              // Bare .pl-line, matching the passport (phrase audit, 28/07): "Dormant" is a state, not a
+              // countdown, and it was the one string rendering at two different weights on the two surfaces.
+              dz.className = 'pl-line';
               dz.textContent = 'Dormant';
               metaContainer.appendChild(dz);
             } else if (isHarvested) {
               const d = document.createElement('span');
               d.className = 'pl-line pl-done';
-              d.textContent = '✓ Harvested — clears tonight';
+              // "Clears tonight" — NOT "✓ Harvested" (phrase audit, 28/07). A pulled-out plant is not a
+              // harvest (SCOPE-PASSPORT-ACTIONS, the language bug), and this row cannot know which it was:
+              // the reason lives on the newest terminal Story milestone, which is a network read the passport
+              // has and the Garden tab does not. The card already carries all three wordings and picks the
+              // true one (ppTombstoneOutcome); the row states only the part it can stand behind. Losing the
+              // ✓ on a genuine harvest is the price of never congratulating someone for a plant that died.
+              d.textContent = 'Clears tonight';
               metaContainer.appendChild(d);
             } else if (yieldVal) {
               const y = document.createElement('span');
@@ -7524,7 +7547,7 @@ if (typeof module !== 'undefined' && module.exports) {
           if (plantsCount === 0 && emptyCount === 0) {
             const emptyRow = document.createElement('div');
             emptyRow.className = 'plant-row empty-row';
-            emptyRow.textContent = 'Empty Bed';
+            emptyRow.textContent = 'Empty bed';   // sentence case (VOICE §4); the badge word stays 'Empty' (§9)
             currentPlantList.appendChild(emptyRow);
             currentSummary.textContent = 'Empty';
             currentSummary.classList.add('empty');
