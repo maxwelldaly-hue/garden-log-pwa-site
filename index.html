@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.41</span>
+        <span class="header-version">v9.43</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.41 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.43 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -11562,7 +11562,7 @@ if (typeof module !== 'undefined' && module.exports) {
       // fact still wins the bright box above — this line is explicitly "what the book says about the
       // species", which is also the honest reading of decision §6. Keys match the client reference model;
       // the values map to Crops columns server-side (CROP_FACT_EDITABLE, CropsBook.js).
-      const PP_CROP_FACTS = { water: 'Water', feederClass: 'Feeder' };
+      const PP_CROP_FACTS = { water: 'Water', feederClass: 'Feeder', sun: 'Sun', height: 'Height' };
 
       const PP_MONTH_ABBR = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
       // "Sep, Oct, Nov, Dec, Jan, Feb" -> "Sep–Feb" when the months form ONE contiguous run on the 12-month
@@ -13425,13 +13425,23 @@ if (typeof module !== 'undefined' && module.exports) {
       // that hasn't captured its own value. It hangs off the dimmed "General reference" rows (the only
       // place a species fact is shown) and the line beneath them says exactly that.
 
-      // Closed vocabularies, mirroring CROP_FACT_EDITABLE (CropsBook.js) — the server re-validates, this
-      // just keeps the client from ever offering a value the book would reject. 'light–medium' carries the
-      // book's own en dash; the server matches dash-insensitively either way.
+      // Mirrors CROP_FACT_EDITABLE (CropsBook.js) — the server re-validates everything, this just keeps the
+      // client from offering a value the book would reject. Two kinds, matching the server's two spec kinds:
+      //   values    -> closed <select>. 'light–medium' carries the book's own en dash; the server matches
+      //                dash-insensitively either way.
+      //   maxLength -> free-text <input> + <datalist>. `suggest` is a SUGGESTION LIST, never a filter: the
+      //                whole reason Sun and Height are free text is the tail the common values can't hold
+      //                ('Part shade in heat', 'canes 1.5–2 m'), so the input must accept anything.
+      // The two field sets are pinned to the server's by a test — the drift these two lists could otherwise
+      // cause is silent (the reference row would render permanently with no ✎ on it to explain why).
       const PP_CROP_FACT_VALUES = {
-        water: ['Light', 'Moderate', 'Thirsty'],
-        feederClass: ['light', 'light–medium', 'medium', 'heavy']
+        water: { values: ['Light', 'Moderate', 'Thirsty'] },
+        feederClass: { values: ['light', 'light–medium', 'medium', 'heavy'] },
+        sun: { maxLength: 60, suggest: ['Full sun', 'Full sun to part shade', 'Part shade in heat', 'Part shade'] },
+        height: { maxLength: 60, suggest: ['sprawling', 'climbing'] }
       };
+
+      const PP_CROP_FACT_LABEL = { water: 'Water', feederClass: 'Feeder class', sun: 'Sun', height: 'Height' };
 
       // Quiet ✎ on a reference row's value. Reuses .pp-rename-btn, so it inherits the edit-unlocked gate
       // (and edit mode itself) for free — no new gating logic. Only a plant whose crop we can name gets one.
@@ -13455,19 +13465,38 @@ if (typeof module !== 'undefined' && module.exports) {
       // which a local patch of `p` alone could never reflect.
       function ppBeginEditCropFact(p, field, anchorEl) {
         if (!p || !p.name || !anchorEl) return;
-        const values = PP_CROP_FACT_VALUES[field] || [];
+        const spec = PP_CROP_FACT_VALUES[field]; if (!spec) return;
         const row = anchorEl.parentNode; if (!row) return;
         const host = row.parentNode; if (!host) return;
         if (host.querySelector('.pp-rename-edit')) return;   // one crop-fact editor at a time
         const cur = String((p.reference && p.reference[field]) || '').trim();
         const editor = document.createElement('div'); editor.className = 'pp-rename-edit';
-        const select = document.createElement('select'); select.className = 'pp-rename-input';
-        select.setAttribute('aria-label', field === 'water' ? 'Water for this crop' : 'Feeder class for this crop');
-        values.forEach(function (v) {
-          const opt = document.createElement('option'); opt.value = v; opt.textContent = v.charAt(0).toUpperCase() + v.slice(1);
-          if (v.toLowerCase() === cur.toLowerCase()) opt.selected = true;
-          select.appendChild(opt);
-        });
+        // One `select` binding for both kinds — everything downstream (commit, disable, Escape) reads
+        // .value and .disabled, which an <input> carries too, so only the construction differs.
+        let select;
+        if (spec.values) {
+          select = document.createElement('select'); select.className = 'pp-rename-input';
+          spec.values.forEach(function (v) {
+            const opt = document.createElement('option'); opt.value = v; opt.textContent = v.charAt(0).toUpperCase() + v.slice(1);
+            if (v.toLowerCase() === cur.toLowerCase()) opt.selected = true;
+            select.appendChild(opt);
+          });
+        } else {
+          select = document.createElement('input'); select.type = 'text'; select.className = 'pp-rename-input';
+          select.value = cur; select.maxLength = spec.maxLength;
+          // A datalist SUGGESTS without constraining — an <input list> still accepts free text, which is
+          // the whole point for the tail values ('Part shade in heat', 'sprawling') no list can enumerate.
+          const sugg = (spec.suggest || []).filter(Boolean);
+          if (sugg.length && document.createElement('datalist').options) {
+            const listId = 'ppCropFactList-' + field;
+            let dl = document.getElementById(listId);
+            if (!dl) { dl = document.createElement('datalist'); dl.id = listId; editor.appendChild(dl); }
+            dl.innerHTML = '';
+            sugg.forEach(function (v) { const o = document.createElement('option'); o.value = v; dl.appendChild(o); });
+            select.setAttribute('list', listId);
+          }
+        }
+        select.setAttribute('aria-label', (PP_CROP_FACT_LABEL[field] || 'Value') + ' for this crop');
         const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'pp-rename-ok'; ok.textContent = '✓'; ok.title = 'Save';
         const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'pp-rename-cancel'; cancel.textContent = '✕'; cancel.title = 'Cancel';
         const note = document.createElement('div'); note.className = 'pp-rename-note';
@@ -13477,7 +13506,11 @@ if (typeof module !== 'undefined' && module.exports) {
         const close = function () { editor.remove(); row.style.display = ''; };
         const commit = function () {
           const nv = String(select.value || '').trim();
-          if (!nv || nv.toLowerCase() === cur.toLowerCase()) { close(); return; }
+          // No-op check is EXACT for free text and case-insensitive for the closed lists. A closed field
+          // can only ever resolve to our canonical literal, so case there is noise; on a free-text field
+          // 'full sun' -> 'Full sun' is a real correction the owner meant, and must not be swallowed.
+          const same = spec.values ? (nv.toLowerCase() === cur.toLowerCase()) : (nv === cur);
+          if (!nv || same) { close(); return; }
           const pin = localStorage.getItem('garden_log_pin'), token = localStorage.getItem('garden_log_token');
           if (!pin && !token) { note.textContent = 'Enter your PIN first.'; return; }
           select.disabled = ok.disabled = cancel.disabled = true; note.textContent = 'Saving…';
@@ -13501,7 +13534,12 @@ if (typeof module !== 'undefined' && module.exports) {
         ok.onclick = function (e) { e.stopPropagation(); commit(); };
         cancel.onclick = function (e) { e.stopPropagation(); close(); };
         select.addEventListener('click', function (e) { e.stopPropagation(); });
-        select.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); close(); } });
+        // Enter commits on the free-text input (mirrors ppBeginEditField above); on a <select> Enter is
+        // the browser's own "choose this option", so it is left alone there.
+        select.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') { e.preventDefault(); close(); }
+          else if (e.key === 'Enter' && !spec.values) { e.preventDefault(); commit(); }
+        });
       }
 
 </script>
