@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.24</span>
+        <span class="header-version">v9.25</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.24 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.25 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6701,6 +6701,55 @@ if (typeof module !== 'undefined' && module.exports) {
         return rel === 'today' ? 'Watered today' : 'Last watered ' + rel;
       }
 
+      // --- The sprout tally + germination story (docs/SCOPE-BATCH-CLOCKS.md step 6) --------------------
+      // Two PURE render decisions (rule 43), consumed unchanged by BOTH surfaces: the Garden row
+      // (renderLayoutModel, below) and the passport ledger (ppLedgerLinesEl, Js-Passport3.html). Those two
+      // renderers are hand-coupled with nothing enforcing it, so the DECISION lives here once — a test
+      // renders both against the same state row and asserts they agree (run-tests "the two renderers agree").
+      //
+      // sproutTallyLine — the count line `SproutedCount` exists for. NO LINE unless at least one is actually
+      // up: "nothing up yet" is already said by the "Est. sprout in N days" / "Est. sprout day passed" line
+      // above it, and a second way of saying it would be noise (minimal surface). A tracked total reads
+      // "12 of 20 up"; the full count reads "All 20 up" (a different fact — the tray is done germinating —
+      // and worth its own words); an UNtracked total still says the true smaller thing, "5 up".
+      // Bounded to the seed-raising stretch by PHASE: the tally is a tray concept (stampTransplantOnMove
+      // clears it on plant-out), but a DIRECT-sow in a bed keeps its tally forever with no transplant to
+      // clear it, and "12 of 20 up" on a mature carrot patch is a stale label, not a memory.
+      function sproutTallyLine(p) {
+        if (!p || p.isTombstone || p.isEmpty) return '';
+        if (p.phase && p.phase !== 'Sown' && p.phase !== 'Sprouted') return '';
+        const up = parseInt(p.sproutedCount, 10);
+        if (!isFinite(up) || up <= 0) return '';
+        const total = parseInt(p.count, 10);
+        if (!isFinite(total) || total <= 0) return up + ' up';
+        if (up >= total) return 'All ' + total + ' up';
+        return up + ' of ' + total + ' up';
+      }
+      // germinationStoryLine — the PASSPORT's fuller version of the same line: the tally, plus how the
+      // emergence actually went against the estimate ("2 days early"). The card is where a comparison
+      // belongs — the Garden tab is the ambient ledger and gets the bare tally. Timing reads off the two
+      // dates already stored (Sprouted vs EstSprout, both write-once) via daysUntil, so it needs no new date
+      // math and no new column; it describes FIRST emergence, which is exactly what `Sprouted` records.
+      // Same phase bound as the tally (through sproutTallyLine's gate, re-applied here) so a grown plant's
+      // card isn't still reporting how its germination went.
+      function germinationStoryLine(p) {
+        if (!p || p.isTombstone || p.isEmpty) return '';
+        if (p.phase && p.phase !== 'Sown' && p.phase !== 'Sprouted') return '';
+        const tally = sproutTallyLine(p);
+        let timing = '';
+        if (p.sprouted && p.estSprout) {
+          const a = daysUntil(p.sprouted), e = daysUntil(p.estSprout);
+          if (a !== null && e !== null) {
+            const diff = a - e;                       // <0 = up BEFORE the sprout-by estimate
+            const n = Math.abs(diff);
+            timing = (diff === 0) ? 'on the estimate'
+                   : n + (n === 1 ? ' day ' : ' days ') + (diff < 0 ? 'early' : 'late');
+          }
+        }
+        if (!timing) return tally;
+        return tally ? (tally + ' · ' + timing) : ('Up ' + timing);
+      }
+
       // Strip any overdue marker the backend baked into Est. Harvest before we compute the line.
       function stripOverdueClient(s) {
         return String(s || '').replace(/\s*(?:⚠\s*overdue|\(overdue\))\s*$/i, '').trim();
@@ -7314,6 +7363,18 @@ if (typeof module !== 'undefined' && module.exports) {
                 pl.textContent = 'Planted ' + relativePast(metadata.planted);
               }
               metaContainer.appendChild(pl);
+            }
+            // The sprout tally (SCOPE-BATCH-CLOCKS step 6) — "12 of 20 up", the count line the SproutedCount
+            // column exists for, sitting directly under the origin line as the tray's headline fact. BARE
+            // .pl-line (already muted): a tally is neither a date nor a countdown, and this row grammar
+            // spends its two colour classes on those. The DECISION is sproutTallyLine (above), shared
+            // verbatim with the passport ledger — same fact, same words, one function.
+            const tallyLine = sproutTallyLine(p);
+            if (tallyLine) {
+              const tl = document.createElement('span');
+              tl.className = 'pl-line';
+              tl.textContent = tallyLine;
+              metaContainer.appendChild(tl);
             }
             // Nursery timeline (seed-raising Stage 2): quiet date lines in the existing register.
             // Amber sprout-by = past due with nothing recorded up — the whole "check the tray" nudge.
@@ -13459,6 +13520,16 @@ if (typeof module !== 'undefined' && module.exports) {
             line('pl-planted', 'Planted ' + ppWhen(p.planted));
           }
         }
+        // The germination story (SCOPE-BATCH-CLOCKS step 6) — the same sprout tally the Garden row shows
+        // ("12 of 20 up"), plus how the emergence went against the estimate ("· 2 days early"), which is the
+        // card's own tier: the ambient list states the fact, the passport is where a comparison belongs. The
+        // DECISION is germinationStoryLine (Js-State.html), shared with the row's sproutTallyLine so the two
+        // hand-coupled renderers can't word the same fact differently.
+        // Placed HERE — under the origin line, before the status cascade — for two reasons: it belongs with
+        // the plant's history rather than its current business, and the stage/harvest button attach below
+        // hangs off `wrap.lastElementChild`, so a line added after it would silently steal the button.
+        const germ = (typeof germinationStoryLine === 'function') ? germinationStoryLine(p) : '';
+        if (germ) line('', germ);
         const st = String(p.stage || '').trim();
         // "· since <date>" — the stamp's own log date, from the async story (absent until it lands).
         const since = function (dmy) { const d = ppShortDate(dmy); return d ? ' · since ' + d : ''; };
