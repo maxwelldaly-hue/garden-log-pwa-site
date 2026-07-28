@@ -694,7 +694,7 @@
          would be a second, noisy emphasis axis. Weight is spent ONLY on buttons (a uniform control affordance).
          So .pl-harvest-check / .pl-ready / .pl-yield / the guide verdicts all dropped their font-weight:600. */
       .pl-harvest-check { color: var(--text-muted); }
-      .pl-ready { color: var(--text-muted); }                         /* "✓ N days since sprouted" tick — GREY, normal weight: green lives on the button beside it (COLOUR-SYSTEM.md §1) */
+      .pl-ready { color: var(--text-muted); }                         /* "✓ N days since first sprouted" tick — GREY, normal weight: green lives on the button beside it (COLOUR-SYSTEM.md §1) */
       .pl-cold  { color: var(--blue-400); }                           /* "❄ N° too cold to plant" — same blue+frost language as the dashboard soil panel's cold gap */
       .pl-hot   { color: var(--amber-400); }                          /* "N° too hot to plant" — heat spell ahead cooks a fresh transplant; AMBER (Phase 2), the weather's own heat warning (unified with the soil panel's .soil-go-hot and the guide's .is-warm — ONE heat colour everywhere, 27/07) */
       .pl-line-ic { width: 1em; height: 1em; fill: currentColor; vertical-align: -0.12em; }  /* inline weather-mark in a ledger line (mirrors .soil-go-ic) */
@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.27</span>
+        <span class="header-version">v9.28</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.27 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.28 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6774,33 +6774,16 @@ if (typeof module !== 'undefined' && module.exports) {
         if (up >= total) return 'All ' + total + ' up';
         return up + ' of ' + total + ' up';
       }
-      // germinationStoryLine — the PASSPORT's fuller version of the same line: the tally, plus how the
-      // emergence actually went against the estimate ("2 days early"). The card is where a comparison
-      // belongs — the Garden tab is the ambient ledger and gets the bare tally. Timing reads off the two
-      // dates already stored (Sprouted vs EstSprout, both write-once) via daysUntil, so it needs no new date
-      // math and no new column; it describes FIRST emergence, which is exactly what `Sprouted` records.
-      // Same phase bound as the tally (through sproutTallyLine's gate, re-applied here) so a grown plant's
-      // card isn't still reporting how its germination went.
-      function germinationStoryLine(p) {
-        if (!p || p.isTombstone || p.isEmpty) return '';
-        if (p.phase && p.phase !== 'Sown' && p.phase !== 'Sprouted') return '';
-        const tally = sproutTallyLine(p);
-        let timing = '';
-        if (p.sprouted && p.estSprout) {
-          const a = daysUntil(p.sprouted), e = daysUntil(p.estSprout);
-          if (a !== null && e !== null) {
-            const diff = a - e;                       // <0 = up BEFORE the sprout-by estimate
-            const n = Math.abs(diff);
-            // early / on time / late — one trio, one register. The zero case read "on the estimate" until
-            // 28/07 (owner: "weird"), which named the MECHANISM instead of joining the trio, and sitting
-            // beside a count it could misparse as being about the number rather than the timing.
-            timing = (diff === 0) ? 'on time'
-                   : n + (n === 1 ? ' day ' : ' days ') + (diff < 0 ? 'early' : 'late');
-          }
-        }
-        if (!timing) return tally;
-        return tally ? (tally + ' · ' + timing) : ('Up ' + timing);
-      }
+      // There is NO second, passport-only version of this line. v9.25 shipped a `germinationStoryLine` that
+      // appended how emergence went against the estimate ("· 2 days early" / "· on time"); the owner cut it
+      // on 28/07, and the reason is worth keeping so it isn't re-proposed. `Sprouted` is WRITE-ONCE — the day
+      // the FIRST seedling appeared — so the comparison timed a single seed's arrival against the estimate
+      // while the rest of the tray came up over the following days. It read as a measurement of the batch and
+      // was a measurement of one seed: precision the data does not have. (The wording churned first —
+      // "on the estimate" → "on time" — which was the smell: a line that needs re-wording twice is usually a
+      // line with nothing to say.) The genuine germination story lives where it is already honest: the
+      // passport's Story section, which lists each real sprout observation with its own date and words.
+      // Both surfaces now render sproutTallyLine and nothing else, so they cannot drift at all.
 
       // Strip any overdue marker the backend baked into Est. Harvest before we compute the line.
       function stripOverdueClient(s) {
@@ -11627,7 +11610,7 @@ if (typeof module !== 'undefined' && module.exports) {
           ? computeSeedlingAgeReady(daysSinceSprout, p.sowModel.daysSproutToTransplant) : null;
         // TWO-LINE model (owner 25/07): L1 = a weather WARNING (blue cold / amber hot) shown only when weather
         // blocks; L2 = the grey TIME line — a clock counting down to plant-out ("Est. plant-out in N days"),
-        // flipping to a grey tick ("N days since sprouted") once the seedling is old enough. The CLOCK is unique
+        // flipping to a grey tick ("N days since first sprouted") once the seedling is old enough. The CLOCK is unique
         // to this stage on purpose: it's the one countdown whose end needs a human action (plant it out) with no
         // separate alarm — harvest/sprout are estimates with their own nudge, so they carry no clock (ICON-SYSTEM).
         const tooYoung = !!(age && !age.ready);
@@ -11636,9 +11619,13 @@ if (typeof module !== 'undefined' && module.exports) {
           : null;
         if (r.canPlantOut) {
           // Weather is fine — no warning line. L2 is the countdown (still too young) or, once old enough, the
-          // grey "N days since sprouted" tick (cls pl-ready — the button beside it, not this line, turns green).
+          // grey "N days since first sprouted" tick (cls pl-ready — the button beside it, not this line, turns green).
+          // "since FIRST sprouted" (owner, 28/07): `Sprouted` is write-once — the day the first seedling
+          // appeared — and a tray comes up over days, so the bare "since sprouted" implied the whole batch
+          // had a single birthday. Same insight that cut the estimate-comparison line (sproutTallyLine's
+          // header, Js-State.html): name what the date actually records.
           const readyTick = (daysSinceSprout != null)
-            ? { cls: 'pl-ready', txt: '✓ ' + daysSinceSprout + ' day' + (daysSinceSprout === 1 ? '' : 's') + ' since sprouted' }
+            ? { cls: 'pl-ready', txt: '✓ ' + daysSinceSprout + ' day' + (daysSinceSprout === 1 ? '' : 's') + ' since first sprouted' }
             : { cls: 'pl-ready', txt: '✓ Ready to plant' };   // degrade: no Sprouted date to count from
           return { weather: null, time: countdownLine || readyTick };
         }
@@ -13585,16 +13572,14 @@ if (typeof module !== 'undefined' && module.exports) {
             line('pl-planted', 'Planted ' + ppWhen(p.planted));
           }
         }
-        // The germination story (SCOPE-BATCH-CLOCKS step 6) — the same sprout tally the Garden row shows
-        // ("12 of 20 up"), plus how the emergence went against the estimate ("· 2 days early"), which is the
-        // card's own tier: the ambient list states the fact, the passport is where a comparison belongs. The
-        // DECISION is germinationStoryLine (Js-State.html), shared with the row's sproutTallyLine so the two
-        // hand-coupled renderers can't word the same fact differently.
-        // Placed HERE — under the origin line, before the status cascade — for two reasons: it belongs with
-        // the plant's history rather than its current business, and the stage/harvest button attach below
-        // hangs off `wrap.lastElementChild`, so a line added after it would silently steal the button.
-        const germ = (typeof germinationStoryLine === 'function') ? germinationStoryLine(p) : '';
-        if (germ) line('', germ);
+        // The sprout tally (SCOPE-BATCH-CLOCKS step 6) — the EXACT line the Garden row shows, same function,
+        // no passport-only embellishment (the estimate comparison v9.25 added here was cut on 28/07 — see
+        // sproutTallyLine's header in Js-State.html for why). Placed HERE, under the origin line and before
+        // the status cascade, for two reasons: it belongs with the plant's history rather than its current
+        // business, and the stage/harvest button attach below hangs off `wrap.lastElementChild`, so a line
+        // added after it would silently steal the button.
+        const tally = (typeof sproutTallyLine === 'function') ? sproutTallyLine(p) : '';
+        if (tally) line('', tally);
         const st = String(p.stage || '').trim();
         // "· since <date>" — the stamp's own log date, from the async story (absent until it lands).
         const since = function (dmy) { const d = ppShortDate(dmy); return d ? ' · since ' + d : ''; };
@@ -13618,7 +13603,7 @@ if (typeof module !== 'undefined' && module.exports) {
           line('', st + since(ppStageSince(story, st)));
         } else if ((po = ppPlantOutLine(p))) {
           // under-cover seedling (surface 2): the grey TIME line first ("Earliest plant out in N days" clock, or
-          // the "N days since sprouted" tick) — it carries the Plant-outside button on its row — with the weather
+          // the "N days since first sprouted" tick) — it carries the Plant-outside button on its row — with the weather
           // warning (blue cold / amber hot) stacked BELOW it (owner 25/07). A marked line builds its span so the
           // mono icon sits inline (ppIconEl). This branch owns its button, so the generic attach below is skipped.
           const mkPlLine = function (ln) {
