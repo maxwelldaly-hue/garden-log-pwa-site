@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.47</span>
+        <span class="header-version">v9.48</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.47 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.48 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -3630,7 +3630,7 @@
       // Open-access flag: 'true' only on an instance whose backend is open (the beta sandbox — SANDBOX_OPEN /
       // per-target authOpen). When set, boot auto-unlocks past the PIN screen; the SERVER stays authoritative
       // (a secured server refuses the auto-auth and the gate returns). Prod: 'false' -> normal PIN gate.
-      window.AUTH_OPEN = ("false" === "true");
+      window.AUTH_OPEN = ("true" === "true");
     </script>
 
     <script>
@@ -11030,9 +11030,11 @@ if (typeof module !== 'undefined' && module.exports) {
           .processClientRequest(JSON.stringify({ action: 'saveSettings', pin, apiKey, weatherSheetId }));
       }
 
-      // First-run login gate (PIN auth is live — AUTH_DISABLED=false in Router.js). Shown until a PIN
-      // authenticates, then hidden for good on this device. submitLogin posts `authenticate`; on success
-      // it stores the PIN + token and runs the normal post-auth boot.
+      // First-run login gate. Shown until a PIN authenticates, then hidden for good on this device.
+      // submitLogin posts `authenticate`; on success it stores the PIN + token and runs the normal
+      // post-auth boot. ⚠ Both instances are OPEN as of 29/07/2026 (AUTH_DISABLED=true in Router.js,
+      // owner's temporary call for the migration), so in practice this gate is only reached when the
+      // SERVER refuses — which is the point: the server, not this flag, is authoritative.
       function showLogin(message) {
         const ov = document.getElementById('loginOverlay');
         if (!ov) return;
@@ -11222,9 +11224,13 @@ if (typeof module !== 'undefined' && module.exports) {
         syncQueue();
       });
 
-      // Auth is live (AUTH_DISABLED = false in Router.js). A fresh device has no PIN, so the boot logic
-      // below raises the #loginOverlay gate (showLogin) until a PIN authenticates — that's the login. No
-      // guest PIN is seeded. (To return to open access, re-add a guest seed here and flip AUTH_DISABLED.)
+      // ⚠ Auth is OPEN on BOTH instances as of 29/07/2026 (AUTH_DISABLED = true in Router.js — the
+      // owner's temporary call for the off-Sheets migration; Router.js carries the reason and the
+      // three-step restore). So a fresh device auto-unlocks via the window.AUTH_OPEN branch below
+      // rather than raising the #loginOverlay gate. NO guest PIN is seeded and none is needed — the
+      // old comment here claimed open access required re-adding one, which stopped being true when
+      // the AUTH_OPEN auto-unlock landed for the beta sandbox.
+      // When the gate goes back on, the boot logic below raises #loginOverlay until a PIN authenticates.
 
       // Init
       initDB(() => {
