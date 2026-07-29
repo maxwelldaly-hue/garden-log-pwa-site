@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.53</span>
+        <span class="header-version">v9.54</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.53 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.54 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6335,8 +6335,18 @@ if (typeof module !== 'undefined' && module.exports) {
               box.textContent = 'Could not run — ' + ((res && res.message) || 'try again.');
               return;
             }
-            const d = res.data.dbCheck || res.data.dbSeed || res.data.dbDiff || res.data.dbRoundTrip ||
-                      res.data.dbSpecies || res.data.dbFactsDiff || res.data.dbSpeciesFlag || res.data.dbFlag;
+            // ⚠ COUPLED to every `dbX` action's response key in Router.js. Each switch/tool deliberately
+            // gets its OWN key so two flags can't be confused in this box — which also means a new tool
+            // whose key is missing here runs perfectly on the server and renders "No result." The whole
+            // bed slice shipped that way (v9.49–v9.52): five working buttons, all invisible. The fallback
+            // below is the real fix — the named list is now only about ORDER, not about coverage — so a
+            // future tool can be forgotten here and still show its answer.
+            const NAMED = ['dbCheck', 'dbSeed', 'dbDiff', 'dbRoundTrip', 'dbSpecies', 'dbFactsDiff', 'dbSpeciesFlag', 'dbFlag',
+                           'dbBed', 'dbBedDiff', 'dbBedAudit', 'dbBedSeed', 'dbBedFlag'];
+            let d = null;
+            for (let i = 0; i < NAMED.length && !d; i++) d = res.data[NAMED[i]];
+            // Nothing named matched: every one of these actions answers with exactly one key, so show it.
+            if (!d) { const ks = Object.keys(res.data); if (ks.length === 1) d = res.data[ks[0]]; }
             box.textContent = d ? JSON.stringify(d, null, 2) : 'No result.';
           })
           .withFailureHandler(function (e) {
