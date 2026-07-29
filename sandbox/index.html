@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.48</span>
+        <span class="header-version">v9.49</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.48 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.49 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2677,6 +2677,29 @@
               </div>
               
               <div id="devDbSpeciesOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
+            </div>
+
+            <!-- Beds — the first instance table (db/bed.sql). Same split as the species block above:
+                 the read-only checks live outside the beta gate because the question they answer is
+                 about the REAL garden, and the ON/OFF switch stays inside it until cutover. The
+                 import is out here too — it writes to the database only, never to the sheet, and
+                 nothing reads those rows while the switch is off. -->
+            <div class="dev-section">
+              <h4 class="dev-h">Beds from the database</h4>
+              <p class="dev-note">Your beds, living in the database instead of the Garden Categories sheet — each one keeping the same id forever, so renaming a bed can never strand the plants in it. <strong>Bed check</strong> says whether the database answers and what it holds. <strong>Compare with the sheet</strong> lists any bed that differs. <strong>Renamed-bed check</strong> looks through your plants for any left pointing at a bed that no longer exists. Those three change nothing. <strong>Copy beds in</strong> does write — but only into the database, and nothing in the app reads it until the switch is on.</p>
+              <button class="dev-simbtn" onclick="runDbTool('dbBedCheck', this, null, 'devDbBedOut')">Bed check</button>
+              <button class="dev-simbtn" onclick="runDbTool('dbBedDiff', this, null, 'devDbBedOut')" style="margin-left:6px;">Compare with the sheet</button>
+              <div class="dev-simrow" style="margin-top:6px;">
+                <button class="dev-simbtn" onclick="runDbTool('dbBedRenameAudit', this, null, 'devDbBedOut')">Renamed-bed check</button>
+                <button class="dev-simbtn" onclick="runDbTool('dbSeedBeds', this, null, 'devDbBedOut')" style="margin-left:6px;">Copy beds in</button>
+              </div>
+              
+              <div class="dev-simrow" style="margin-top:6px;">
+                <button class="dev-simbtn" onclick="runDbTool('dbSetBedFlag', this, { on: true }, 'devDbBedOut')">Beds ON</button>
+                <button class="dev-simbtn" onclick="runDbTool('dbSetBedFlag', this, { on: false }, 'devDbBedOut')" style="margin-left:6px;">Beds OFF</button>
+              </div>
+              
+              <div id="devDbBedOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
 
             <div class="dev-section">
