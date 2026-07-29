@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.43</span>
+        <span class="header-version">v9.45</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.43 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.45 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6280,8 +6280,11 @@ if (typeof module !== 'undefined' && module.exports) {
       // DB-adapter spike buttons (beta-only section, DbStore.js): ONE handler for all five actions —
       // each returns a small diagnostics object; we render it as readable key: value lines via
       // textContent (values echo sheet/DB content, so never innerHTML). Mirrors runFormulaEscapeCheck.
-      function runDbTool(action, btn, extra) {
-        const box = document.getElementById('devDbOut');
+      // boxId lets the greenfield species section render into its OWN box — an answer appearing under
+      // the section above it reads as a result for the wrong tool, and these two report on different
+      // databases' worth of things.
+      function runDbTool(action, btn, extra, boxId) {
+        const box = document.getElementById(boxId || 'devDbOut');
         if (!box) return;
         const pin = localStorage.getItem('garden_log_pin');
         const token = localStorage.getItem('garden_log_token');
@@ -6299,7 +6302,8 @@ if (typeof module !== 'undefined' && module.exports) {
               box.textContent = 'Could not run — ' + ((res && res.message) || 'try again.');
               return;
             }
-            const d = res.data.dbCheck || res.data.dbSeed || res.data.dbDiff || res.data.dbRoundTrip || res.data.dbFlag;
+            const d = res.data.dbCheck || res.data.dbSeed || res.data.dbDiff || res.data.dbRoundTrip ||
+                      res.data.dbSpecies || res.data.dbFactsDiff || res.data.dbSpeciesFlag || res.data.dbFlag;
             box.textContent = d ? JSON.stringify(d, null, 2) : 'No result.';
           })
           .withFailureHandler(function (e) {
