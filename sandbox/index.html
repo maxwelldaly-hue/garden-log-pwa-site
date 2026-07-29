@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.54</span>
+        <span class="header-version">v9.55</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.54 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.55 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -6416,7 +6416,7 @@ if (typeof module !== 'undefined' && module.exports) {
             // below is the real fix — the named list is now only about ORDER, not about coverage — so a
             // future tool can be forgotten here and still show its answer.
             const NAMED = ['dbCheck', 'dbSeed', 'dbDiff', 'dbRoundTrip', 'dbSpecies', 'dbFactsDiff', 'dbSpeciesFlag', 'dbFlag',
-                           'dbBed', 'dbBedDiff', 'dbBedAudit', 'dbBedSeed', 'dbBedFlag'];
+                           'dbBed', 'dbBedSetup', 'dbBedDiff', 'dbBedAudit', 'dbBedSeed', 'dbBedFlag'];
             let d = null;
             for (let i = 0; i < NAMED.length && !d; i++) d = res.data[NAMED[i]];
             // Nothing named matched: every one of these actions answers with exactly one key, so show it.
@@ -6548,8 +6548,18 @@ if (typeof module !== 'undefined' && module.exports) {
             }
             const d = res.data || {};
             const tabs = (d.tabs || []).map(function (t) { return t.tab + ' (' + t.rows + ')'; }).join(', ');
-            if (out) out.textContent = '✓ ' + d.mode + ' reset: ' + (tabs || 'no tabs') + (d.weather ? ' · weather: ' + d.weather : '');
-            showToast('Sandbox refreshed', 'Now matches the real garden — reload to see it.');
+            // `beds` (and `crops`) are part of the answer, not decoration. refreshSandbox rewrites every
+            // BedId from prod, so with beds served from the database the copied rows point at ids the
+            // database does not have — SandboxSync.js computes that warning and it used to land nowhere,
+            // while the toast below still said "Now matches the real garden". That sentence is exactly
+            // what is NOT true in that state, and it is the same miss as runDbTool's "No result." — a
+            // correct server answer with no renderer, 130 lines apart in this same file.
+            const warned = /^⚠/.test(String(d.beds || ''));
+            if (out) out.textContent = '✓ ' + d.mode + ' reset: ' + (tabs || 'no tabs') +
+              (d.weather ? ' · weather: ' + d.weather : '') + (d.crops ? ' · crops: ' + d.crops : '') +
+              (d.beds ? '\n' + d.beds : '');
+            if (warned) showToast('Sandbox refreshed — beds need a re-import', String(d.beds).replace(/^⚠\s*/, ''), null, { alert: true });
+            else showToast('Sandbox refreshed', 'Now matches the real garden — reload to see it.');
           })
           .withFailureHandler(function (e) {
             const m = (e && e.message) ? e.message : 'Transport error.';
