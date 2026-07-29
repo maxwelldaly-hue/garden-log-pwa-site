@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.42</span>
+        <span class="header-version">v9.44</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.42 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.44 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2656,6 +2656,18 @@
                 <button class="dev-simbtn" onclick="runDbTool('dbSetAdapterFlag', this, { on: false })" style="margin-left:6px;">Adapter OFF</button>
               </div>
               <div id="devDbOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
+            </div>
+
+            <div class="dev-section">
+              <h4 class="dev-h">Crop facts from the database</h4>
+              <p class="dev-note">The new crop reference book, living in the database instead of the Crops sheet — with varieties inheriting from their parent crop. <strong>Species check</strong> says whether it answers and how much is in there. <strong>Compare with the sheet</strong> reads every crop both ways and lists any card that would read differently — run this <em>before</em> switching over. The <strong>ON/OFF</strong> switch decides where care facts come from; OFF (the default) means the sheet, exactly as before.</p>
+              <button class="dev-simbtn" onclick="runDbTool('dbSpeciesCheck', this, null, 'devDbSpeciesOut')">Species check</button>
+              <button class="dev-simbtn" onclick="runDbTool('dbCropFactsDiff', this, null, 'devDbSpeciesOut')" style="margin-left:6px;">Compare with the sheet</button>
+              <div class="dev-simrow" style="margin-top:6px;">
+                <button class="dev-simbtn" onclick="runDbTool('dbSetSpeciesFlag', this, { on: true }, 'devDbSpeciesOut')">Crop facts ON</button>
+                <button class="dev-simbtn" onclick="runDbTool('dbSetSpeciesFlag', this, { on: false }, 'devDbSpeciesOut')" style="margin-left:6px;">Crop facts OFF</button>
+              </div>
+              <div id="devDbSpeciesOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
             
 
@@ -6343,8 +6355,11 @@ if (typeof module !== 'undefined' && module.exports) {
       // DB-adapter spike buttons (beta-only section, DbStore.js): ONE handler for all five actions —
       // each returns a small diagnostics object; we render it as readable key: value lines via
       // textContent (values echo sheet/DB content, so never innerHTML). Mirrors runFormulaEscapeCheck.
-      function runDbTool(action, btn, extra) {
-        const box = document.getElementById('devDbOut');
+      // boxId lets the greenfield species section render into its OWN box — an answer appearing under
+      // the section above it reads as a result for the wrong tool, and these two report on different
+      // databases' worth of things.
+      function runDbTool(action, btn, extra, boxId) {
+        const box = document.getElementById(boxId || 'devDbOut');
         if (!box) return;
         const pin = localStorage.getItem('garden_log_pin');
         const token = localStorage.getItem('garden_log_token');
@@ -6362,7 +6377,8 @@ if (typeof module !== 'undefined' && module.exports) {
               box.textContent = 'Could not run — ' + ((res && res.message) || 'try again.');
               return;
             }
-            const d = res.data.dbCheck || res.data.dbSeed || res.data.dbDiff || res.data.dbRoundTrip || res.data.dbFlag;
+            const d = res.data.dbCheck || res.data.dbSeed || res.data.dbDiff || res.data.dbRoundTrip ||
+                      res.data.dbSpecies || res.data.dbFactsDiff || res.data.dbSpeciesFlag || res.data.dbFlag;
             box.textContent = d ? JSON.stringify(d, null, 2) : 'No result.';
           })
           .withFailureHandler(function (e) {
