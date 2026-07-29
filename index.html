@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.52</span>
+        <span class="header-version">v9.53</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.52 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.53 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2658,7 +2658,7 @@
                  nothing reads those rows while the switch is off. -->
             <div class="dev-section">
               <h4 class="dev-h">Beds from the database</h4>
-              <p class="dev-note">Your beds, living in the database instead of the Garden Categories sheet — each one keeping the same id forever, so renaming a bed can never strand the plants in it. <strong>Connect this garden</strong> is the one-off setup tap: it works out whether this is the real garden or the sandbox and points it at its own half of the database — nothing to type. <strong>Bed check</strong> says whether the database answers and what it holds. <strong>Compare with the sheet</strong> lists any bed that differs. <strong>Renamed-bed check</strong> looks through your plants for any left pointing at a bed that no longer exists. Those three change nothing. <strong>Copy beds in</strong> does write — but only into the database, and nothing in the app reads it until the switch is on.</p>
+              <p class="dev-note">Your beds, living in the database instead of the Garden Categories sheet — each one keeping the same id forever, so renaming a bed can never strand the plants in it. <strong>Connect this garden</strong> is the one-off setup tap: it works out whether this is the real garden or the sandbox and points it at its own half of the database — nothing to type. <strong>Bed check</strong> says whether the database answers and what it holds. <strong>Compare with the sheet</strong> lists any bed that differs. <strong>Renamed-bed check</strong> looks through your plants for any left pointing at a bed that no longer exists. Those three add nothing and remove nothing — they only look. (Opening the sheet at all does let the app tidy its own headers, as every screen does; that part is not these buttons.) <strong>Copy beds in</strong> does write — but only into the database, and nothing in the app reads it until the switch is on.</p>
               <button class="dev-simbtn" onclick="runDbTool('dbSetupInstanceSchema', this, null, 'devDbBedOut')">Connect this garden</button>
               <button class="dev-simbtn" onclick="runDbTool('dbBedCheck', this, null, 'devDbBedOut')" style="margin-left:6px;">Bed check</button>
               <button class="dev-simbtn" onclick="runDbTool('dbBedDiff', this, null, 'devDbBedOut')" style="margin-left:6px;">Compare with the sheet</button>
@@ -7135,7 +7135,8 @@ if (typeof module !== 'undefined' && module.exports) {
         return metadata;
       }
 
-      // Inline one-cell bed rename (mirrors ppBeginRename in Js-Passport.html). Swaps the bed-card title for
+      // Inline one-cell bed rename (mirrors ppBeginRename, Js-Passport2.html:793 — which renames a PLANT;
+      // this is the only bed-rename path in the app). Swaps the bed-card title for
       // a text field; on save posts renameBed BY BedId (a single Blueprint Zone-cell edit — no cross-tab
       // sweep), then refreshes the Garden tab + map from the server so the whole card (and any place the
       // old name showed) picks up the new one. Esc / ✕ cancels; a failure shows a quiet inline note and
