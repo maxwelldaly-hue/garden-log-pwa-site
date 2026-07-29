@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.63</span>
+        <span class="header-version">v9.64</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.63 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.64 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2697,7 +2697,7 @@
                  every neighbouring block has reads as a bug otherwise. -->
             <div class="dev-section">
               <h4 class="dev-h">Supplies in the database</h4>
-              <p class="dev-note">A copy of your shed living in the database, so a plant can point back at the packet it was sown from and keep what that packet said. <strong>Shed check</strong> says whether the database answers and what it holds. <strong>Compare with the sheet</strong> lists any supply that differs and names anything in a cell that could not be carried across. <strong>What would the packet layer add?</strong> lists the facts a packet knows that neither the plant nor the reference book does — the ones a card could gain. Those three only look. <strong>Copy supplies in</strong> does write, but only into the database, never back into your sheet. There is no on/off switch here on purpose: nothing in the app reads supplies from the database yet, so there would be nothing for it to switch. Expect this to change no card today — it is the groundwork that makes a packet's facts reachable at all.</p>
+              <p class="dev-note">A copy of your shed living in the database, so a plant can point back at the packet it was sown from and keep what that packet said. <strong>Shed check</strong> says whether the database answers and what it holds. <strong>Compare with the sheet</strong> lists any supply that differs and names anything in a cell that could not be carried across. <strong>What would the packet layer add?</strong> lists the facts a packet knows that neither the plant nor the reference book does — the ones a card could gain. None of those three changes a supply. <strong>Copy supplies in</strong> is the one that writes, and only into the database, never back into your sheet. There is no on/off switch here on purpose: nothing in the app reads supplies from the database yet, so there would be nothing for it to switch. Expect this to change no card today — it is the groundwork that makes a packet's facts reachable at all.</p>
               <button class="dev-simbtn" onclick="runDbTool('dbShedCheck', this, null, 'devDbShedOut')">Shed check</button>
               <button class="dev-simbtn" onclick="runDbTool('dbShedDiff', this, null, 'devDbShedOut')" style="margin-left:6px;">Compare with the sheet</button>
               <div class="dev-simrow" style="margin-top:6px;">
