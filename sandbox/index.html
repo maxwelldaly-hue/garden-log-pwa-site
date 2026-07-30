@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.74</span>
+        <span class="header-version">v9.75</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.74 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.75 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2726,6 +2726,15 @@
                 <button class="dev-simbtn" onclick="runDbTool('dbSetPlantFlag', this, { on: true }, 'devDbPlantOut')">Plant facts ON</button>
                 <button class="dev-simbtn" onclick="runDbTool('dbSetPlantFlag', this, { on: false }, 'devDbPlantOut')" style="margin-left:6px;">Plant facts OFF</button>
               </div>
+              <!-- The GRID switch — a different animal from the facts pair above, and the note says so
+                   because two adjacent ON/OFF pairs in one section is exactly how the wrong one gets
+                   flipped. NOT FINISHED YET: the writer landed in step (c) but the reader is wired to no
+                   read path and fact/watering writes still go to the sheet, so this must stay OFF. -->
+              <div class="dev-simrow" style="margin-top:6px;">
+                <button class="dev-simbtn" onclick="runDbTool('dbSetPlantGridFlag', this, { on: true }, 'devDbPlantOut')">Garden FROM the database ON</button>
+                <button class="dev-simbtn" onclick="runDbTool('dbSetPlantGridFlag', this, { on: false }, 'devDbPlantOut')" style="margin-left:6px;">Garden FROM the database OFF</button>
+              </div>
+              <p class="dev-note"><strong>Garden FROM the database</strong> is not the same switch as <strong>Plant facts</strong>. Facts changes what a passport reads; this one moves your whole garden — every plant, every edit — out of the sheet and into the database. It is <strong>half built</strong>: writes go there now, but reading still comes from the sheet, so leave it off. Turning it on would mean edits you could not see.</p>
               
               <div id="devDbPlantOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
@@ -6472,7 +6481,7 @@ if (typeof module !== 'undefined' && module.exports) {
             const NAMED = ['dbCheck', 'dbSeed', 'dbDiff', 'dbRoundTrip', 'dbSpecies', 'dbFactsDiff', 'dbSpeciesFlag', 'dbFlag',
                            'dbBed', 'dbBedSetup', 'dbBedDiff', 'dbBedAudit', 'dbBedSeed', 'dbBedFlag',
                            'dbPlant', 'dbPlantDiff', 'dbPlantFacts', 'dbPlantLinks', 'dbPlantSeed', 'dbPlantFlag',
-                           'dbPlantGrid',
+                           'dbPlantGrid', 'dbPlantGridFlag',
                            'dbShed', 'dbShedDiff', 'dbShedSeed', 'dbPacketLayer',
                            'dbExport', 'dbExportList', 'dbExportPreview'];
             let d = null;
