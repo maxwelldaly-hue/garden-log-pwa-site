@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.71</span>
+        <span class="header-version">v9.72</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.71 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.72 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2677,7 +2677,7 @@
                  database only; the Garden sheet stays the system of record either way. -->
             <div class="dev-section">
               <h4 class="dev-h">Plants in the database</h4>
-              <p class="dev-note">A copy of your plants living in the database, each one linked to its crop in the reference book — which is what lets a variety inherit from its parent crop instead of repeating it. <strong>Plant check</strong> says whether the database answers and what it holds. <strong>Compare with the sheet</strong> lists any plant that differs, and names anything in a cell that could not be carried across. <strong>Would any card change?</strong> reads every plant's facts both ways and lists any passport that would read differently. Those three only look. <strong>Copy plants in</strong> does write — but only into the database, never back into your sheet, and nothing in the app reads it until the switch is on. Even switched on, it changes the "Typical" facts on a plant's passport and nothing else: your Garden sheet stays in charge of the plants themselves. <strong>Which crop did each plant link to?</strong> shows the crop each plant was matched to when it was copied in, and flags any match that doesn't look like its plant — that match is decided once and kept, so a wrong one stays wrong until someone spots it. Worth a read before switching anything on.</p>
+              <p class="dev-note">A copy of your plants living in the database, each one linked to its crop in the reference book — which is what lets a variety inherit from its parent crop instead of repeating it. <strong>Plant check</strong> says whether the database answers and what it holds. <strong>Compare with the sheet</strong> lists any plant that differs, and names anything in a cell that could not be carried across. <strong>Would any card change?</strong> reads every plant's facts both ways and lists any passport that would read differently. Those three only look. <strong>Copy plants in</strong> does write — but only into the database, never back into your sheet, and nothing in the app reads it until the switch is on. Even switched on, it changes the "Typical" facts on a plant's passport and nothing else: your Garden sheet stays in charge of the plants themselves. <strong>Which crop did each plant link to?</strong> shows the crop each plant was matched to when it was copied in, and flags any match that doesn't look like its plant — that match is decided once and kept, so a wrong one stays wrong until someone spots it. <strong>Would the Garden look the same?</strong> reads your whole Garden twice — once from the sheet, once from the database — and lists every plant that would come back different, or not come back at all. It looks only; nothing is switched over. Worth a read before switching anything on.</p>
               <button class="dev-simbtn" onclick="runDbTool('dbPlantCheck', this, null, 'devDbPlantOut')">Plant check</button>
               <button class="dev-simbtn" onclick="runDbTool('dbPlantDiff', this, null, 'devDbPlantOut')" style="margin-left:6px;">Compare with the sheet</button>
               <div class="dev-simrow" style="margin-top:6px;">
@@ -2686,6 +2686,7 @@
               </div>
               <div class="dev-simrow" style="margin-top:6px;">
                 <button class="dev-simbtn" onclick="runDbTool('dbPlantLinkAudit', this, null, 'devDbPlantOut')">Which crop did each plant link to?</button>
+                <button class="dev-simbtn" onclick="runDbTool('dbPlantGridDiff', this, null, 'devDbPlantOut')" style="margin-left:6px;">Would the Garden look the same?</button>
               </div>
               
               <div id="devDbPlantOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
@@ -6392,6 +6393,7 @@ if (typeof module !== 'undefined' && module.exports) {
             const NAMED = ['dbCheck', 'dbSeed', 'dbDiff', 'dbRoundTrip', 'dbSpecies', 'dbFactsDiff', 'dbSpeciesFlag', 'dbFlag',
                            'dbBed', 'dbBedSetup', 'dbBedDiff', 'dbBedAudit', 'dbBedSeed', 'dbBedFlag',
                            'dbPlant', 'dbPlantDiff', 'dbPlantFacts', 'dbPlantLinks', 'dbPlantSeed', 'dbPlantFlag',
+                           'dbPlantGrid',
                            'dbShed', 'dbShedDiff', 'dbShedSeed', 'dbPacketLayer',
                            'dbExport', 'dbExportList', 'dbExportPreview'];
             let d = null;
