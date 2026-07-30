@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.66</span>
+        <span class="header-version">v9.67</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.66 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.67 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2705,6 +2705,17 @@
                 <button class="dev-simbtn" onclick="runDbTool('dbSeedShed', this, null, 'devDbShedOut')" style="margin-left:6px;">Copy supplies in</button>
               </div>
               <div id="devDbShedOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
+            </div>
+
+            <!-- The database backup. Deliberately sits directly under the four database sections: it is
+                 the thing that makes all of them reversible, and it is the gate before the app ever
+                 writes a plant to Postgres instead of a cell. -->
+            <div class="dev-section">
+              <h4 class="dev-h">Database backup</h4>
+              <p class="dev-note">Your sheet has always been the backup — the database is only ever a copy of it today, so nothing has been at risk. That changes the moment the app starts saving your garden into the database instead of the sheet, because the free plan keeps no restorable backup of its own. This writes the whole database out as one file into Drive (<em>Garden Log Backups</em>), every night, and keeps the last fortnight. <strong>Backups on file</strong> lists what is there and how old the newest one is — the nightly run stays quiet when it works, so this is how you check that it did. <strong>Back up the database now</strong> makes one immediately. Neither one changes a plant, a supply or a bed.</p>
+              <button class="dev-simbtn" onclick="runDbTool('dbExportList', this, null, 'devDbExportOut')">Backups on file</button>
+              <button class="dev-simbtn" onclick="runDbTool('dbExportNow', this, null, 'devDbExportOut')" style="margin-left:6px;">Back up the database now</button>
+              <div id="devDbExportOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
 
             <div class="dev-section">
@@ -6381,7 +6392,8 @@ if (typeof module !== 'undefined' && module.exports) {
             const NAMED = ['dbCheck', 'dbSeed', 'dbDiff', 'dbRoundTrip', 'dbSpecies', 'dbFactsDiff', 'dbSpeciesFlag', 'dbFlag',
                            'dbBed', 'dbBedSetup', 'dbBedDiff', 'dbBedAudit', 'dbBedSeed', 'dbBedFlag',
                            'dbPlant', 'dbPlantDiff', 'dbPlantFacts', 'dbPlantLinks', 'dbPlantSeed', 'dbPlantFlag',
-                           'dbShed', 'dbShedDiff', 'dbShedSeed', 'dbPacketLayer'];
+                           'dbShed', 'dbShedDiff', 'dbShedSeed', 'dbPacketLayer',
+                           'dbExport', 'dbExportList'];
             let d = null;
             for (let i = 0; i < NAMED.length && !d; i++) d = res.data[NAMED[i]];
             // Nothing named matched: every one of these actions answers with exactly one key, so show it.
