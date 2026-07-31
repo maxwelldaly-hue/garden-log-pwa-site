@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.86</span>
+        <span class="header-version">v9.87</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.86 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.87 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2706,6 +2706,18 @@
                 <button class="dev-simbtn" onclick="runDbTool('dbSeedShed', this, null, 'devDbShedOut')" style="margin-left:6px;">Copy supplies in</button>
               </div>
               <div id="devDbShedOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
+            </div>
+
+            <!-- The Log (db/log.sql — chunk 7). NO "compare with the sheet" button here, and that is the
+                 point rather than an omission: the Log is disposable by the owner's greenfield decision,
+                 so nothing is copied across and there is no second copy to compare against. The check is
+                 the only read-only tool this table can have. -->
+            <div class="dev-sim">
+              <h4 class="dev-h">Your log in the database</h4>
+              <p class="dev-note">Your log — every entry you have ever captured — moving out of the spreadsheet and into the database. <strong>Log check</strong> only looks: it says whether the database answers and how many entries it holds. Nothing is copied across, because your old log stays where it is: the spreadsheet keeps everything already written, and the database starts collecting from the day the switch goes on. This is the change that should make the app <em>faster</em> — right now every single thing you do waits for the spreadsheet to open, even when nothing needs it.</p>
+              <button class="dev-simbtn" onclick="runDbTool('dbLogCheck', this, null, 'devDbLogOut')">Log check</button>
+              
+              <div id="devDbLogOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
 
             <!-- The database backup. Deliberately sits directly under the four database sections: it is
@@ -6404,6 +6416,7 @@ if (typeof module !== 'undefined' && module.exports) {
                            'dbPlant', 'dbPlantDiff', 'dbPlantFacts', 'dbPlantLinks', 'dbPlantSeed', 'dbPlantFlag',
                            'dbPlantGrid', 'dbPlantGridFlag',
                            'dbShed', 'dbShedDiff', 'dbShedSeed', 'dbPacketLayer',
+                           'dbLog', 'dbLogFlag',
                            'dbExport', 'dbExportList', 'dbExportPreview'];
             let d = null;
             for (let i = 0; i < NAMED.length && !d; i++) d = res.data[NAMED[i]];
