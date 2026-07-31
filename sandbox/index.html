@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.98</span>
+        <span class="header-version">v9.99</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.98 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.99 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -5295,7 +5295,7 @@ if (typeof module !== 'undefined' && module.exports) {
           // Reversal-log Phase 1: a per-row "↩" affordance on structural logs (planting/harvest/removal/
           // move) the backend can deterministically invert. Two-tap arm (no modal — rule 2) so a stray
           // tap can't undo a real garden event.
-          if (l.reversible && (l.logKey || l.logRow)) {
+          if (l.reversible && l.logKey) {
             const rev = document.createElement('button');
             rev.className = 'recent-reverse';
             rev.type = 'button';
@@ -5347,15 +5347,11 @@ if (typeof module !== 'undefined' && module.exports) {
           })
           .processClientRequest(JSON.stringify({
             action: 'reverseLog', token: token, pin: pin,
-            // OPAQUE handle — never parse it, never assume it's a row number (chunk 7 step (c): the server
-            // sends a uuid once the Log lives in Postgres). The `logRow` fallback is only for entries
-            // replayed from a `garden_recent_cache` written by the pre-step-(c) bundle.
-            logKey: l.logKey || String(l.logRow),
-            // Sent ALONGSIDE logKey, both directions of skew. Dropping it covered only old-client ->
-            // new-server; a ROLLBACK (or any older /exec deployment still on the pre-logKey Router)
-            // reads payload.logRow, and without this every ↩ answers "no longer available". Costs one
-            // field. Dies with logRow itself in step (f).
-            logRow: l.logRow,
+            // OPAQUE handle — never parse it, never assume it's a row number: it is a log_event uuid
+            // under DB_LOG_ON and an absolute sheet row number as a string otherwise. The old duplicate
+            // `logRow` field was deleted 31/07/2026; `logKey` is populated on both arms, so it never
+            // carried anything this does not.
+            logKey: l.logKey,
             fingerprint: { category: l.category, crop: l.crop, zone: l.zone, date: l.date }
           }));
       }
