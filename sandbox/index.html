@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.88</span>
+        <span class="header-version">v9.89</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.88 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.89 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2770,7 +2770,7 @@
                 <button class="dev-simbtn" onclick="runDbTool('dbSetLogFlag', this, { on: true }, 'devDbLogOut')">Log in the database ON</button>
                 <button class="dev-simbtn" onclick="runDbTool('dbSetLogFlag', this, { on: false }, 'devDbLogOut')" style="margin-left:6px;">Log in the database OFF</button>
               </div>
-              <p class="dev-note">Switching this on sends new entries to the database instead of the spreadsheet. Your old entries stay readable in the spreadsheet either way — they are simply not carried over. If the database is ever unreachable while you are capturing something, the app falls back to writing that entry into the spreadsheet, so nothing is lost.</p>
+              <p class="dev-note">⚠ <strong>Half built — leave this OFF for now.</strong> Switching it on sends new entries to the database, but everything that <em>reads</em> your log still reads the spreadsheet, so a new entry would vanish from Recent activity, from plant histories and from the watering timers. Nothing would be lost — it would be sitting in the database, unread — but the app would look broken. It becomes safe once the reading side moves across. When it does: your old entries stay in the spreadsheet either way, and if the database is ever unreachable mid-capture the app writes that entry to the spreadsheet instead and marks it, so nothing is lost.</p>
               
               <div id="devDbLogOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
