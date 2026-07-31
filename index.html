@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.81</span>
+        <span class="header-version">v9.82</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.81 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.82 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2717,6 +2717,15 @@
               <button class="dev-simbtn" onclick="runDbTool('dbExportList', this, null, 'devDbExportOut')">Backups on file</button>
               <button class="dev-simbtn" onclick="runDbTool('dbExportNow', this, null, 'devDbExportOut')" style="margin-left:6px;">Back up the database now</button>
               <div id="devDbExportOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
+            </div>
+
+            <!-- The nightly tidy-up's first step, on demand. Sits here because it is the one part of the
+                 plant cutover that otherwise cannot be tested before it runs on the real garden. -->
+            <div class="dev-section">
+              <h4 class="dev-h">Tidy up now</h4>
+              <p class="dev-note">When you pull a plant out, its card does not vanish straight away — the garden keeps it until the nightly tidy-up at 1am, which files what it grew into your records first and only then clears it. That is deliberate: the record is written before the card goes. This runs that tidy-up now instead of waiting, and reports how many it cleared. It only ever touches plants you have already pulled out.</p>
+              <button class="dev-simbtn" onclick="runDbTool('runFlushNow', this, null, 'devFlushOut')">Run the tidy-up</button>
+              <div id="devFlushOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
 
             <div class="dev-section">
