@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v10.02</span>
+        <span class="header-version">v10.03</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v10.02 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v10.03 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2739,6 +2739,21 @@
               </div>
               <p class="dev-note"><strong>Built and ready — both sides moved across.</strong> Writing AND reading are now on the database, so a new entry shows up in Recent activity, on plant histories and in the watering timers exactly as before. <strong>Tap “Log check” first</strong> — it should say the database answers. <strong>What you will notice the moment you turn it on:</strong> Recent activity starts empty and fills from your next entry, one plant loses its history line, and the feed timers read blank until the next feed is logged. That is the fresh start, not a fault — nothing is deleted, your old entries stay in the spreadsheet. <strong>This one is reversible</strong>, unlike the Garden switch above: turning it off simply shows you the spreadsheet's log again, and anything written to the database is still there if you turn it back on. If the database is ever unreachable mid-capture the app writes that entry to the spreadsheet instead and marks it, so nothing is lost either way.</p>
               <div id="devDbLogOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
+            </div>
+
+            <!-- The action trace (docs/SCOPE-ACTION-TRACE.md). Built 31/07 after the first troubleshooting
+                 session, where the honest answer to "what did that button do?" was that nothing had
+                 recorded it. Deliberately owner-facing wording: this is a switch the owner flips before
+                 showing me a problem, so it has to make sense without knowing what a router action is. -->
+            <div class="dev-sim">
+              <h4 class="dev-h">Record my taps</h4>
+              <p class="dev-note">When something in the app does not do what you expected, turn this on and do it again. It writes down every button you press and <em>what the app answered</em> — including the times it answers "that one looks already sorted" and quietly does nothing, which until now left no trace at all. That was the gap: the taps that feel most broken were the ones with no record. <strong>Turn it off when you are done.</strong> It keeps 30 days and then clears itself. It does not record photos, and it never records your PIN.</p>
+              <div class="dev-simrow" style="margin-top:6px;">
+                <button class="dev-simbtn" onclick="runDbTool('dbSetTraceFlag', this, { on: true }, 'devTraceOut')">Recording ON</button>
+                <button class="dev-simbtn" onclick="runDbTool('dbSetTraceFlag', this, { on: false }, 'devTraceOut')" style="margin-left:6px;">Recording OFF</button>
+                <button class="dev-simbtn" onclick="runDbTool('getTrace', this, { limit: 30 }, 'devTraceOut')" style="margin-left:6px;">Show what I did</button>
+              </div>
+              <div id="devTraceOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
 
             <!-- The database backup. Deliberately sits directly under the four database sections: it is
@@ -4850,6 +4865,10 @@ if (typeof module !== 'undefined' && module.exports) {
         // (multi-device). Like sunModel it only rides getState — write when present, never clear (a log/arrange
         // response omits it; clearing would blank the rings until the next full getState). See renderCareRings.
         const care = (typeof data === 'string') ? null : ((data && data.careTimers) || null);
+        // bedVocab = EVERY bed, occupied or not (getState only). Same write-when-present / never-clear rule
+        // as sunModel: a log or resolve response omits it, and clearing would collapse the bed picker back
+        // to the occupancy-scraped list this exists to replace. See getKnownBeds (Js-State.html).
+        const bedv = (typeof data === 'string') ? null : ((data && data.bedVocab) || null);
         // IndexedDB 'cache' store is a secondary — readCachedGardenState reads localStorage, so degraded
         // mode still renders offline. Guard the put so a missing db doesn't throw.
         if (db) {
@@ -4869,6 +4888,7 @@ if (typeof module !== 'undefined' && module.exports) {
         // sunModel, and removing it there would blank the map's ☀️ overlay until the next full getState.
         try { if (sun) localStorage.setItem('garden_log_sun_v1', JSON.stringify(sun)); } catch (e) {}
         try { if (care) localStorage.setItem('garden_care_timers_v1', JSON.stringify(care)); } catch (e) {}
+        try { if (bedv && bedv.length) localStorage.setItem('garden_log_beds_v1', JSON.stringify(bedv)); } catch (e) {}
       }
 
       // Read the cached garden state as the renderer's { currentState, stateModel } shape. The v2 model
@@ -4879,7 +4899,9 @@ if (typeof module !== 'undefined' && module.exports) {
         try { const m = localStorage.getItem('garden_log_state_v2'); if (m) model = JSON.parse(m); } catch (e) { model = null; }
         let sun = null;
         try { const s = localStorage.getItem('garden_log_sun_v1'); if (s) sun = JSON.parse(s); } catch (e) { sun = null; }
-        return { currentState: localStorage.getItem('garden_log_state') || '', stateModel: model, sunModel: sun };
+        let bedv = null;
+        try { const b = localStorage.getItem('garden_log_beds_v1'); if (b) bedv = JSON.parse(b); } catch (e) { bedv = null; }
+        return { currentState: localStorage.getItem('garden_log_state') || '', stateModel: model, sunModel: sun, bedVocab: bedv };
       }
 
       // Render the Garden layout + refresh the to-confirm banner from a { currentState, stateModel }
@@ -6474,6 +6496,7 @@ if (typeof module !== 'undefined' && module.exports) {
                            'dbPlantGrid', 'dbPlantGridFlag',
                            'dbShed', 'dbShedDiff', 'dbShedSeed', 'dbPacketLayer',
                            'dbLog', 'dbLogFlag',
+                           'dbTrace', 'trace',
                            'dbExport', 'dbExportList', 'dbExportPreview'];
             let d = null;
             for (let i = 0; i < NAMED.length && !d; i++) d = res.data[NAMED[i]];
@@ -8268,9 +8291,36 @@ if (typeof module !== 'undefined' && module.exports) {
       // + buttons for its domain and posts a DETERMINISTIC action (resolveCard / resolveShedDraft) — no
       // Gemini, no offline queue. The category pills / manual-yield box / textbox-verify flow are gone.
 
-      // Bed names in the current layout (excluding Unspecified/Shed), for the Confirm bed picker. Parsed
-      // from the cached state with the same bed-header detector the rest of the app uses.
+      // Every bed the garden has (excluding Unspecified/Shed), for the Confirm bed picker and the three
+      // other bed choosers (shed→garden, passport Sow, "planted outside").
+      //
+      // ⚠ THE PROSE SCRAPE IS THE FALLBACK NOW, NOT THE SOURCE (fixed 31/07). It only ever recovered beds
+      // that HELD A PLANT, because a bed with nothing in it produces no prose line to scrape — so the
+      // picker offered 6 of the garden's 12 beds and silently omitted every pot zone, all four of which
+      // happened to be empty. That is exactly backwards: an empty bed is the likeliest destination for a
+      // plant you are confirming. `bedVocab` (getState → cacheState → garden_log_beds_v1) is the real
+      // vocabulary, occupancy-independent, in Blueprint order.
+      //
+      // The scrape survives ONLY for a first-run/offline client whose cache predates this change — one
+      // online getState replaces it. Same exclusions either way: Unspecified is a holding tray, not a
+      // destination, and Shed is a different domain entirely.
       function getKnownBeds() {
+        const keep = function (name) {
+          const low = String(name || '').trim().toLowerCase();
+          return !!low && !low.includes('unspecified') && low !== 'shed';
+        };
+        try {
+          const raw = localStorage.getItem('garden_log_beds_v1');
+          const vocab = raw ? JSON.parse(raw) : null;
+          if (Array.isArray(vocab) && vocab.length) {
+            const out = [];
+            vocab.forEach(function (b) {
+              const name = String(b || '').trim();
+              if (keep(name) && out.indexOf(name) === -1) out.push(name);
+            });
+            if (out.length) return out;
+          }
+        } catch (e) { /* fall through to the prose scrape */ }
         const text = localStorage.getItem('garden_log_state') || '';
         const beds = [];
         text.split(/[\r\n\v]+/).forEach(function (line) {
@@ -8278,8 +8328,7 @@ if (typeof module !== 'undefined' && module.exports) {
           const ci = getBedColonIdx(line);
           if (ci === -1) return;
           const name = line.substring(0, ci).trim();
-          const low = name.toLowerCase();
-          if (!name || low.includes('unspecified') || low === 'shed') return;
+          if (!keep(name)) return;
           if (beds.indexOf(name) === -1) beds.push(name);
         });
         return beds;
@@ -12996,7 +13045,11 @@ if (typeof module !== 'undefined' && module.exports) {
           b.textContent = o[1];
           b.onclick = function () {
             closeResolve();
-            ppRemoveSubmit(p, bedName, o[0]);
+            // A COUNTED planting asks how many came out; a single (or untracked) plant does not — the
+            // reason tap stays the whole interaction it has always been. See ppOpenPullOutQuantity.
+            const tracked = parseInt(p.count, 10);
+            if (isFinite(tracked) && tracked > 1) ppOpenPullOutQuantity(p, bedName, o[0], tracked);
+            else ppRemoveSubmit(p, bedName, o[0]);
           };
           choices.appendChild(b);
         });
@@ -13004,17 +13057,70 @@ if (typeof module !== 'undefined' && module.exports) {
         actions.appendChild(rButton('Cancel', 'rbtn-secondary', closeResolve));
         presentResolveModal();
       }
-      function ppRemoveSubmit(p, bedName, reason) {
+      // "How many did you pull out?" — the quantity step a Pull-out never had (owner, 31/07: eight parsnips
+      // and four tomatoes, and "pull up plant" meaning "all eight" is not a real gardener's option).
+      //
+      // The RULE was what was wrong here, not the code: ppRemoveSubmit's old comment asserted "a Pull-out is
+      // always the whole plant (never a partial removal)". The server has handled a counted Removal all
+      // along (StateUpdate.js's Removal branch: taken < have decrements, taken === have tombstones, taken >
+      // have parks a to-confirm rather than over-deleting), so this is a UI step over machinery that already
+      // exists — no new server logic, exactly like the harvest picker it mirrors.
+      //
+      // DEFAULTS TO ALL, so the common "pull the whole thing" case is still one tap on Confirm and produces
+      // a byte-identical submission to before. Only shown when a count > 1 is actually tracked.
+      function ppOpenPullOutQuantity(p, bedName, reason, total) {
+        const base = ppSplitName(p.name)[0];
+        const n = (isFinite(total) && total > 0) ? total : 1;
+        // Wording deliberately mirrors the harvest picker ('How many did you pull?' / 'of N') rather than
+        // inventing a second dialect for the same gesture — one new registered phrase, not three. See
+        // docs/PHRASES.md §E2; the phrase gate fails the suite on any unregistered card wording.
+        document.getElementById('resolveTitle').textContent = 'How many came out?';
+        document.getElementById('resolveSub').textContent = 'of ' + n;
+        const body = document.getElementById('resolveBody'); body.innerHTML = '';
+        const actions = document.getElementById('resolveActions'); actions.innerHTML = '';
+        let val = n;
+        const stepper = document.createElement('div'); stepper.className = 'pp-stepper';
+        const minus = document.createElement('button'); minus.type = 'button'; minus.className = 'pp-stepper-btn'; minus.textContent = '−';
+        const disp = document.createElement('span'); disp.className = 'pp-stepper-val'; disp.textContent = String(val);
+        const plus = document.createElement('button'); plus.type = 'button'; plus.className = 'pp-stepper-btn'; plus.textContent = '+';
+        const render = function () { disp.textContent = String(val); minus.disabled = val <= 1; plus.disabled = val >= n; };
+        // Floor of 1, not 0: unlike a harvest (where "picked 0" is a meaningful cancel), pulling out zero
+        // plants is not an event at all — Cancel is how you mean that, and it leaves no Log row behind.
+        minus.onclick = function () { if (val > 1) { val--; render(); } };
+        plus.onclick = function () { if (val < n) { val++; render(); } };
+        render();
+        stepper.appendChild(minus); stepper.appendChild(disp); stepper.appendChild(plus);
+        body.appendChild(stepper);
+        actions.appendChild(rButton('Confirm', 'rbtn-primary', function () {
+          closeResolve();
+          ppRemoveSubmit(p, bedName, reason, val, n);
+        }));
+        actions.appendChild(rButton('Cancel', 'rbtn-secondary', closeResolve));
+        presentResolveModal();
+      }
+      // `n`/`total` are OPTIONAL: absent (or n >= total) means the whole planting, which is the original
+      // behaviour and the original wording, byte for byte.
+      function ppRemoveSubmit(p, bedName, reason, n, total) {
         const from = bedName ? ' from ' + bedName : '';
-        let text = 'Removed the ' + p.name + from;
+        const base = ppSplitName(p.name)[0];
+        const partial = (isFinite(n) && isFinite(total) && n > 0 && n < total);
+        // ⚠ THE COUNT TOKEN IS '(xN)', NOT A BARE NUMBER — and that is deliberate, for the same reason
+        // ppSubmitHarvestQuantity gives: extractCount (StateLookups.js) only reads a number that is followed
+        // by a recognised unit word ("seedlings", "cloves"…) or written as the x-token, and a base crop name
+        // is not reliably one of those. '(xN)' is deterministic whatever the crop is called. It also keeps
+        // the number readable to the ↩ reversal path, which is what makes a partial pull-out undoable.
+        let text = partial
+          ? ('Removed ' + n + ' of the ' + base + from + ' (x' + n + ')')
+          : ('Removed the ' + p.name + from);
         if (reason === 'expired') text += ' — crop expired';
         else if (reason === 'died') text += ' — plant died';
-        // Structured bypass — see ppSubmitHarvestQuantity above. No count: a Pull-out is always the whole
-        // plant (never a partial removal), matching the free-text phrasing's no-count-token tombstone path.
+        // Structured bypass — see ppSubmitHarvestQuantity above. `count` is set ONLY on a partial, so a
+        // whole pull-out still takes applyLogToState's countless tombstone arm exactly as it always has.
         // The reason (expired/died) is Log-row colour only — StateUpdate.js has no structured reason field,
         // it rides solely in `text`/details, exactly as it did in the old scribe-parsed phrasing.
         // batchHint: p.planted — see ppSubmitHarvestQuantity's comment (the passport-tap disambiguation fix).
         const item = { zone: bedName || 'Unspecified', category: 'Removal', crop: p.name, batchHint: p.planted || '' };
+        if (partial) item.count = String(n);
         closePassport();
         if (typeof submitLog === 'function') submitLog(text, item);
         if (typeof showToast === 'function') showToast('Pulled out', text);
