@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.95</span>
+        <span class="header-version">v9.96</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.95 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.96 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2716,7 +2716,16 @@
               <h4 class="dev-h">Your log in the database</h4>
               <p class="dev-note">Your log — every entry you have ever captured — moving out of the spreadsheet and into the database. <strong>Log check</strong> only looks: it says whether the database answers and how many entries it holds. Nothing is copied across, because your old log stays where it is: the spreadsheet keeps everything already written, and the database starts collecting from the day the switch goes on. This is the change that should make the app <em>faster</em> — right now every single thing you do waits for the spreadsheet to open, even when nothing needs it.</p>
               <button class="dev-simbtn" onclick="runDbTool('dbLogCheck', this, null, 'devDbLogOut')">Log check</button>
-              
+              <!-- ON PROD TOO, deliberately (v9.96). The grid switch above is beta-only because an agent
+                   drove the prod flip through /exec; that route is not always available, and rule 52 says
+                   an owner-run action gets a button rather than a request to someone else. Safe to expose
+                   here in a way the grid switch is not: this one is genuinely reversible (see the note —
+                   neither store is emptied), so a mis-tap costs a look, not the garden. -->
+              <div class="dev-simrow" style="margin-top:6px;">
+                <button class="dev-simbtn" onclick="runDbTool('dbSetLogFlag', this, { on: true }, 'devDbLogOut')">Log in the database ON</button>
+                <button class="dev-simbtn" onclick="runDbTool('dbSetLogFlag', this, { on: false }, 'devDbLogOut')" style="margin-left:6px;">Log in the database OFF</button>
+              </div>
+              <p class="dev-note"><strong>Built and ready — both sides moved across.</strong> Writing AND reading are now on the database, so a new entry shows up in Recent activity, on plant histories and in the watering timers exactly as before. <strong>Tap “Log check” first</strong> — it should say the database answers. <strong>What you will notice the moment you turn it on:</strong> Recent activity starts empty and fills from your next entry, one plant loses its history line, and the feed timers read blank until the next feed is logged. That is the fresh start, not a fault — nothing is deleted, your old entries stay in the spreadsheet. <strong>This one is reversible</strong>, unlike the Garden switch above: turning it off simply shows you the spreadsheet's log again, and anything written to the database is still there if you turn it back on. If the database is ever unreachable mid-capture the app writes that entry to the spreadsheet instead and marks it, so nothing is lost either way.</p>
               <div id="devDbLogOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
 
