@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v10.04</span>
+        <span class="header-version">v10.05</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v10.04 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v10.05 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2754,6 +2754,13 @@
                 <button class="dev-simbtn" onclick="runDbTool('getTrace', this, { limit: 30 }, 'devTraceOut')" style="margin-left:6px;">Show what I did</button>
               </div>
               <div id="devTraceOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
+            </div>
+
+            <div class="dev-sim">
+              <h4 class="dev-h">Can the app reach everything?</h4>
+              <p class="dev-note">Asks every table in the database the same question the app asks, and says which ones answer. This exists because a table can be built correctly and still be unusable by the app — that happened on 31/07, and nothing noticed until a feature was quietly writing nothing. One tap, no changes to anything.</p>
+              <button class="dev-simbtn" onclick="runDbTool('dbSelfCheck', this, null, 'devSelfOut')">Check every table</button>
+              <div id="devSelfOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
 
             <!-- The database backup. Deliberately sits directly under the four database sections: it is
@@ -6496,7 +6503,7 @@ if (typeof module !== 'undefined' && module.exports) {
                            'dbPlantGrid', 'dbPlantGridFlag',
                            'dbShed', 'dbShedDiff', 'dbShedSeed', 'dbPacketLayer',
                            'dbLog', 'dbLogFlag',
-                           'dbTrace', 'trace',
+                           'dbTrace', 'trace', 'dbSelf',
                            'dbExport', 'dbExportList', 'dbExportPreview'];
             let d = null;
             for (let i = 0; i < NAMED.length && !d; i++) d = res.data[NAMED[i]];
