@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.89</span>
+        <span class="header-version">v9.91</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v9.89 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v9.91 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -5189,7 +5189,7 @@ if (typeof module !== 'undefined' && module.exports) {
           // Reversal-log Phase 1: a per-row "↩" affordance on structural logs (planting/harvest/removal/
           // move) the backend can deterministically invert. Two-tap arm (no modal — rule 2) so a stray
           // tap can't undo a real garden event.
-          if (l.reversible && l.logRow) {
+          if (l.reversible && (l.logKey || l.logRow)) {
             const rev = document.createElement('button');
             rev.className = 'recent-reverse';
             rev.type = 'button';
@@ -5241,7 +5241,10 @@ if (typeof module !== 'undefined' && module.exports) {
           })
           .processClientRequest(JSON.stringify({
             action: 'reverseLog', token: token, pin: pin,
-            logRow: l.logRow,
+            // OPAQUE handle — never parse it, never assume it's a row number (chunk 7 step (c): the server
+            // sends a uuid once the Log lives in Postgres). The `logRow` fallback is only for entries
+            // replayed from a `garden_recent_cache` written by the pre-step-(c) bundle.
+            logKey: l.logKey || String(l.logRow),
             fingerprint: { category: l.category, crop: l.crop, zone: l.zone, date: l.date }
           }));
       }
