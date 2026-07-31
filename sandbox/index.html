@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v9.96</span>
+        <span class="header-version">v9.97</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.96 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v9.97 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2694,12 +2694,18 @@
                 <button class="dev-simbtn" onclick="runDbTool('dbBedRenameAudit', this, null, 'devDbBedOut')">Renamed-bed check</button>
                 <button class="dev-simbtn" onclick="runDbTool('dbSeedBeds', this, null, 'devDbBedOut')" style="margin-left:6px;">Copy beds in</button>
               </div>
-              
+              <!-- ON PROD TOO (v9.97), same reasoning as the Log switch: rule 52 says an owner-run
+                   action gets a button. This one is now LOAD-BEARING FOR SPEED, which it was not when it
+                   shipped — step (f) made the sheet-open skip conditional on the bed vocabulary being
+                   available from the database, so with this OFF the instance keeps paying the
+                   spreadsheet-open on every request no matter what the Garden and Log switches say. It is
+                   also the safest of the three to expose: the flag writes nothing, and turning it off
+                   just reads the Blueprint tab again. -->
               <div class="dev-simrow" style="margin-top:6px;">
                 <button class="dev-simbtn" onclick="runDbTool('dbSetBedFlag', this, { on: true }, 'devDbBedOut')">Beds ON</button>
                 <button class="dev-simbtn" onclick="runDbTool('dbSetBedFlag', this, { on: false }, 'devDbBedOut')" style="margin-left:6px;">Beds OFF</button>
               </div>
-              
+              <p class="dev-note"><strong>This is the switch that makes the app faster.</strong> The Garden and Log switches moved your data across, but the app still opens the spreadsheet on every single screen just to find out what your beds are called — and that open is most of the wait. Turning this on lets it ask the database instead, and the spreadsheet stops being opened at all. <strong>Tap “Compare with the sheet” first</strong>: it should say every bed matches, and only then is this a no-change switch. One thing to know afterwards: a bed you add by hand to the Garden Categories sheet will not appear in the app until it is also in the database. Reversible — turning it off simply goes back to reading the sheet.</p>
               <div id="devDbBedOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
 
