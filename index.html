@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v10.11</span>
+        <span class="header-version">v10.12</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v10.11 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v10.12 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2746,6 +2746,27 @@
               </div>
               <p class="dev-note"><strong>You will not see this one anywhere in the app</strong>, and that is expected rather than a fault — nothing on any screen reads these records yet. They are being kept for later, so that one day the app can tell you the parsnips always run three weeks late in your garden. <strong>Tap “Outcomes check” first</strong> — it should say the database answers. <strong>This one is safe to switch either way:</strong> if the database ever refuses, the plant simply stays in the garden and the app tries again the next night, so a prediction is never thrown away un-kept. Nothing is deleted from your spreadsheet either.</p>
               <div id="devDbOutcomeOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
+            </div>
+
+            <!-- P1's last item (db/weather.sql). Two tables, not one: the history is meant to be joined
+                 to crop history later, and a single table under a kind column means every such query
+                 must remember to exclude predictions. Owner-facing wording throughout — this switch
+                 changes what the forecast card is READING, so it is the one weather switch that can be
+                 seen from the app, unlike the Outcomes one above. -->
+            <div class="dev-sim">
+              <h4 class="dev-h">Weather out of the spreadsheet</h4>
+              <p class="dev-note">The weather lives in its own spreadsheet today: a running record of what the weather actually <em>did</em>, and a seven-day forecast that gets thrown away and rewritten every time it refreshes. This moves both into the database — kept apart on purpose, so that when the app one day asks “what was the weather doing while these tomatoes were in the ground?”, it can only ever answer with real weather and never with a forecast. <strong>Weather check</strong> only looks: it says whether the database answers, how many days of history are in there and what they span.</p>
+              <button class="dev-simbtn" onclick="runDbTool('dbWeatherCheck', this, null, 'devDbWeatherOut')">Weather check</button>
+              <div class="dev-simrow" style="margin-top:6px;">
+                <button class="dev-simbtn" onclick="runDbTool('dbSetWeatherFlag', this, { on: true }, 'devDbWeatherOut')">Weather in the database ON</button>
+                <button class="dev-simbtn" onclick="runDbTool('dbSetWeatherFlag', this, { on: false }, 'devDbWeatherOut')" style="margin-left:6px;">Weather in the database OFF</button>
+              </div>
+              <div class="dev-simrow" style="margin-top:6px;">
+                <button class="dev-simbtn" onclick="runDbTool('dbSeedWeatherHistory', this, { years: 2 }, 'devDbWeatherOut')">Fill in the last 2 years of weather</button>
+              </div>
+              <p class="dev-note"><strong>Order matters here.</strong> Tap <strong>Weather check</strong> first — it should say the database answers. Then <strong>fill in the last two years</strong>, which fetches real past weather for your garden's location and writes it in; it takes a moment, it is safe to tap twice, and it will tell you how many days landed. Only then switch <strong>Weather in the database ON</strong>. Doing it the other way round leaves the forecast card without the recent history it uses for the three-day water balance and the “rain, last 7 days” figure, so those read blank until the next refresh fills them.</p>
+              <p class="dev-note"><strong>Switching it back OFF returns you to the spreadsheet</strong>, which is left exactly as it is and keeps being updated on that arm. One thing that does <em>not</em> come back either way: the “Alert Thresholds” tab is no longer read by anything. Every one of those seventeen values was still at its factory setting, so the app now carries them in its own code and that tab sits inert.</p>
+              <div id="devDbWeatherOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
 
             <!-- The action trace (docs/archive/SCOPE-ACTION-TRACE.md). Built 31/07 after the first troubleshooting
@@ -6545,6 +6566,7 @@ if (typeof module !== 'undefined' && module.exports) {
                            'dbShed', 'dbShedDiff', 'dbShedSeed', 'dbPacketLayer',
                            'dbLog', 'dbLogFlag',
                            'dbOutcome', 'dbOutcomeFlag',
+                           'dbWeather', 'dbWeatherFlag', 'seed',
                            'dbTrace', 'trace', 'dbSelf',
                            'dbExport', 'dbExportList', 'dbExportPreview'];
             let d = null;
@@ -10864,6 +10886,21 @@ if (typeof module !== 'undefined' && module.exports) {
         showToast('Preview', cfg.key + ' → ' + band + ' (' + daysAgo + 'd ago).');
       }
 
+      // PURE (Node-tested): is a getForecast response worth REPLACING what we already have?
+      //
+      // NOTE: THE ANSWER IS NOT `!!res.data.forecast` (rule 51 review, 01/08). An empty array is TRUTHY,
+      // so a failed read — which the DB arm returns as `forecast: []`, deliberately and with no Sheet
+      // fallback — used to overwrite the last-known-good cache with `[]` and then take renderForecast's
+      // length-0 early return, which never reaches renderStaleForecast. On a warm open that left
+      // yesterday's real-looking temps, rain, wind and alert chips on screen under a line reading
+      // "No weather data available."; on every open after that, the offline forecast was simply gone.
+      //
+      // Rule 43: the decision is extracted and tested, and the renderer is a dumb consumer of it.
+      // An unusable response must change NOTHING — not the cache, not the numbers.
+      function forecastResponseIsUsable(forecastData) {
+        return Array.isArray(forecastData) && forecastData.length > 0;
+      }
+
       // Stale-data state: when the daily Open-Meteo sync has stopped, today's date is absent
       // from the data. Rather than fabricate a "today" from a months-old row (the bug that
       // showed stale rain as today's), surface a clear banner and blank the numbers — old
@@ -10912,8 +10949,12 @@ if (typeof module !== 'undefined' && module.exports) {
         const hintEl = document.getElementById('weatherHint');
         if (!hintEl) return;
 
-        if (!forecastData || forecastData.length === 0) {
+        // Nothing usable to draw. Blank the card through the STALE renderer rather than leaving
+        // whatever a previous render left on screen — see forecastResponseIsUsable for the incident.
+        if (!forecastResponseIsUsable(forecastData)) {
+          renderStaleForecast('');
           hintEl.textContent = 'No weather data available.';
+          hintEl.style.display = '';
           return;
         }
 
@@ -11188,7 +11229,7 @@ if (typeof module !== 'undefined' && module.exports) {
             google.script.run
               .withSuccessHandler(resStr => {
                 const res = JSON.parse(resStr);
-                if (res.status === 'success' && res.data.forecast) {
+                if (res.status === 'success' && forecastResponseIsUsable(res.data.forecast)) {
                   localStorage.setItem('garden_log_forecast', JSON.stringify(res.data.forecast));
                   if (Array.isArray(res.data.cropThresholds) && res.data.cropThresholds.length) {
                     CROP_WATCHLIST = res.data.cropThresholds;
@@ -11199,6 +11240,12 @@ if (typeof module !== 'undefined' && module.exports) {
                     localStorage.setItem('garden_log_alert_thresholds', JSON.stringify(res.data.alertThresholds));
                   }
                   renderForecast(res.data.forecast);
+                } else if (res.status === 'success') {
+                  // A successful call that carried no forecast: the store is reachable but empty, or
+                  // the DB arm swallowed a read failure. KEEP the cache — stale-but-coherent beats
+                  // blank — and only blank the card if there was nothing cached to show in the first
+                  // place. fetchCachedForecast() above has already painted it if there was.
+                  if (!localStorage.getItem('garden_log_forecast')) renderForecast([]);
                 }
               })
               .processClientRequest(JSON.stringify({ action: 'getForecast', token: token, pin: pin }));
