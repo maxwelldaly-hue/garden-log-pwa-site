@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v10.23</span>
+        <span class="header-version">v10.24</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v10.23 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v10.24 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2749,10 +2749,14 @@
                    re-ordering a shed category is an edit the owner makes themselves. Serving the
                    vocabulary from the database without these would DELETE that, not move it, leaving
                    the Supabase console as the only route — the same violation renameBed was. -->
-              <p class="dev-note" style="margin-top:10px;">Your shed's <strong>categories</strong> — the groups the Shed tab shows, in the order it shows them. These used to be a sheet you could edit; once supplies come from the database, this is where you change them. <strong>Add</strong> puts a new one at the end. <strong>Rename</strong> carries every supply filed under it across with it. <strong>Set the order</strong> takes the whole list, top first, comma-separated.</p>
+              <p class="dev-note" style="margin-top:10px;">Your shed's <strong>categories</strong> — the groups the Shed tab shows, in the order it shows them. These used to be a sheet you could edit; once supplies come from the database, this is where you change them. <strong>Add</strong> puts a new one at the end. <strong>Remove</strong> only works if nothing is filed under it — the database refuses otherwise, which is what stops a supply quietly losing its category. <strong>Rename</strong> carries every supply filed under it across with it. <strong>Set the order</strong> takes the whole list, top first, comma-separated.</p>
               <div class="dev-simrow" style="margin-top:6px;">
                 <input class="dev-input" id="devShedCatNew" type="text" placeholder="New category" style="max-width:150px;">
                 <button class="dev-simbtn" onclick="runDbTool('dbAddShedCategory', this, { name: (document.getElementById('devShedCatNew')||{}).value }, 'devDbShedOut')" style="margin-left:6px;">Add</button>
+              </div>
+              <div class="dev-simrow" style="margin-top:6px;">
+                <input class="dev-input" id="devShedCatGone" type="text" placeholder="Category to remove" style="max-width:150px;">
+                <button class="dev-simbtn" onclick="runDbTool('dbDeleteShedCategory', this, { name: (document.getElementById('devShedCatGone')||{}).value }, 'devDbShedOut')" style="margin-left:6px;">Remove</button>
               </div>
               <div class="dev-simrow" style="margin-top:6px;">
                 <input class="dev-input" id="devShedCatFrom" type="text" placeholder="From" style="max-width:110px;">
@@ -6669,7 +6673,7 @@ if (typeof module !== 'undefined' && module.exports) {
                            'dbPlant', 'dbPlantDiff', 'dbPlantFacts', 'dbPlantLinks', 'dbPlantSeed', 'dbPlantFlag',
                            'dbPlantGrid', 'dbPlantGridFlag',
                            'dbShed', 'dbShedDiff', 'dbShedRows', 'dbShedSeed', 'dbPacketLayer', 'dbShedFlag',
-                           'shedCatAdd', 'shedCatRename', 'shedCatOrder',
+                           'shedCatAdd', 'shedCatRename', 'shedCatOrder', 'shedCatDelete',
                            'dbLog', 'dbLogFlag',
                            'dbOutcome', 'dbOutcomeFlag',
                            'dbWeather', 'dbWeatherFlag', 'seed',
