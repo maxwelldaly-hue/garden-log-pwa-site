@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v10.22</span>
+        <span class="header-version">v10.23</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v10.22 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v10.23 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2730,9 +2730,9 @@
             </div>
 
             <!-- Supplies — the third instance table (db/shed.sql). P2 built the read seam, the write
-                 chokepoint and the five id-keyed single-cell writers, so the store no longer splits on
-                 a flip and the half-seam guard is deleted. What still holds the flag off is the
-                 VOCABULARY: `shed_category` has no seam, so the categories offered are the tab's. -->
+                 chokepoint, the five id-keyed single-cell writers AND the vocabulary seam, so a flip
+                 moves the whole shed. What holds it off now is EVIDENCE, not code: dbShedRowsDiff
+                 clean, and the update leg witnessed live on beta. -->
             <div class="dev-section">
               <h4 class="dev-h">Supplies in the database</h4>
               <p class="dev-note">A copy of your shed living in the database, so a plant can point back at the packet it was sown from and keep what that packet said. <strong>Shed check</strong> says whether the database answers and what it holds. <strong>Compare with the sheet</strong> lists any supply that differs and names anything in a cell that could not be carried across. <strong>Would the app see the same shed?</strong> is the newer, sharper question: it compares what the app would actually <em>read</em> from each side, which is what has to match before the shed can move. <strong>What would the packet layer add?</strong> lists the facts a packet knows that neither the plant nor the reference book does. None of those four changes a supply. <strong>Copy supplies in</strong> is the one that writes, and only into the database, never back into your sheet.</p>
@@ -2745,12 +2745,30 @@
               <div class="dev-simrow" style="margin-top:6px;">
                 <button class="dev-simbtn" onclick="runDbTool('dbSeedShed', this, null, 'devDbShedOut')">Copy supplies in</button>
               </div>
+              <!-- THE VOCABULARY'S OWN CONTROLS — rule 52, not convenience. On the sheet, adding or
+                   re-ordering a shed category is an edit the owner makes themselves. Serving the
+                   vocabulary from the database without these would DELETE that, not move it, leaving
+                   the Supabase console as the only route — the same violation renameBed was. -->
+              <p class="dev-note" style="margin-top:10px;">Your shed's <strong>categories</strong> — the groups the Shed tab shows, in the order it shows them. These used to be a sheet you could edit; once supplies come from the database, this is where you change them. <strong>Add</strong> puts a new one at the end. <strong>Rename</strong> carries every supply filed under it across with it. <strong>Set the order</strong> takes the whole list, top first, comma-separated.</p>
+              <div class="dev-simrow" style="margin-top:6px;">
+                <input class="dev-input" id="devShedCatNew" type="text" placeholder="New category" style="max-width:150px;">
+                <button class="dev-simbtn" onclick="runDbTool('dbAddShedCategory', this, { name: (document.getElementById('devShedCatNew')||{}).value }, 'devDbShedOut')" style="margin-left:6px;">Add</button>
+              </div>
+              <div class="dev-simrow" style="margin-top:6px;">
+                <input class="dev-input" id="devShedCatFrom" type="text" placeholder="From" style="max-width:110px;">
+                <input class="dev-input" id="devShedCatTo" type="text" placeholder="To" style="max-width:110px; margin-left:6px;">
+                <button class="dev-simbtn" onclick="runDbTool('dbRenameShedCategory', this, { from: (document.getElementById('devShedCatFrom')||{}).value, to: (document.getElementById('devShedCatTo')||{}).value }, 'devDbShedOut')" style="margin-left:6px;">Rename</button>
+              </div>
+              <div class="dev-simrow" style="margin-top:6px;">
+                <input class="dev-input" id="devShedCatOrder" type="text" placeholder="Feed &amp; Soil, Seeds &amp; Seedlings, ..." style="max-width:230px;">
+                <button class="dev-simbtn" onclick="runDbTool('dbReorderShedCategories', this, { names: String((document.getElementById('devShedCatOrder')||{}).value || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean) }, 'devDbShedOut')" style="margin-left:6px;">Set the order</button>
+              </div>
               
               <div class="dev-simrow" style="margin-top:6px;">
                 <button class="dev-simbtn" onclick="runDbTool('dbSetShedFlag', this, { on: true }, 'devDbShedOut')">Shed FROM the database ON</button>
                 <button class="dev-simbtn" onclick="runDbTool('dbSetShedFlag', this, { on: false }, 'devDbShedOut')" style="margin-left:6px;">Shed FROM the database OFF</button>
               </div>
-              <p class="dev-note">⚠ <strong>Half built — leave this off.</strong> Turning it on makes the app <em>read</em> your shed from the database, but every way of <em>changing</em> a supply still writes to the sheet. So it refuses: buy something, use something, rename a supply or scan a packet while this is on and you get an error rather than a change that quietly goes nowhere. Turn it on only to look, and turn it back off.</p>
+              <p class="dev-note">⚠ <strong>Built, and not yet proven — leave this off until it is.</strong> Reading, writing, renaming, photographing and the categories themselves all move together now, so turning it on no longer splits your shed between two places. What is still missing is evidence rather than code: <strong>Would the app see the same shed?</strong> has to come back clean, and one supply has to be changed on the database side and read back. Do that on the sandbox first.</p>
               
               <div id="devDbShedOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
@@ -6651,6 +6669,7 @@ if (typeof module !== 'undefined' && module.exports) {
                            'dbPlant', 'dbPlantDiff', 'dbPlantFacts', 'dbPlantLinks', 'dbPlantSeed', 'dbPlantFlag',
                            'dbPlantGrid', 'dbPlantGridFlag',
                            'dbShed', 'dbShedDiff', 'dbShedRows', 'dbShedSeed', 'dbPacketLayer', 'dbShedFlag',
+                           'shedCatAdd', 'shedCatRename', 'shedCatOrder',
                            'dbLog', 'dbLogFlag',
                            'dbOutcome', 'dbOutcomeFlag',
                            'dbWeather', 'dbWeatherFlag', 'seed',
