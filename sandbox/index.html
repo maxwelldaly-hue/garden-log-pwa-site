@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
   <head>
     <base target="_top">
@@ -27,7 +27,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
+    ﻿<style>
       :root {
         /* Dark-only app: tell the UA so Chrome/WebView "auto dark theme" won't force-darken + invert our
            content (it was flipping the SVG map's dark ground to white). Mirrors <meta name="color-scheme">. */
@@ -703,7 +703,7 @@
          window rides after it as a grey tail, so the verdict is coloured and its timing stays quiet. */
       .pl-sow-go { color: var(--color-sage); }
       .pl-sow-win { color: var(--text-muted); }
-      /* Optimistic Garden-tab row (latency Slice A, docs/SCOPE-LATENCY-SLICES.md): the confident-match case
+      /* Optimistic Garden-tab row (latency Slice A, docs/archive/SCOPE-LATENCY-SLICES.md): the confident-match case
          dims the row + adds a quiet "saving…" line while the real write is still in flight. .plant-row-spin
          reuses the SAME pulse language as the Log-feed echo (.pending-spin, Option 1), so "in progress" reads
          consistently across both tabs. Applied/stripped by applyOptimisticOverlays/clearOptimisticPending
@@ -1052,7 +1052,7 @@
         border-radius: var(--r-xs);
       }
 
-      /* === In-season pane (docs/SCOPE-IN-SEASON.md) — the reconciliation finale ==========================
+      /* === In-season pane (docs/archive/SCOPE-IN-SEASON.md) — the reconciliation finale ==========================
          Whole classified catalogue × the live forecast. Grouped by WHERE you'd act (redesign v7.61): In season
          (green — sow/plant outdoors) / Sow indoors (blue — start on the windowsill) / Plant only (orange —
          season ending) / Not in season (grey, silent). Line 1 carries the verdict + colour; line 2 is always
@@ -1140,7 +1140,7 @@
       .is-edit-cb { accent-color: var(--color-sage); width: 18px; height: 18px; flex: 0 0 auto; margin: 0; cursor: pointer; }
       .is-empty { text-align: center; padding-top: 40px; }
 
-      /* === Plant passport (docs/SCOPE-PLANT-HISTORY.md) ==================================================
+      /* === Plant passport (docs/archive/SCOPE-PLANT-HISTORY.md) ==================================================
          Tap a plant row → a full-screen overlay: identity + a dead-quiet 4-stop lifecycle ribbon + the
          packet facts + the plant's story + photo links. Mechanics mirror .plot-fs (fixed inset:0, scroll
          lock, glide-in); the visual language is the soft inset-tile system. Quiet by design: mono dots,
@@ -1983,7 +1983,7 @@
   </defs>
 </svg>
 
-    <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    ﻿<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
   <!-- CARD-marks: the COLOUR register of the UI stream. Full-colour flat icons (multi-fill, token palette)
        for HERO surfaces only — the Dashboard cards — where warmth matters and mono would read clinical next
        to the colourful Garden/Shed tabs. Same spine (flat, no-outline, tight box) but polychrome. Distinct
@@ -2013,7 +2013,7 @@
       <path fill="#6cc260" d="M12 13Q18 11 16 5.5Q11 8.5 12 13Z"/>
     </symbol>
 
-    <!-- card-inseason — In-season pane (docs/SCOPE-IN-SEASON.md): a green sprout with a low amber sun —
+    <!-- card-inseason — In-season pane (docs/archive/SCOPE-IN-SEASON.md): a green sprout with a low amber sun —
          "the season is right to sow". Deliberately distinct from card-care (sprout in a brown SOIL mound =
          tending) and card-soiltemp (thermometer): the sun, not soil, carries the "right TIME" meaning. -->
     <symbol id="card-inseason" viewBox="0 0 24 24">
@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v10.05</span>
+        <span class="header-version">v10.06</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2406,7 +2406,7 @@
           </div>
         </div>
 
-        <!-- "In season" — the reconciliation finale (docs/SCOPE-IN-SEASON.md). A PULL surface: a quiet launcher
+        <!-- "In season" — the reconciliation finale (docs/archive/SCOPE-IN-SEASON.md). A PULL surface: a quiet launcher
              (never a banner/count) that opens the full-screen In-season pane, answering "what could I sow now?"
              across the whole catalogue by reading the sow calendar against today's cached forecast. Sits right
              under Soil temperature — the live-forecast half of the magic lives here. Same .insights-panel launcher
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v10.05 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v10.06 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2514,7 +2514,7 @@
           </div>
 
           <!-- Stable-identity cutover tooling (backup / assign / wipe) was removed from the Dev drawer once the
-               owner-run cutover completed on prod + beta (19/07, v7.90 — see docs/SCOPE-STABLE-IDENTITY.md).
+               owner-run cutover completed on prod + beta (19/07, v7.90 — see docs/archive/SCOPE-STABLE-IDENTITY.md).
                The server functions backupLogTab / assignStableIds / wipeLogData remain in GardenSheet.js but are
                no longer surfaced; prune them in a later pass if they stay unused. -->
 
@@ -2531,7 +2531,7 @@
 
           <!-- Plant-passport kill switch (owner, 15/07): if the passports misbehave, turn them off HERE —
                plant rows go back to being inert and the background story prefetch stops. Per-device
-               (localStorage), instant, no deploy needed. Full removal steps: docs/SCOPE-PLANT-HISTORY.md. -->
+               (localStorage), instant, no deploy needed. Full removal steps: docs/archive/SCOPE-PLANT-HISTORY.md. -->
           <div class="dev-section">
             <h4 class="dev-h">Plant passports</h4>
             <p class="dev-note">Tap a plant row on the Garden tab to open its passport. If the cards misbehave, untick this — rows stop being tappable and the background story fetch stops, on this device only. Tick again any time.</p>
@@ -2785,7 +2785,25 @@
               <div id="devDbLogOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
 
-            <!-- The action trace (docs/SCOPE-ACTION-TRACE.md). Built 31/07 after the first troubleshooting
+            <!-- The outcomes ledger (db/outcome.sql — P1 of the move off Apps Script). NO "compare
+                 with the sheet" button, for the same reason the Log has none: nothing is copied
+                 across. Prod's Outcomes tab holds zero rows and beta's are a week of nightly test
+                 captures, so there is no second copy to compare against. ON PROD TOO, like the Log
+                 switch above and unlike the Garden one: this is genuinely reversible (neither store
+                 is emptied) and rule 52 says an owner-run action gets a button. -->
+            <div class="dev-sim">
+              <h4 class="dev-h">What you expected, kept</h4>
+              <p class="dev-note">Every time a plant leaves the garden — pulled out, or its season ended — the app quietly writes down what it had <em>predicted</em> for that plant beside what actually happened: when it should have sprouted, when it should have been ready, how long the book said it would take. Those guesses live nowhere else, and they are deleted along with the plant, so this is the only place they survive. This moves that record out of the spreadsheet and into the database. <strong>Outcomes check</strong> only looks: it says whether the database answers and shows the most recent one. Nothing is copied across — what is already in the spreadsheet stays there.</p>
+              <button class="dev-simbtn" onclick="runDbTool('dbOutcomeCheck', this, null, 'devDbOutcomeOut')">Outcomes check</button>
+              <div class="dev-simrow" style="margin-top:6px;">
+                <button class="dev-simbtn" onclick="runDbTool('dbSetOutcomeFlag', this, { on: true }, 'devDbOutcomeOut')">Outcomes in the database ON</button>
+                <button class="dev-simbtn" onclick="runDbTool('dbSetOutcomeFlag', this, { on: false }, 'devDbOutcomeOut')" style="margin-left:6px;">Outcomes in the database OFF</button>
+              </div>
+              <p class="dev-note"><strong>You will not see this one anywhere in the app</strong>, and that is expected rather than a fault — nothing on any screen reads these records yet. They are being kept for later, so that one day the app can tell you the parsnips always run three weeks late in your garden. <strong>Tap “Outcomes check” first</strong> — it should say the database answers. <strong>This one is safe to switch either way:</strong> if the database ever refuses, the plant simply stays in the garden and the app tries again the next night, so a prediction is never thrown away un-kept. Nothing is deleted from your spreadsheet either.</p>
+              <div id="devDbOutcomeOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
+            </div>
+
+            <!-- The action trace (docs/archive/SCOPE-ACTION-TRACE.md). Built 31/07 after the first troubleshooting
                  session, where the honest answer to "what did that button do?" was that nothing had
                  recorded it. Deliberately owner-facing wording: this is a switch the owner flips before
                  showing me a problem, so it has to make sense without knowing what a router action is. -->
@@ -3253,7 +3271,7 @@
               <circle cx="232" cy="905" r="5" fill="none" stroke="var(--plot-str-s)" opacity="0.14"/>
             </g>
 
-            <!-- House Window — the INDOOR seed-raising spot (docs/SEED-RAISING-PLAN.md, owner 08/07:
+            <!-- House Window — the INDOOR seed-raising spot (docs/archive/SEED-RAISING-PLAN.md, owner 08/07:
                  "tucked away bottom right"). Deliberately drawn OUTSIDE the garden polygon on the empty
                  driveway-corner canvas with a DASHED outline: it's a window ledge in the house, not a
                  bed in the ground. data-bed-id carries this bed's stable BedId slug ('house-window') so
@@ -3672,7 +3690,7 @@
     <button type="button" id="editModeExit" class="edit-exit-fab" onclick="exitEditMode()"
             aria-label="Done editing" title="Done editing">✓ Done editing</button>
 
-    <!-- Plant passport (docs/SCOPE-PLANT-HISTORY.md): tap a Garden plant row → this full-screen overlay.
+    <!-- Plant passport (docs/archive/SCOPE-PLANT-HISTORY.md): tap a Garden plant row → this full-screen overlay.
          Same open/close mechanics as #plotFullscreen (fixed inset:0, scroll lock, Esc/✕). The body is
          built per plant in Js-Passport.html (openPassport); top half from the cached model, story async. -->
     <div id="passportOverlay" class="pp-fs" style="display:none;">
@@ -3698,7 +3716,7 @@
       </button>
     </div>
 
-    <!-- In-season pane (docs/SCOPE-IN-SEASON.md) — the reconciliation finale. A full-screen PULL surface,
+    <!-- In-season pane (docs/archive/SCOPE-IN-SEASON.md) — the reconciliation finale. A full-screen PULL surface,
          summoned from the Dashboard "In season" launcher. Reuses the passport's .pp-fs shell (bar + scrolling
          body + tap-outside/Esc/back to dismiss). Body is built in Js-InSeason.html (renderInSeason): the whole
          classified catalogue read against the cached forecast, grouped Ready now / Coming soon / Out of season,
@@ -3731,7 +3749,7 @@
          Android 14/15 accept hack) if getUserMedia is unavailable, denied, or errors, so the Camera button
          can never end up dead. Upload is untouched: a capture-less file input is already the spec-correct
          "gallery only" config; the OS still choosing its 3-way chooser over the dedicated Photo Picker there
-         is a separate, not-yet-understood Chrome/Android behaviour (docs/SCOPE-CAMERA-PICKER.md). -->
+         is a separate, not-yet-understood Chrome/Android behaviour (docs/archive/SCOPE-CAMERA-PICKER.md). -->
     <div id="cameraOverlay" class="camera-overlay" style="display:none;">
       <video id="cameraVideo" class="camera-video" autoplay playsinline muted></video>
       <!-- Review frame (22/07): snapPhoto() no longer attaches straight away — it freezes the shot here
@@ -4108,7 +4126,7 @@ function cropIconCoverage(model) {
 }
 </script>
 
-    <script>
+    ﻿<script>
 // ============================================================================
 // Forecast pure-math — the decision logic behind the Dashboard's weather card
 // (stress badge, water-balance ring, soil-temp bands, intervention alerts).
@@ -4462,7 +4480,7 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
   const canDirectSow = inWindow && soilOk;
   // Transplant tolerance — can this crop be raised in a tray/module and moved? The sheet's TransplantOK wins;
   // a blank cell (older book, not yet migrated) falls back to the old proxy "has indoor lead weeks". This is
-  // the gate that decouples raise-inside from the cold-soil head-start (docs/SCOPE-SOW-INDOORS-AUDIT.md).
+  // the gate that decouples raise-inside from the cold-soil head-start (docs/archive/SCOPE-SOW-INDOORS-AUDIT.md).
   const transplantOk = (model.transplantOk === true) || (model.transplantOk == null && lead > 0);
   // Start indoors is a STANDING option for a transplant-tolerant crop: through the whole sow window (raise
   // inside for protection/space, not only when the soil's too cold), AND in the pre-window lead runway (the
@@ -4482,7 +4500,7 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
   // sulks below ~16°) — the nights frost-free, AND no heat spell ahead. Cold floor + hot ceiling + frost. This
   // is DELIBERATELY separate from the calendar "Leaving soon / Plant only" tail, which is a time-to-maturity
   // deadline (you skip planting a tomato in late autumn because there's no season left to fruit, even if today's
-  // soil is fine) — so that tail stays forecast/calendar-based and is NEVER gated on this. (docs/SCOPE-SOW-INDOORS-AUDIT.md)
+  // soil is fine) — so that tail stays forecast/calendar-based and is NEVER gated on this. (docs/archive/SCOPE-SOW-INDOORS-AUDIT.md)
   const growFloor = (model.soilCold != null) ? Number(model.soilCold) : germMin;
   const soilPlantGap = (soil !== null && growFloor !== null) ? Math.round((growFloor - soil) * 10) / 10 : null;
   const nightPlantGap = (night !== null && tNight !== null) ? Math.round((tNight - night) * 10) / 10 : null;
@@ -4511,7 +4529,7 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
   const indoorAside = transplantOk && lead === 0 && inWindow && soilTooCold;
   const anywhere = canDirectSow && transplantOk;
 
-  // PLANT-OUT window (derived, docs/SCOPE-SOW-INDOORS-AUDIT.md): a raised seedling goes out ~leadMonths after
+  // PLANT-OUT window (derived, docs/archive/SCOPE-SOW-INDOORS-AUDIT.md): a raised seedling goes out ~leadMonths after
   // you'd sow, so the plant window is the sow window shifted later by the lead (a lead-0 tray crop = the sow
   // window itself). "Plant only" = past the sow window but the plant tail is still open — sowing now won't
   // finish, but a seedling still goes in. Direction of the season we're leaving into is first-order by lane: a
@@ -4533,7 +4551,7 @@ function computeSowReadiness(model, sowMonthsStr, ctx) {
   // month name ("from Sep") = calendar-gated + far. fmtDeg trims the trailing .0. (design: sow-line-with-numbers)
   const fmtDeg = function (n) { return (Math.round(n * 10) / 10).toString().replace(/\.0$/, ''); };
   // Sow line names the LOCATION on every go-state ("Sow direct" / "Sow indoors"), so the in-ground-vs-inside
-  // choice is legible in the copy — the same words on every surface (docs/SCOPE-SOW-INDOORS-AUDIT.md). Direct-
+  // choice is legible in the copy — the same words on every surface (docs/archive/SCOPE-SOW-INDOORS-AUDIT.md). Direct-
   // sow leads when the soil's in band; a tray-tolerant crop whose soil is still too cold reads "Sow indoors"
   // (you CAN start it now) rather than a bare cold gap; a direct-only crop that's too cold keeps the number.
   let sowLine = null;
@@ -4794,7 +4812,7 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 </script>
 
-    <script>
+    ﻿<script>
       // === C2 fetch shim — static build only ==================================================
       // Outside the Apps Script iframe there is no google.script.run, so this recreates the exact
       // chain every call site already uses (withSuccessHandler → withFailureHandler →
@@ -5992,7 +6010,7 @@ if (typeof module !== 'undefined' && module.exports) {
           .processClientRequest(JSON.stringify({ action: 'clearShedSeedEntries', token: token, pin: pin }));
       }
 
-      // Dev-drawer maintenance (docs/SCOPE-CARD-CAPTURE-FIXES.md Finding 2(b)): collapse an exact-duplicate
+      // Dev-drawer maintenance (docs/archive/SCOPE-CARD-CAPTURE-FIXES.md Finding 2(b)): collapse an exact-duplicate
       // plant row (a card-capture bug, fixed alongside this — a genuine second planting is never touched).
       // Same shape as the other Dev-drawer maintenance calls.
       function runHealDuplicatePlants(btn) {
@@ -6079,7 +6097,7 @@ if (typeof module !== 'undefined' && module.exports) {
           .processClientRequest(JSON.stringify({ action: 'removeStateKeyColumn', token: token, pin: pin }));
       }
 
-      // Stable-identity cutover tooling (docs/HANDOFF-IDENTITY-CUTOVER-TOOLING.md). Non-destructive: only
+      // Stable-identity cutover tooling (docs/archive/HANDOFF-IDENTITY-CUTOVER-TOOLING.md). Non-destructive: only
       // duplicates the Log tab to a timestamped backup. Run this before the (separate, owner+Claude-only)
       // clean-slate wipe so it's reversible in practice.
       function runBackupLogTab(btn) {
@@ -6107,7 +6125,7 @@ if (typeof module !== 'undefined' && module.exports) {
           .processClientRequest(JSON.stringify({ action: 'backupLogTab', token: token, pin: pin }));
       }
 
-      // Stable-identity cutover tooling (docs/HANDOFF-IDENTITY-CUTOVER-TOOLING.md). One-off: mint an id onto
+      // Stable-identity cutover tooling (docs/archive/HANDOFF-IDENTITY-CUTOVER-TOOLING.md). One-off: mint an id onto
       // every existing garden plant + shed item that lacks one. Fills blanks only (sticky), never touches
       // the Log, idempotent — safe to tap more than once (a second run reports 0 assigned).
       function runAssignStableIds(btn) {
@@ -6135,7 +6153,7 @@ if (typeof module !== 'undefined' && module.exports) {
           .processClientRequest(JSON.stringify({ action: 'assignStableIds', token: token, pin: pin }));
       }
 
-      // Stable-identity cutover — the DESTRUCTIVE step (docs/SCOPE-STABLE-IDENTITY.md step 4). Deletes every
+      // Stable-identity cutover — the DESTRUCTIVE step (docs/archive/SCOPE-STABLE-IDENTITY.md step 4). Deletes every
       // Log data row (keeps the header) so the clean slate begins. THREE gates: the owner types "WIPE" in the
       // box, confirms the dialog, and the server refuses unless the typed word matches AND a "Log backup …"
       // tab exists. Run “Back up Log” + “Assign stable IDs” FIRST.
@@ -6588,6 +6606,7 @@ if (typeof module !== 'undefined' && module.exports) {
                            'dbPlantGrid', 'dbPlantGridFlag',
                            'dbShed', 'dbShedDiff', 'dbShedSeed', 'dbPacketLayer',
                            'dbLog', 'dbLogFlag',
+                           'dbOutcome', 'dbOutcomeFlag',
                            'dbTrace', 'trace', 'dbSelf',
                            'dbExport', 'dbExportList', 'dbExportPreview'];
             let d = null;
@@ -6788,7 +6807,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 </script>
 
-    <script>
+    ﻿<script>
       // Collapsible state for beds
       let collapsedBeds = new Set();
       try {
@@ -6816,7 +6835,7 @@ if (typeof module !== 'undefined' && module.exports) {
         applyOptimisticOverlays(); // re-coat any still-pending optimistic row (Slice A) — see definition below
       }
 
-      // --- Optimistic Garden-tab row (latency Slice A, docs/SCOPE-LATENCY-SLICES.md) --------------
+      // --- Optimistic Garden-tab row (latency Slice A, docs/archive/SCOPE-LATENCY-SLICES.md) --------------
       // The honest constraint that shapes this whole feature: the client must NEVER invent a plant's
       // placement (the To-confirm contract), so an optimistic row is only offered for the CONFIDENT common
       // case — an action on an existing, unambiguous plant already on screen. A Planting or an ambiguous
@@ -7008,7 +7027,7 @@ if (typeof module !== 'undefined' && module.exports) {
         if (ago >= 70) return relativePast(dateStr);
         return ago + (ago === 1 ? ' day ago' : ' days ago');
       }
-      // --- Watering memory: the passport's one quiet line (docs/SCOPE-WATERING-MEMORY.md) ---------------
+      // --- Watering memory: the passport's one quiet line (docs/archive/SCOPE-WATERING-MEMORY.md) ---------------
       // The PURE render DECISION (AGENTS rule 43 — the renderer, ppLedgerLinesEl in Js-Passport3.html, is a
       // dumb consumer of this, so what the owner SEES is what a test can assert). Input is the plant's raw
       // Watered ring cell: a ' · '-separated list of DD/MM/YYYY dates, oldest first, capped server-side by
@@ -7260,7 +7279,7 @@ if (typeof module !== 'undefined' && module.exports) {
         return svg;
       }
 
-      // Icon lifecycle (owner 08/07, docs/SEED-RAISING-PLAN.md): a Sown row shows the drawn seeds icon
+      // Icon lifecycle (owner 08/07, docs/archive/SEED-RAISING-PLAN.md): a Sown row shows the drawn seeds icon
       // (#plot-ic-seed; was a 🫘 bean emoji), a Sprouted row shows
       // 🌱, then the usual crop icon once Growing. Driven by the DERIVED life phase (computePhase,
       // GardenSheet.js / DEBUGGING §2.5) — so a direct-sow in a bed auto-returns to the crop icon a week
@@ -7604,7 +7623,7 @@ if (typeof module !== 'undefined' && module.exports) {
             row.dataset.plantName = name;
             if (p.plantId) row.dataset.plantId = String(p.plantId); // stable id for the optimistic overlay to key on (rename/move-safe); omitted when absent so id-less rows stay byte-identical
             row.dataset.planted = metadata.planted || '';
-            // Plant passport: the row is the tap target (docs/SCOPE-PLANT-HISTORY.md). The full cached
+            // Plant passport: the row is the tap target (docs/archive/SCOPE-PLANT-HISTORY.md). The full cached
             // model `p` rides the closure, so the card's top half opens with ZERO lookup or network.
             // Unspecified/to-confirm rows keep their own resolve flow (rule 24) — no passport there. The
             // camera link below already stopPropagation()s, so it can't be shadowed by this.
@@ -7690,7 +7709,7 @@ if (typeof module !== 'undefined' && module.exports) {
               //  • seed-raised, in place / up   -> "Sown 12d ago"          (the sow date IS when it joined the bed)
               //  • bought seedling / plain      -> "Planted 3w ago"        (no seed lineage)
               // seedOrigin = it was sown as a seed (EstSprout is baked at sow and persists). p.transplanted =
-              // when it was planted out. See docs/LIFE-PHASE-PLAN.md.
+              // when it was planted out. See docs/archive/LIFE-PHASE-PLAN.md.
               const seedOrigin = !!p.estSprout;
               // The two "Sown" lines read in DAYS to match the passport's ppWhenDays (relativePastDays caps
               // itself back to the coarse ladder past 70 days, so an old seed-raised row can't read "400 days
@@ -7941,7 +7960,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
       // Live camera (C2 Phase 5, 22/07) — single-tap rear-camera viewfinder on the static origin, replacing
       // the Android 14/15 "Camera" button that fell through to Chrome's generic 3-tile chooser
-      // (docs/SCOPE-CAMERA-PICKER.md). Falls back to the #photoInput file input (still wired, still capture=
+      // (docs/archive/SCOPE-CAMERA-PICKER.md). Falls back to the #photoInput file input (still wired, still capture=
       // "environment") for any browser/origin where getUserMedia is missing, denied, or errors — so this can
       // never leave the Camera button dead.
       let _cameraStream = null;
@@ -11599,12 +11618,12 @@ if (typeof module !== 'undefined' && module.exports) {
       });
 </script>
 
-    <script>
+    ﻿<script>
 // [Js-Passport.html] Split 1/3 of the former Js-Passport.html (v8.83) — orchestration: module state,
 // kill-switch/filler toggles, story cache+prefetch, date/fact-format helpers, open/close/back scaffolding,
 // the self-contained Shed passport, and the async story fetch. Loaded first (holds the cache/listener boot).
 //
-      // === Plant passport — tap a plant row → its passport (docs/SCOPE-PLANT-HISTORY.md) ===
+      // === Plant passport — tap a plant row → its passport (docs/archive/SCOPE-PLANT-HISTORY.md) ===
       //
       // The card's TOP half (identity, ledger lines, packet facts) renders SYNCHRONOUSLY from the plant
       // model the row already holds — the cached stateModel carries labelFacts/phase/dates, so opening a
@@ -12233,7 +12252,7 @@ if (typeof module !== 'undefined' && module.exports) {
         });
       }
 
-      // === Shed passport (docs/SCOPE-SHED-PASSPORT.md) — tap ANY shed supply → everything known about it.
+      // === Shed passport (docs/archive/SCOPE-SHED-PASSPORT.md) — tap ANY shed supply → everything known about it.
       // A supply has no lifecycle and no meaningful event story (restock events are noise by the owner's own
       // thesis), so this is the plant passport with the time half removed: identity + the item's facts.
       // Reuses the SAME overlay, close/back-gesture scaffolding, kill switch, and ppFactsEl.
@@ -12666,7 +12685,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 </script>
 
-    <script>
+    ﻿<script>
 // [Js-Passport2.html] Split 2/3 (v8.83) — plant-passport render entry (ppRender) + all actions: eligibility
 // gates, the stage-advance dispatcher, every backdate popup/submit, the status tile, and the rename/edit
 // editors. Browser global scope; loaded after Js-Passport.html, before Js-Passport3.html.
@@ -13511,7 +13530,7 @@ if (typeof module !== 'undefined' && module.exports) {
         return null;   // nothing meaningful → single (crop-only) header
       }
 
-      // Inline one-cell rename (docs/SCOPE-STABLE-IDENTITY.md step 6 — the whole "Slice B"). Swap the title
+      // Inline one-cell rename (docs/archive/SCOPE-STABLE-IDENTITY.md step 6 — the whole "Slice B"). Swap the title
       // for a text field; on save post renamePlant BY ID (a single-cell edit — reads join by id, so no Log
       // sweep), then re-render the card under the new name and pull the renamed row into the Garden tab/map
       // (refreshStateView). Esc / ✕ cancels; a failure shows a quiet inline note and keeps the field open.
@@ -13938,7 +13957,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 </script>
 
-    <script>
+    ﻿<script>
 // [Js-Passport3.html] Split 3/3 (v8.83) — passport view-building: identity + ledger lines, harvest bell/
 // reminder, tombstone/facts renderers + story element, photos/thumbnail cache (self-contained thumb read),
 // and the Dev-drawer seed helpers. Browser global scope; loaded last.
@@ -14181,7 +14200,7 @@ if (typeof module !== 'undefined' && module.exports) {
           const harvEl = wrap.querySelector('.pl-countdown, .pl-harvest-check');
           if (harvEl) ppAttachFieldPencil(harvEl, p, bedName, 'estharvest');
         }
-        // WATERING MEMORY (docs/SCOPE-WATERING-MEMORY.md) — ONE quiet line, in the ledger's own register:
+        // WATERING MEMORY (docs/archive/SCOPE-WATERING-MEMORY.md) — ONE quiet line, in the ledger's own register:
         // "Watered ~4× this week" when the ring holds enough dates to say that honestly, otherwise the
         // smaller true thing ("Last watered 2d ago"). No colour, no badge, no nudge, no "you should water" —
         // this is the ambient ledger, not a command centre. The DECISION lives in wateredMemoryLine
@@ -14669,9 +14688,9 @@ if (typeof module !== 'undefined' && module.exports) {
       }
 </script>
 
-    <script>
+    ﻿<script>
       // ============================================================================
-      // In-season pane — the sow/plant-out reconciliation FINALE (docs/SCOPE-IN-SEASON.md).
+      // In-season pane — the sow/plant-out reconciliation FINALE (docs/archive/SCOPE-IN-SEASON.md).
       //
       // Where the passport answers "when can I sow the seeds I OWN?", this answers the whole-catalogue
       // question: "what could I sow NOW?" — every classified crop ranked against today's conditions. Its
@@ -15053,7 +15072,7 @@ if (typeof module !== 'undefined' && module.exports) {
         return { bucket: 'hidden', line: r.sowLine || '', cls: 'is-far', note: '' };
       }
 
-      // The light tap-to-expand (docs/SCOPE-PASSPORT-SEASONAL-FOLD.md — the PARTIAL fold, owner-approved 20/07):
+      // The light tap-to-expand (docs/archive/SCOPE-PASSPORT-SEASONAL-FOLD.md — the PARTIAL fold, owner-approved 20/07):
       // tapping a row reveals only the two facts the guide already OWNS — the full Adelaide sow window +
       // the typical maturity. Deliberately NOT the instructional tier (spacing / companions / helps-avoid):
       // that stays the Gem's delegated job (rule 30 "describe, never diagnose"). No new overlay, no extra
