@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v10.08</span>
+        <span class="header-version">v10.09</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v10.08 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v10.09 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2517,17 +2517,6 @@
                owner-run cutover completed on prod + beta (19/07, v7.90 — see docs/archive/SCOPE-STABLE-IDENTITY.md).
                The server functions backupLogTab / assignStableIds / wipeLogData remain in GardenSheet.js but are
                no longer surfaced; prune them in a later pass if they stay unused. -->
-
-          <!-- Passport test plants (PassportTestSeed.js): SANDBOX-ONLY fixtures that exercise every plant-
-               passport card shape (full journey, 2nd-season, dormant perennial, ornamental, Spent, …).
-               The server refuses both on prod (appIsBeta guard), so these buttons are harmless there. -->
-          <div class="dev-section">
-            <h4 class="dev-h">Passport test plants</h4>
-            <p class="dev-note">Sandbox only. <strong>Seed</strong> adds 14 test plants spanning the whole lifecycle — one at each stage from just-sown to harvesting, plus a bought seedling, a fruiting tree, a winter-dormant vine, a returning crop and a spent bed — each with backdated history so every passport and card shape can be reviewed on the Garden tab. <strong>Clear</strong> removes exactly those. Safe to tap more than once — seeding always clears first. The Spent radish is swept at the nightly flush; re-seed to bring it back.</p>
-            <button class="settings-save-btn" onclick="runPassportSeed(this)">Seed test plants</button>
-            <button class="settings-save-btn" onclick="runPassportClear(this)" style="margin-top:8px;">Clear test plants</button>
-            <div id="devPassportSeed" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;"></div>
-          </div>
 
           <!-- Plant-passport kill switch (owner, 15/07): if the passports misbehave, turn them off HERE —
                plant rows go back to being inert and the background story prefetch stops. Per-device
@@ -2611,15 +2600,6 @@
             <button class="settings-save-btn" onclick="saveCareThreshold('seasol', this)">Save Seasol cadence</button>
           </div>
 
-          
-          <div class="dev-section">
-            <h4 class="dev-h">♻️ Refresh sandbox from the real garden</h4>
-            <p class="dev-note">Pulls data from the <strong>real (prod) garden</strong> into <strong>this sandbox</strong>. Strictly one-way — it reads prod and writes only the sandbox, never the reverse, so your real garden can't be touched. <strong>It overwrites what's in the sandbox.</strong> Needs <code>SOURCE_GARDEN_SHEET_ID</code> (and, for weather, <code>SOURCE_WEATHER_SHEET_ID</code>) set in this project's Script Properties — see <code>docs/BETA-SETUP.md</code>.</p>
-            <button class="settings-save-btn" onclick="refreshSandbox('full', this)">Full reset — mirror everything</button>
-            <button class="settings-save-btn" onclick="refreshSandbox('gentle', this)" style="margin-top:6px;">Gentle reset — beds + current state only</button>
-            <div id="devSandboxOut" class="dev-note" style="margin-top:8px;"></div>
-          </div>
-          
 
           <!-- Tools & diagnostics: developer + authoring machinery that a daily user never needs, collapsed
                by default so the drawer opens short. One tap on the summary reveals the scribe/formula self-tests,
@@ -6706,59 +6686,6 @@ if (typeof module !== 'undefined' && module.exports) {
             .processClientRequest(JSON.stringify({ action: 'getSettings', token: token, pin: pin }));
         }
         showToast('Dev', 'Links saved.');
-      }
-
-      // Sandbox-only (button rendered under `<? if (appIsBeta()) ?>`): pull the real garden's data into
-      // THIS sandbox. Destructive, so it ARMS on the first tap and fires on the second (same idiom as the
-      // Recent ↩ undo — no blocker dialog, works in the sandboxed iframe). One-way + sandbox-guarded on the
-      // server (refreshSandboxFromGarden, SandboxSync.js) — it can never write the real garden.
-      function refreshSandbox(mode, btn) {
-        if (!btn || btn.dataset.armed !== '1') {
-          if (btn) {
-            btn.dataset.armed = '1';
-            btn.dataset.label = btn.dataset.label || btn.textContent;
-            btn.textContent = mode === 'full' ? '⚠ Tap again — overwrites the WHOLE sandbox' : '⚠ Tap again — overwrites beds + state';
-            setTimeout(function () {
-              if (btn.dataset.armed === '1') { btn.dataset.armed = ''; btn.textContent = btn.dataset.label; }
-            }, 4000);
-          }
-          return;
-        }
-        btn.dataset.armed = ''; btn.textContent = btn.dataset.label;
-        const out = document.getElementById('devSandboxOut');
-        if (out) out.textContent = 'Refreshing…';
-        const pin = localStorage.getItem('garden_log_pin');
-        const token = localStorage.getItem('garden_log_token');
-        google.script.run
-          .withSuccessHandler(function (resStr) {
-            let res = null; try { res = JSON.parse(resStr); } catch (e) {}
-            if (!res || res.status !== 'success') {
-              const m = (res && res.message) || 'Failed.';
-              if (out) out.textContent = '⚠ ' + m;
-              showToast('Sandbox refresh', m, null, { alert: true });
-              return;
-            }
-            const d = res.data || {};
-            const tabs = (d.tabs || []).map(function (t) { return t.tab + ' (' + t.rows + ')'; }).join(', ');
-            // `beds` (and `crops`) are part of the answer, not decoration. refreshSandbox rewrites every
-            // BedId from prod, so with beds served from the database the copied rows point at ids the
-            // database does not have — SandboxSync.js computes that warning and it used to land nowhere,
-            // while the toast below still said "Now matches the real garden". That sentence is exactly
-            // what is NOT true in that state, and it is the same miss as runDbTool's "No result." — a
-            // correct server answer with no renderer, 130 lines apart in this same file.
-            const warned = /^⚠/.test(String(d.beds || ''));
-            if (out) out.textContent = '✓ ' + d.mode + ' reset: ' + (tabs || 'no tabs') +
-              (d.weather ? ' · weather: ' + d.weather : '') + (d.crops ? ' · crops: ' + d.crops : '') +
-              (d.beds ? '\n' + d.beds : '');
-            if (warned) showToast('Sandbox refreshed — beds need a re-import', String(d.beds).replace(/^⚠\s*/, ''), null, { alert: true });
-            else showToast('Sandbox refreshed', 'Now matches the real garden — reload to see it.');
-          })
-          .withFailureHandler(function (e) {
-            const m = (e && e.message) ? e.message : 'Transport error.';
-            if (out) out.textContent = '⚠ ' + m;
-            showToast('Sandbox refresh', m, null, { alert: true });
-          })
-          .processClientRequest(JSON.stringify({ action: 'refreshSandbox', mode: mode, token: token, pin: pin }));
       }
 
       // Quiet by default; only genuine issues get the loud .toast-alert treatment (and linger a touch
@@ -14659,33 +14586,6 @@ if (typeof module !== 'undefined' && module.exports) {
           .processClientRequest(JSON.stringify({ action: 'getPhotoThumbs', fileIds: fileIds, token: token, pin: pin }));
       }
 
-      // --- Dev drawer: passport test plants (SANDBOX-ONLY — the server refuses on prod) ----------------
-      function runPassportSeed(btn) { ppDevAction('seedPassportTestPlants', btn); }
-      function runPassportClear(btn) { ppDevAction('clearPassportTestPlants', btn); }
-      function ppDevAction(action, btn) {
-        const out = document.getElementById('devPassportSeed');
-        const pin = localStorage.getItem('garden_log_pin');
-        const token = localStorage.getItem('garden_log_token');
-        if (!pin && !token) { if (out) out.textContent = 'Enter your PIN in App Settings first.'; return; }
-        if (btn) btn.disabled = true;
-        if (out) out.textContent = 'Running…';
-        google.script.run
-          .withSuccessHandler(function (resStr) {
-            if (btn) btn.disabled = false;
-            try {
-              const res = JSON.parse(resStr);
-              if (out) out.textContent = (res.status === 'success')
-                ? JSON.stringify(res.data, null, 1)
-                : ('Error: ' + res.message);
-              if (res.status === 'success' && typeof refreshStateView === 'function') refreshStateView();
-            } catch (e) { if (out) out.textContent = 'Error: ' + e.message; }
-          })
-          .withFailureHandler(function (err) {
-            if (btn) btn.disabled = false;
-            if (out) out.textContent = 'Error: ' + (err && err.message ? err.message : err);
-          })
-          .processClientRequest(JSON.stringify({ action: action, token: token, pin: pin }));
-      }
 </script>
 
     ﻿<script>
