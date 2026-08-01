@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v10.14</span>
+        <span class="header-version">v10.15</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v10.14 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v10.15 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -7407,10 +7407,14 @@ if (typeof module !== 'undefined' && module.exports) {
 
       // Inline one-cell bed rename (mirrors ppBeginRename, Js-Passport2.html:793 — which renames a PLANT;
       // this is the only bed-rename path in the app). Swaps the bed-card title for
-      // a text field; on save posts renameBed BY BedId (a single Blueprint Zone-cell edit — no cross-tab
-      // sweep), then refreshes the Garden tab + map from the server so the whole card (and any place the
-      // old name showed) picks up the new one. Esc / ✕ cancels; a failure shows a quiet inline note and
-      // keeps the field open.
+      // a text field; on save posts renameBed BY BedId, then refreshes the Garden tab + map from the
+      // server so the whole card (and any place the old name showed) picks up the new one.
+      // Esc / ✕ cancels; a failure shows a quiet inline note and keeps the field open.
+      //   The SERVER picks the store (GardenState.js renameBed): one Blueprint Zone-cell edit, or a
+      // one-column patch of the `bed` row under DB_BED_ON. Both are a single cell and neither sweeps
+      // other tabs, so this side needs no branch — which is the point of doing it there. It DOES need
+      // the inline note: the DB arm has real declines the Sheet arm never had (the holding area keeps
+      // its name; a duplicate name is refused), and they arrive as `message`.
       function beginRenameBed(bed, header, h) {
         if (!bed || !bed.bedId || !header) return;
         if (header.querySelector('.pp-rename-edit')) return; // already editing
