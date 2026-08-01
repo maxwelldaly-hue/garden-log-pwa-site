@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v10.13</span>
+        <span class="header-version">v10.14</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v10.13 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v10.14 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -12559,8 +12559,10 @@ if (typeof module !== 'undefined' && module.exports) {
       }
       // Structured bypass (see ppSubmitHarvestQuantity): a Planting item with fromShed:true rides the RULE 10
       // pipeline. crop = the FULL packet name — applyLogToState (StateUpdate.js) splits a trailing "(variety)"
-      // into VarietyNotes and keys off the base, and consumeSeedlingForPlanting matches the shed row by that
-      // same full name to delete a seedling. A Sow adds stage 'Germination' (bakes the nursery dates AND, via
+      // into VarietyNotes and keys off the base. ⚠ CORRECTED 01/08: consumeSeedlingForPlanting does NOT match
+      // "by that same full name" — findSeedlingMatch (InventoryUpdate.js:578) strips the variety and matches on
+      // the BASE, then falls back to a contains test, which is why the full name still lands. The stated
+      // mechanism was wrong; the behaviour is unchanged. A Sow adds stage 'Germination' (bakes the nursery dates AND, via
       // shouldConsumeSeedling's Germination exclusion, guarantees the seed packet is left on the shelf).
       function ppSubmitShedToGarden(item, mode, bed, count, date) {
         const base = ppSplitName(item.item)[0];
