@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v10.16</span>
+        <span class="header-version">v10.17</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v10.16 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v10.17 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2729,19 +2729,29 @@
               <div id="devDbPlantOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
 
-            <!-- Supplies — the third instance table (db/shed.sql). NO ON/OFF pair here, and that is
-                 not an oversight: this slice opens no read seam, so a switch would be wired to
-                 nothing. The note below says as much in plain words, because a missing control that
-                 every neighbouring block has reads as a bug otherwise. -->
+            <!-- Supplies — the third instance table (db/shed.sql). The ON/OFF pair now EXISTS (P2 slice
+                 1 built the read seam) but is beta-only and must stay off: the write half is the next
+                 slice, and a read-only flip is a store split. That is enforced in code, not by this
+                 comment — assertShedWriteAvailable throws on all six Shed-tab writers while it is on. -->
             <div class="dev-section">
               <h4 class="dev-h">Supplies in the database</h4>
-              <p class="dev-note">A copy of your shed living in the database, so a plant can point back at the packet it was sown from and keep what that packet said. <strong>Shed check</strong> says whether the database answers and what it holds. <strong>Compare with the sheet</strong> lists any supply that differs and names anything in a cell that could not be carried across. <strong>What would the packet layer add?</strong> lists the facts a packet knows that neither the plant nor the reference book does — the ones a card could gain. None of those three changes a supply. <strong>Copy supplies in</strong> is the one that writes, and only into the database, never back into your sheet. There is no on/off switch here on purpose: nothing in the app reads supplies from the database yet, so there would be nothing for it to switch. Expect this to change no card today — it is the groundwork that makes a packet's facts reachable at all.</p>
+              <p class="dev-note">A copy of your shed living in the database, so a plant can point back at the packet it was sown from and keep what that packet said. <strong>Shed check</strong> says whether the database answers and what it holds. <strong>Compare with the sheet</strong> lists any supply that differs and names anything in a cell that could not be carried across. <strong>Would the app see the same shed?</strong> is the newer, sharper question: it compares what the app would actually <em>read</em> from each side, which is what has to match before the shed can move. <strong>What would the packet layer add?</strong> lists the facts a packet knows that neither the plant nor the reference book does. None of those four changes a supply. <strong>Copy supplies in</strong> is the one that writes, and only into the database, never back into your sheet.</p>
               <button class="dev-simbtn" onclick="runDbTool('dbShedCheck', this, null, 'devDbShedOut')">Shed check</button>
               <button class="dev-simbtn" onclick="runDbTool('dbShedDiff', this, null, 'devDbShedOut')" style="margin-left:6px;">Compare with the sheet</button>
               <div class="dev-simrow" style="margin-top:6px;">
-                <button class="dev-simbtn" onclick="runDbTool('dbPacketLayerDiff', this, null, 'devDbShedOut')">What would the packet layer add?</button>
-                <button class="dev-simbtn" onclick="runDbTool('dbSeedShed', this, null, 'devDbShedOut')" style="margin-left:6px;">Copy supplies in</button>
+                <button class="dev-simbtn" onclick="runDbTool('dbShedRowsDiff', this, null, 'devDbShedOut')">Would the app see the same shed?</button>
+                <button class="dev-simbtn" onclick="runDbTool('dbPacketLayerDiff', this, null, 'devDbShedOut')" style="margin-left:6px;">What would the packet layer add?</button>
               </div>
+              <div class="dev-simrow" style="margin-top:6px;">
+                <button class="dev-simbtn" onclick="runDbTool('dbSeedShed', this, null, 'devDbShedOut')">Copy supplies in</button>
+              </div>
+              
+              <div class="dev-simrow" style="margin-top:6px;">
+                <button class="dev-simbtn" onclick="runDbTool('dbSetShedFlag', this, { on: true }, 'devDbShedOut')">Shed FROM the database ON</button>
+                <button class="dev-simbtn" onclick="runDbTool('dbSetShedFlag', this, { on: false }, 'devDbShedOut')" style="margin-left:6px;">Shed FROM the database OFF</button>
+              </div>
+              <p class="dev-note">⚠ <strong>Half built — leave this off.</strong> Turning it on makes the app <em>read</em> your shed from the database, but every way of <em>changing</em> a supply still writes to the sheet. So it refuses: buy something, use something, rename a supply or scan a packet while this is on and you get an error rather than a change that quietly goes nowhere. Turn it on only to look, and turn it back off.</p>
+              
               <div id="devDbShedOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
 
@@ -6640,7 +6650,7 @@ if (typeof module !== 'undefined' && module.exports) {
                            'dbBed', 'dbBedSetup', 'dbBedDiff', 'dbBedAudit', 'dbBedSeed', 'dbBedFlag',
                            'dbPlant', 'dbPlantDiff', 'dbPlantFacts', 'dbPlantLinks', 'dbPlantSeed', 'dbPlantFlag',
                            'dbPlantGrid', 'dbPlantGridFlag',
-                           'dbShed', 'dbShedDiff', 'dbShedSeed', 'dbPacketLayer',
+                           'dbShed', 'dbShedDiff', 'dbShedRows', 'dbShedSeed', 'dbPacketLayer', 'dbShedFlag',
                            'dbLog', 'dbLogFlag',
                            'dbOutcome', 'dbOutcomeFlag',
                            'dbWeather', 'dbWeatherFlag', 'seed',
