@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v10.40</span>
+        <span class="header-version">v10.41</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v10.40 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v10.41 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2887,7 +2887,7 @@
                  writes a plant to Postgres instead of a cell. -->
             <div class="dev-section">
               <h4 class="dev-h">Database backup</h4>
-              <p class="dev-note">Your sheet has always been the backup — the database is only ever a copy of it today, so nothing has been at risk. That changes the moment the app starts saving your garden into the database instead of the sheet, because the free plan keeps no restorable backup of its own. This writes the whole database out as one file into Drive (<em>Garden Log Backups</em>), every night, and keeps the last fortnight. <strong>Backups on file</strong> lists what is there and how old the newest one is — the nightly run stays quiet when it works, so this is how you check that it did. <strong>Back up the database now</strong> makes one immediately. Neither one changes a plant, a supply or a bed.</p>
+              <p class="dev-note">Your sheet has always been the backup — the database is only ever a copy of it today, so nothing has been at risk. That changes the moment the app starts saving your garden into the database instead of the sheet, because the free plan keeps no restorable backup of its own. This writes the whole database out as one file, every night, and keeps the last fortnight. It used to go into Drive; since 2/8 it goes into private storage alongside the database itself, because the file had to be somewhere both the old and the new backend could reach. <strong>Backups on file</strong> lists what is there and how old the newest one is — the nightly run stays quiet when it works, so this is how you check that it did. <strong>Back up the database now</strong> makes one immediately. Neither one changes a plant, a supply or a bed. To actually get a backup back out, it is a command on the computer rather than a folder you can open: <em>node db/restore-backup.mjs --list</em>.</p>
               <button class="dev-simbtn" onclick="runDbTool('dbExportList', this, null, 'devDbExportOut')">Backups on file</button>
               <button class="dev-simbtn" onclick="runDbTool('dbExportNow', this, null, 'devDbExportOut')" style="margin-left:6px;">Back up the database now</button>
               <div id="devDbExportOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
