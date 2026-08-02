@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v10.36</span>
+        <span class="header-version">v10.37</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v10.36 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v10.37 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2639,6 +2639,29 @@
               <button class="dev-simbtn" onclick="runDbTool('dbCropFactsDiff', this, null, 'devDbSpeciesOut')" style="margin-left:6px;">Compare with the sheet</button>
               
               <div id="devDbSpeciesOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
+            </div>
+
+            <!-- ⚠ THE CROPS BOOK — AND THE REASON THIS BLOCK EXISTS AT ALL. The seam shipped in v10.34
+                 with all three Router actions, all three response keys registered in Js-Core's NAMED
+                 list, and NO BUTTONS — so the switch that cuts the last Sheets-backed store over could
+                 only be thrown from the Apps Script editor, which rule 52 forbids. Exactly the failure
+                 the bed slice already had (v9.49–v9.52: five working buttons, all invisible), one layer
+                 up: there the answer was unreachable, here the ACTION was.
+                 ⚠ The ON/OFF pair is deliberately NOT inside the beta gate. PROD is the instance that
+                 still needs cutting over — beta already runs on the database arm — so gating this to the
+                 sandbox would leave the owner with no route at all, which is the whole thing rule 52 is
+                 about. Same posture as the Beds and Log switches directly below. -->
+            <div class="dev-section">
+              <h4 class="dev-h">The crops book from the database</h4>
+              <p class="dev-note">The whole crop book — every trait, not just the facts on a card — living in the database instead of the Crops sheet. This is the <strong>last thing still read from a spreadsheet</strong>. <strong>Crops check</strong> says whether the database answers and how many crops it holds. <strong>Compare with the sheet</strong> reads every crop both ways and lists any that differ, plus any that would disappear from the book entirely — run it first, and read the list before you switch. Both are read-only. (This is a different question from “Compare with the sheet” up in Crop facts: that one asks about the handful of facts shown on a card, this one asks about the entire book.)</p>
+              <button class="dev-simbtn" onclick="runDbTool('dbCropsCheck', this, null, 'devDbCropsOut')">Crops check</button>
+              <button class="dev-simbtn" onclick="runDbTool('dbCropsBookDiff', this, null, 'devDbCropsOut')" style="margin-left:6px;">Compare with the sheet</button>
+              <div class="dev-simrow" style="margin-top:6px;">
+                <button class="dev-simbtn" onclick="runDbTool('dbSetCropsFlag', this, { on: true }, 'devDbCropsOut')">Crops book ON</button>
+                <button class="dev-simbtn" onclick="runDbTool('dbSetCropsFlag', this, { on: false }, 'devDbCropsOut')" style="margin-left:6px;">Crops book OFF</button>
+              </div>
+              <p class="dev-note">Reversible — turning it off goes straight back to reading the sheet. Two things to know afterwards. A crop you edit by hand in the Crops sheet will not reach the app any more; use the app’s own edit. And the crop book is <strong>shared between this garden and the sandbox</strong>, unlike your beds and plants — so a care fact you correct here is corrected in both. Whether that is right depends on the fact: “Rosemary is light water” is true everywhere, but “show this crop in my seasonal guide” is a preference and sharing it is not what you want. The sandbox is already blocked from writing these; this garden is not.</p>
+              <div id="devDbCropsOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
 
             <!-- Beds — the first instance table (db/bed.sql). Same split as the species block above:
