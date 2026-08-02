@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v10.35</span>
+        <span class="header-version">v10.36</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v10.35 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v10.36 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -4822,6 +4822,13 @@ if (typeof module !== 'undefined' && module.exports) {
       let isSyncing = false;
       let syncRetryTimer = null;            // backoff timer for a failed sync attempt
       const syncFailures = {};              // logId -> consecutive failure count (in-memory)
+      // logId -> the server's reason for a HOLD: a refusal the client cannot fix by re-sending (a missing
+      // grant, a rotated key, a constraint). Distinct from a wedge, which is "5 transient failures, try
+      // again later". A held log is NEVER deleted — it stays queued exactly like any other — it simply
+      // stops being re-sent, because hammering an unfixable refusal is how the only-fallback-we-have
+      // turns into five alarming toasts a minute. In-memory ON PURPOSE: a reload re-offers every held
+      // log, which is the retry that matters when the fix was server-side (grants applied, key rotated).
+      const syncHeld = {};
       const MAX_SYNC_ATTEMPTS = 5;          // after this, a poison-pill log is skipped so it can't block the queue
       const SYNC_BACKOFF_MS = [2000, 5000, 15000, 30000, 60000]; // per-attempt delay before retry
 
@@ -4898,7 +4905,19 @@ if (typeof module !== 'undefined' && module.exports) {
         if (!db) { callback([]); return; } // degraded -> the queue is empty (nothing persisted)
         const tx = db.transaction('logs', 'readonly');
         const req = tx.objectStore('logs').getAll();
+        // ONCE. A request that succeeded and then had its transaction abort would otherwise call back
+        // twice, and syncQueue's callback is not re-entrant — it would double-send the head log.
+        let answered = false;
+        const callback0 = callback;
+        callback = function (rows) { if (answered) return; answered = true; callback0(rows); };
         req.onsuccess = () => callback(req.result);
+        // Fire on abort/error too — the same reason deleteLogFromDB does (audit Finding 5), and it matters
+        // more now that this queue is the ONLY fallback for a capture. Without these, a read fault means
+        // the callback never runs: syncQueue leaves `isSyncing` at its prior value and all background sync
+        // freezes silently, while updateQueueUI/renderPendingLogs quietly paint nothing. `[]` is the honest
+        // answer for a read we could not make — nothing is deleted on this path, so a later pass re-reads.
+        tx.onerror = () => callback([]);
+        tx.onabort = () => callback([]);
       }
 
       function deleteLogFromDB(id, callback) {
@@ -5184,7 +5203,8 @@ if (typeof module !== 'undefined' && module.exports) {
             .sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); }); // newest-first, like the feed
           box2.innerHTML = '';
           pend.forEach(function (l) {
-            const wedged = (syncFailures[l.id] || 0) >= MAX_SYNC_ATTEMPTS;
+            const held = !!syncHeld[l.id];
+            const wedged = held || (syncFailures[l.id] || 0) >= MAX_SYNC_ATTEMPTS;
             const row = document.createElement('div');
             row.className = 'pending-row' + (wedged ? ' pending-wedged' : '');
             const spin = document.createElement('span');
@@ -5199,7 +5219,13 @@ if (typeof module !== 'undefined' && module.exports) {
             main.appendChild(txt);
             const st = document.createElement('div');
             st.className = 'pending-status';
-            st.textContent = wedged ? "couldn't save — will keep retrying"
+            // ⚠ Each of these three must be TRUE of the machinery, not merely reassuring. "will keep
+            // retrying" is earned by the focus/visibility/online resets in Js-UI.html; a HELD log will
+            // NOT keep retrying on its own, so it must not claim to — it says "kept" (which is the
+            // promise that actually holds: nothing is ever deleted) and points at the reopen that does
+            // re-offer it.
+            st.textContent = held ? 'kept — the garden refused it; reopen the app to try again'
+              : wedged ? "couldn't save — will keep retrying"
               : (isOnline ? 'saving…' : 'queued · offline');
             main.appendChild(st);
             row.appendChild(main);
@@ -8984,7 +9010,17 @@ if (typeof module !== 'undefined' && module.exports) {
           if (logs.length > 0) {
             banner.style.display = 'flex';
             document.getElementById('queueCount').textContent = logs.length;
-            document.getElementById('queueLabel').textContent = (logs.length === 1 ? 'offline log queued' : 'offline logs queued');
+            // "offline" was unconditional and therefore wrong most of the time it showed: a note queued
+            // while online and actively syncing still read "1 offline log queued". The queue is now the
+            // only fallback a capture has, so this banner is the gardener's whole view of it — it has to
+            // say which of the two situations they are actually in.
+            const held = logs.filter(l => syncHeld[l.id]).length;
+            document.getElementById('queueLabel').textContent =
+              held ? (held === logs.length
+                        ? (logs.length === 1 ? 'log kept — not saved' : 'logs kept — not saved')
+                        : (logs.length === 1 ? 'log queued' : 'logs queued, some not saved'))
+              : isOnline ? (logs.length === 1 ? 'log queued' : 'logs queued')
+              : (logs.length === 1 ? 'offline log queued' : 'offline logs queued');
           } else {
             banner.style.display = 'none';
           }
@@ -9021,8 +9057,11 @@ if (typeof module !== 'undefined' && module.exports) {
           // machine applies events in sequence). Then pick the first log that hasn't exhausted its retries
           // — a poison-pill log that always fails is skipped so it can't block everything behind it.
           logs.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-          const currentLog = logs.find(l => (syncFailures[l.id] || 0) < MAX_SYNC_ATTEMPTS);
-          if (!currentLog) return; // every queued log is wedged; wait for a focus/online event to reset
+          // A HELD log is skipped by the same rule as a wedged one, and for a stronger reason: the server
+          // has already said re-sending cannot work. It stays in the queue (nothing deletes it) and is
+          // re-offered when the app is reopened, which is when a server-side fix would have landed.
+          const currentLog = logs.find(l => !syncHeld[l.id] && (syncFailures[l.id] || 0) < MAX_SYNC_ATTEMPTS);
+          if (!currentLog) return; // every queued log is wedged or held; a focus/visibility/online event resets the wedges
 
           isSyncing = true;
           document.getElementById('connectionIndicator').className = 'status-indicator syncing';
@@ -9045,6 +9084,7 @@ if (typeof module !== 'undefined' && module.exports) {
               const res = JSON.parse(resStr);
               if (res.status === 'success') {
                 delete syncFailures[currentLog.id];
+                delete syncHeld[currentLog.id]; // it landed after all (a duplicate ack counts) — nothing to hold
                 // The real result landed (incl. a duplicate ack) — stop tracking this log's optimistic row
                 // BEFORE applyGardenState repaints below, so the repaint can't re-coat a resolved log (Slice A).
                 clearOptimisticPending(currentLog.id);
@@ -9100,12 +9140,14 @@ if (typeof module !== 'undefined' && module.exports) {
                 }
               } else {
                 isSyncing = false;
-                handleSyncFailure(currentLog, res.message);
+                // `retryHold` (Router.js) — the store said no for a reason re-sending cannot change.
+                handleSyncFailure(currentLog, res.message, !!res.retryHold);
               }
             })
             .withFailureHandler((e) => {
               isSyncing = false;
-              handleSyncFailure(currentLog, (e && e.message) || "Couldn't reach the garden — it'll keep retrying.");
+              // A transport failure never carries a hold: we never reached the store, so we do not know.
+              handleSyncFailure(currentLog, (e && e.message) || "Couldn't reach the garden — it'll keep retrying.", false);
             })
             .processClientRequest(JSON.stringify(payload));
         });
@@ -9114,16 +9156,27 @@ if (typeof module !== 'undefined' && module.exports) {
       // A sync attempt for one queued log failed (server error or unreachable). Count it, reset the
       // status pill, and either schedule a backoff retry or — once the log has failed MAX_SYNC_ATTEMPTS
       // times — leave it wedged (syncQueue skips it next pass) so it can't block the rest of the queue.
-      function handleSyncFailure(log, message) {
+      function handleSyncFailure(log, message, hold) {
         syncFailures[log.id] = (syncFailures[log.id] || 0) + 1;
         const attempts = syncFailures[log.id];
+        // NOTE — THE HOLD IS NOT A DELETE. It is the one thing this function must never be read as doing:
+        // the record stays in IndexedDB, keeps its place in the banner and the pending list, and is
+        // re-offered on reopen. All that stops is the re-send loop.
+        if (hold) syncHeld[log.id] = true;
         document.getElementById('connectionIndicator').className = 'status-indicator';
         document.getElementById('connectionIndicator').title = 'Online';
         renderPendingLogs(); // reflect the wedged/retrying state in the Log-tab echo (latency Option 1)
         // Slice A: drop this log's optimistic row on ANY failure (retryable or wedged) — no repaint happens
         // on a failure, so clearOptimisticPending must revert the DOM directly (it does — see definition).
         clearOptimisticPending(log.id);
-        if (attempts >= MAX_SYNC_ATTEMPTS) {
+        if (hold) {
+          // Deliberately does NOT show the server's prose: a held failure is a raw PostgREST body
+          // ("…{"code":"42501","message":"permission denied for table log_event"}…"), which tells the
+          // gardener nothing and leaks the schema into a toast. What they need is the one fact that is
+          // true — it is kept — and the one action that helps.
+          showToast("Kept, not saved", "The garden wouldn't accept that note. It's kept here — reopen the app to try again.", null, { alert: true });
+          syncQueue(); // move on to the next, unheld log immediately
+        } else if (attempts >= MAX_SYNC_ATTEMPTS) {
           showToast("Still in queue", "A log couldn't sync after several tries — it's kept and will retry later.", null, { alert: true });
           syncQueue(); // move on to the next, unwedged log immediately
         } else {
@@ -10718,6 +10771,12 @@ if (typeof module !== 'undefined' && module.exports) {
           localStorage.setItem('garden_watered_logged', today);
           addLogToDB({ id: logId, rawText: 'Watered the garden today', photoData: null, mode: 'garden', timestamp: Date.now() }, (success) => {
             if (success) { updateQueueUI(); syncQueue(); }
+            // ⚠ The else was missing, and it was the one genuinely SILENT capture loss in the client:
+            // `addLogToDB` answers false in degraded mode (no IndexedDB — Safari private browsing) or on a
+            // quota fault, and this path had nowhere to put the note back, so the ring said "Watered ✓"
+            // and nothing was ever recorded. The local marker still stands (the ring is honest about the
+            // job being done); what is lost is the Log row, and the gardener is now told so.
+            else showToast("Not logged", "Marked for today, but the note couldn't be queued — this device's storage is unavailable.", null, { alert: true });
           });
         }
         fetchCachedForecast(); // re-render the ring from cache with the new watered state
@@ -10867,6 +10926,8 @@ if (typeof module !== 'undefined' && module.exports) {
         const id = Date.now().toString();
         addLogToDB({ id: id, rawText: cfg.logText, photoData: null, mode: 'garden', timestamp: Date.now() }, (success) => {
           if (success) { updateQueueUI(); syncQueue(); }
+          // The watering ring's twin — same silent loss, same cure. See the note there.
+          else showToast("Not logged", "The timer is reset, but the note couldn't be queued — this device's storage is unavailable.", null, { alert: true });
         });
         renderCareRings();
         showToast('Logged ✓', cfg.logText + ' — timer reset to today.', id, {
@@ -11510,14 +11571,26 @@ if (typeof module !== 'undefined' && module.exports) {
         document.getElementById('connectionIndicator').title = 'Offline';
       });
 
-      // Sync immediately when the app becomes visible or focused
+      // Sync immediately when the app becomes visible or focused.
+      // ⚠ THESE MUST CLEAR THE WEDGES, AND FOR YEARS THEY DID NOT. `syncQueue` skips any log at
+      // MAX_SYNC_ATTEMPTS, so calling it without resetting the counters hits the "all wedged" early-out and
+      // does nothing at all — while the pending row says "couldn't save — will keep retrying". The only
+      // reset was the `online` event, so a tab that never went offline never retried again. That was a
+      // cosmetic lie before the client queue became the only fallback; now it is the promise itself.
+      // NOTE — A HOLD IS NOT CLEARED HERE. A wedge means "5 transient failures" and deserves a fresh budget on
+      // any sign of life; a hold means the store refused, and re-offering it on every tab focus is the
+      // toast storm the hold exists to stop. Reopening the app clears it (syncHeld is in-memory).
+      function retryQueueAfterIdle() {
+        Object.keys(syncFailures).forEach(k => { if (!syncHeld[k]) delete syncFailures[k]; });
+        syncQueue();
+      }
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
-          syncQueue();
+          retryQueueAfterIdle();
         }
       });
       window.addEventListener('focus', () => {
-        syncQueue();
+        retryQueueAfterIdle();
       });
 
       // ⚠ Auth is OPEN on BOTH instances as of 29/07/2026 (AUTH_DISABLED = true in Router.js — the
