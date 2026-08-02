@@ -2151,7 +2151,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's Garden</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v10.38</span>
+        <span class="header-version">v10.39</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2467,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden v10.38 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden v10.39 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2660,7 +2660,7 @@
                 <button class="dev-simbtn" onclick="runDbTool('dbSetCropsFlag', this, { on: true }, 'devDbCropsOut')">Crops book ON</button>
                 <button class="dev-simbtn" onclick="runDbTool('dbSetCropsFlag', this, { on: false }, 'devDbCropsOut')" style="margin-left:6px;">Crops book OFF</button>
               </div>
-              <p class="dev-note">Reversible — turning it off goes straight back to reading the sheet. Two things to know afterwards. A crop you edit by hand in the Crops sheet will not reach the app any more; use the app’s own edit. And the crop book is <strong>shared between this garden and the sandbox</strong>, unlike your beds and plants — so a care fact you correct here is corrected in both. Whether that is right depends on the fact: “Rosemary is light water” is true everywhere, but “show this crop in my seasonal guide” is a preference and sharing it is not what you want. The sandbox is already blocked from writing these; this garden is not.</p>
+              <p class="dev-note">Reversible — turning it off goes straight back to reading the sheet. Two things to know afterwards. A crop you edit by hand in the Crops sheet will not reach the app any more; use the app’s own edit. And the crop book is <strong>shared between this garden and the sandbox</strong>, unlike your beds and plants — so a <strong>care fact</strong> you correct here (“Rosemary is light water”) is corrected in both, which is the point of a shared reference. The sandbox cannot make those edits; this garden can. <strong>Your seasonal-guide choices are the exception and are yours alone</strong> — showing or hiding a crop in the guide is a preference, not a fact about the world, so each garden keeps its own and neither can see the other’s. If “Crops check” says the per-garden guide store is not set up, run <code>db/guide-visibility.sql</code> — until then the toggle refuses rather than pretending to save.</p>
               <div id="devDbCropsOut" class="dev-kv" style="white-space:pre-wrap; margin-top:8px;">—</div>
             </div>
 
