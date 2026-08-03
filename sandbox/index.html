@@ -1533,8 +1533,9 @@
       /* ===== Garden map — Project Plot (spatial lens on Garden state) =================================
          NOT a tab: the full-screen map overlay (.plot-fs) is launched by the "Garden Map" card at the
          bottom of the Dashboard tab. Dark theme; zones coloured by CATEGORY (bed / pot / strip / tree / structure) from
-         the SVG's own fills, NOT live status. Prod overlays a count badge + optional crop "images"; beta is
-         a static plan (a warning says so). Zoom is viewBox-based; overlays are text/getBBox only (rule 15).
+         the SVG's own fills, NOT live status. EVERY instance overlays a count badge + optional crop "images"
+         — the old "beta is a static plan (a warning says so)" claim was stale and is deleted (03/08); the
+         map has bound live on all arms since v4.42. Zoom is viewBox-based; overlays text/getBBox only (rule 15).
          --plot-* tokens live on .plot-fs (the SVG's permanent home) so the category fills resolve. */
       .plot-fs {
         --plot-ground:#16233b;                 /* the plot boundary interior (just above bg-primary) */
@@ -2151,7 +2152,7 @@
         <span class="logo-titles"><span class="logo-text">Dad's <s class="logo-struck">Garden</s></span><span class="playground-tag" aria-label="Sandbox" style="color:var(--text-muted);-webkit-text-fill-color:var(--text-muted);font-weight:500">Sandbox</span></span>
       </div>
       <div class="header-right">
-        <span class="header-version">v10.41</span>
+        <span class="header-version">v10.42</span>
         <!-- Header ✎ trigger RETIRED (FAB-LOG-ENTRY brief) — the persistent bottom-left FAB (#logFab, below)
              is now the single from-anywhere entry point into the log sheet, superseding the log-in-header
              slice (SCOPE-LOG-IN-HEADER.md). openLogSheet()/closeLogSheet() (Js-UI.html) are unchanged; only
@@ -2467,7 +2468,7 @@
              access a daily user shouldn't need on the Dashboard. The garden map still launches in-app from
              the "Garden Map" card above. -->
 
-        <div class="build-stamp">Dad&#39;s Garden Sandbox v10.41 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
+        <div class="build-stamp">Dad&#39;s Garden Sandbox v10.42 · <span class="dev-link" onclick="toggleDev()">Dev</span></div>
 
         <!-- Hidden Dev drawer (opened by the discreet "Dev" link above, near the PIN/settings). Holds
              build diagnostics, quick links, and a plain-English mirror of the scribe rules. The scribe
@@ -2994,7 +2995,7 @@
            optional crop "images" overlay live signals. A zone tap fills #plotFsSheet. The map binds LIVE on
            EVERY instance (prod + beta + friend copies, v4.42) — the SVG geometry is the original Morphettville
            garden, so an instance whose Blueprint keeps the default bed names lines up; renaming beds unbinds the
-           overlay (see docs/BETA-SETUP.md). AGENTS rule 15: overlays are
+           overlay (see docs/DEMO-SETUP.md). AGENTS rule 15: overlays are
            text/getBBox only; zoom is viewBox-based (no transforms). -->
       <div id="plotFullscreen" class="plot-fs" style="display:none;">
         <div class="plot-fs-bar">
@@ -9399,8 +9400,11 @@ if (typeof module !== 'undefined' && module.exports) {
       // own — the map IS the Garden seen from above. The bird's-eye SVG (Index.html #plotSvg) is coloured by
       // ZONE CATEGORY (bed / pot / strip / tree / structure) straight from the SVG's fills, NOT live status.
       // On prod, opening overlays live signals from the cached stateModel: a plant-count badge per bed and
-      // (behind the "images" toggle) flat crop icons inside each box. On BETA it's a STATIC prototype of the
-      // original garden (a beta-only warning says so) — no live binding, so nothing reads the sandbox sheet.
+      // (behind the "images" toggle) flat crop icons inside each box. STALE CLAIM DELETED 03/08: this said
+      // the demo arm showed a STATIC prototype with "no live binding". Not true since v4.42 — the map binds
+      // LIVE on EVERY instance (prod + demo + friend copies), as Index.html:881 has said all along, and the
+      // "beta-only warning" it cited no longer exists in the markup. Two sibling comments below said the same
+      // and are corrected with it. Believe the map layer, not this header.
       // AGENTS rule 15: overlays are text/getBBox only; zoom is viewBox-based (no transforms).
       let plotWired = false;                     // one-time wiring (taps, toggles, zoom, gestures)
       let plotModelById = {};                    // bed.bedId (stable slug) -> bed, from the last painted model
@@ -10258,7 +10262,7 @@ if (typeof module !== 'undefined' && module.exports) {
             arr.onclick = function () { plotSetArrange(true); };
             prepend(arr);
           }
-        } else {                                      // beta (static), a structure zone, or no data yet
+        } else {                                      // a structure zone, or no data yet (NOT "beta is static" — see header)
           nameEl.textContent = z.getAttribute('data-name') || id || 'Zone';
           detEl.textContent = z.getAttribute('data-dims') || '';
         }
@@ -10404,7 +10408,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
       // Open the full-screen map (the "Garden Map" card). Wire once, fit the view, paint live signals
       // from the cached stateModel (prod), and revalidate in the background. #plotSvg already lives in the
-      // overlay stage — nothing moves. Beta stays static (no live binding).
+      // overlay stage — nothing moves. (The demo arm binds live like every other instance — see header.)
       function openPlotFullscreen() {
         const svg = document.getElementById('plotSvg'), overlay = document.getElementById('plotFullscreen');
         if (!svg || !overlay || plotFsOpen) return;
